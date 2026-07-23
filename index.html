@@ -349,10 +349,10 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
   <div>
     <p class="eyebrow">Standalone browser edition</p>
     <h1>Audio Profanity Censor</h1>
-    <p class="subtitle">One HTML file. Upload, transcribe, tap words, generate, listen to the result immediately, then adjust and redo it without transcribing again.</p>
+    <p class="subtitle">One HTML file. Upload, transcribe, tap any transcript word to select or spare it, generate, listen immediately, then adjust and redo without transcribing again.</p>
   </div>
   <div class="badges">
-    <span class="badge" id="runtimeBadge">Browser processing</span>
+    <span class="badge" id="runtimeBadge">Inline browser worker</span>
     <span class="badge" id="providerBadge">Provider: Auto</span>
   </div>
 </header>
@@ -480,9 +480,12 @@ biatch=bitch</textarea>
     </div>
     <p class="help" style="margin-bottom:10px">
       Click or tap any transcript chip to toggle it. Yellow chips are selected
-      for censorship. Automatically detected profanity starts selected, but you
-      can click it to spare it or select any additional word.
+      for censorship. Automatically detected profanity starts selected. Tap any yellow word to spare it, or tap any unselected word to add it. Your exact selection is used when Generate is pressed.
     </p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin:0 0 10px;color:var(--dim);font-size:.72rem">
+      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--yellow);vertical-align:-1px;margin-right:5px"></b>Selected — will be censored</span>
+      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);vertical-align:-1px;margin-right:5px"></b>Not selected — left alone</span>
+    </div>
     <div class="words" id="wordChips" role="list"></div>
   </article>
 
@@ -689,6 +692,7 @@ const COMPOUND_SUFFIXES = new Set(["bag","bird","box","brain","bucket","face","f
 const state = {
   file: null, sourceURL: null, resultURLs: [],
   ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null,
+  ffmpegClassWorkerURL: null,
   inputFsName: null, decodedFsName: null,
   wavBytes: null, wav: null, durationMs: 0,
   words: [], flagged: new Set(), selected: new Set(),
@@ -803,57 +807,300 @@ function refreshButtons() {
    FFMPEG.WASM
    ------------------------------------------------------------------------- */
 
-async function ensureFFmpeg() {
-  if (state.ffmpegLoaded) return state.ffmpeg;
-  if (state.ffmpegLoading) return state.ffmpegLoading;
+const INLINE_FFMPEG_CLASS_WORKER_SOURCE =
+  "const FFMessageType = Object.freeze({\n  LOAD: \"LOAD\",\n  EXEC: \"EXEC\",\n  FFPROBE: \"FFPROBE\",\n  WRITE_FILE: \"WRITE_FILE\",\n  READ_FILE: \"READ_FILE\",\n  DELETE_FILE: \"DELETE_FILE\",\n  RENAME: \"RENAME\",\n  CREATE_DIR: \"CREATE_DIR\",\n  LIST_DIR: \"LIST_DIR\",\n  DELETE_DIR: \"DELETE_DIR\",\n  ERROR: \"ERROR\",\n  DOWNLOAD: \"DOWNLOAD\",\n  PROGRESS: \"PROGRESS\",\n  LOG: \"LOG\",\n  MOUNT: \"MOUNT\",\n  UNMOUNT: \"UNMOUNT\"\n});\n\nconst ERROR_UNKNOWN_MESSAGE_TYPE =\n  new Error(\"unknown message type\");\n\nconst ERROR_NOT_LOADED =\n  new Error(\n    \"ffmpeg is not loaded, call `await ffmpeg.load()` first\"\n  );\n\nconst ERROR_IMPORT_FAILURE =\n  new Error(\"failed to import ffmpeg-core.js\");\n\nlet ffmpeg;\n\nconst load = async ({\n  coreURL: requestedCoreURL,\n  wasmURL: requestedWasmURL,\n  workerURL: requestedWorkerURL\n}) => {\n  const first = !ffmpeg;\n  let coreURL = requestedCoreURL;\n\n  if (!coreURL) {\n    throw new Error(\n      \"The inline FFmpeg worker requires an explicit coreURL.\"\n    );\n  }\n\n  try {\n    importScripts(coreURL);\n  } catch {\n    const imported =\n      await import(coreURL);\n\n    self.createFFmpegCore =\n      imported.default;\n\n    if (!self.createFFmpegCore) {\n      throw ERROR_IMPORT_FAILURE;\n    }\n  }\n\n  const wasmURL =\n    requestedWasmURL\n    || coreURL.replace(/\\.js$/g, \".wasm\");\n\n  const workerURL =\n    requestedWorkerURL\n    || coreURL.replace(/\\.js$/g, \".worker.js\");\n\n  ffmpeg =\n    await self.createFFmpegCore({\n      mainScriptUrlOrBlob:\n        coreURL\n        + \"#\"\n        + btoa(\n            JSON.stringify({\n              wasmURL,\n              workerURL\n            })\n          )\n    });\n\n  ffmpeg.setLogger(\n    data => self.postMessage({\n      type: FFMessageType.LOG,\n      data\n    })\n  );\n\n  ffmpeg.setProgress(\n    data => self.postMessage({\n      type: FFMessageType.PROGRESS,\n      data\n    })\n  );\n\n  return first;\n};\n\nconst exec = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.exec(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst ffprobe = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.ffprobe(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst writeFile = ({\n  path,\n  data\n}) => {\n  ffmpeg.FS.writeFile(\n    path,\n    data\n  );\n\n  return true;\n};\n\nconst readFile = ({\n  path,\n  encoding\n}) =>\n  ffmpeg.FS.readFile(\n    path,\n    {\n      encoding\n    }\n  );\n\nconst deleteFile = ({\n  path\n}) => {\n  ffmpeg.FS.unlink(path);\n  return true;\n};\n\nconst rename = ({\n  oldPath,\n  newPath\n}) => {\n  ffmpeg.FS.rename(\n    oldPath,\n    newPath\n  );\n\n  return true;\n};\n\nconst createDir = ({\n  path\n}) => {\n  ffmpeg.FS.mkdir(path);\n  return true;\n};\n\nconst listDir = ({\n  path\n}) => {\n  const names =\n    ffmpeg.FS.readdir(path);\n\n  const nodes = [];\n\n  for (\n    const name\n    of names\n  ) {\n    const stat =\n      ffmpeg.FS.stat(\n        `${path}/${name}`\n      );\n\n    nodes.push({\n      name,\n      isDir:\n        ffmpeg.FS.isDir(\n          stat.mode\n        )\n    });\n  }\n\n  return nodes;\n};\n\nconst deleteDir = ({\n  path\n}) => {\n  ffmpeg.FS.rmdir(path);\n  return true;\n};\n\nconst mount = ({\n  fsType,\n  options,\n  mountPoint\n}) => {\n  const fileSystem =\n    ffmpeg.FS.filesystems[\n      String(fsType)\n    ];\n\n  if (!fileSystem) {\n    return false;\n  }\n\n  ffmpeg.FS.mount(\n    fileSystem,\n    options,\n    mountPoint\n  );\n\n  return true;\n};\n\nconst unmount = ({\n  mountPoint\n}) => {\n  ffmpeg.FS.unmount(\n    mountPoint\n  );\n\n  return true;\n};\n\nself.onmessage = async ({\n  data: {\n    id,\n    type,\n    data: requestData\n  }\n}) => {\n  const transfer = [];\n  let responseData;\n\n  try {\n    if (\n      type !== FFMessageType.LOAD\n      && !ffmpeg\n    ) {\n      throw ERROR_NOT_LOADED;\n    }\n\n    switch (type) {\n      case FFMessageType.LOAD:\n        responseData =\n          await load(\n            requestData\n          );\n        break;\n\n      case FFMessageType.EXEC:\n        responseData =\n          exec(requestData);\n        break;\n\n      case FFMessageType.FFPROBE:\n        responseData =\n          ffprobe(requestData);\n        break;\n\n      case FFMessageType.WRITE_FILE:\n        responseData =\n          writeFile(requestData);\n        break;\n\n      case FFMessageType.READ_FILE:\n        responseData =\n          readFile(requestData);\n        break;\n\n      case FFMessageType.DELETE_FILE:\n        responseData =\n          deleteFile(requestData);\n        break;\n\n      case FFMessageType.RENAME:\n        responseData =\n          rename(requestData);\n        break;\n\n      case FFMessageType.CREATE_DIR:\n        responseData =\n          createDir(requestData);\n        break;\n\n      case FFMessageType.LIST_DIR:\n        responseData =\n          listDir(requestData);\n        break;\n\n      case FFMessageType.DELETE_DIR:\n        responseData =\n          deleteDir(requestData);\n        break;\n\n      case FFMessageType.MOUNT:\n        responseData =\n          mount(requestData);\n        break;\n\n      case FFMessageType.UNMOUNT:\n        responseData =\n          unmount(requestData);\n        break;\n\n      default:\n        throw ERROR_UNKNOWN_MESSAGE_TYPE;\n    }\n  } catch (error) {\n    self.postMessage({\n      id,\n      type: FFMessageType.ERROR,\n      data:\n        error?.stack\n        || error?.toString?.()\n        || String(error)\n    });\n\n    return;\n  }\n\n  if (\n    responseData\n    instanceof Uint8Array\n  ) {\n    transfer.push(\n      responseData.buffer\n    );\n  }\n\n  self.postMessage(\n    {\n      id,\n      type,\n      data: responseData\n    },\n    transfer\n  );\n};\n";
 
-  state.ffmpegLoading = (async () => {
-    setProgress(3, "Loading the browser media engine (~32 MB once, then browser-cached)…");
+function makeInlineFFmpegClassWorker() {
+  /*
+    The worker is fully self-contained. It does not import worker.js,
+    ./const.js, ./errors.js, or any other worker-side JavaScript module.
 
-    // IMPORTANT:
-    // Import the official ESM files from their real HTTPS locations. Do not
-    // convert the FFmpeg wrapper/worker/core JavaScript into blob: module
-    // URLs. A module worker loaded from blob: loses the relative module graph
-    // used by worker.js and caused the hosted-site error:
-    //   Cannot find module 'blob:https://...'
-    const ffmpegModule = await import(
-      "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/esm/index.js"
+    That removes both failures seen on the hosted site:
+      - SecurityError from constructing a Worker with a cross-origin URL.
+      - Cannot find module blob:https://... from relative imports inside a
+        copied blob worker.
+  */
+  return URL.createObjectURL(
+    new Blob(
+      [
+        INLINE_FFMPEG_CLASS_WORKER_SOURCE
+      ],
+      {
+        type: "text/javascript"
+      }
+    )
+  );
+}
+
+async function importFFmpegWrapper() {
+  const wrapperCandidates = [
+    (
+      "https://cdn.jsdelivr.net/npm/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    ),
+    (
+      "https://cdnjs.cloudflare.com/ajax/libs/"
+      + "ffmpeg/0.12.15/esm/index.js"
+    ),
+    (
+      "https://unpkg.com/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    )
+  ];
+
+  const failures = [];
+
+  for (
+    const wrapperURL
+    of wrapperCandidates
+  ) {
+    try {
+      const module =
+        await import(
+          wrapperURL
+        );
+
+      if (
+        module?.FFmpeg
+      ) {
+        return {
+          module,
+          wrapperURL
+        };
+      }
+
+      failures.push(
+        `${wrapperURL}: missing FFmpeg export`
+      );
+    } catch (error) {
+      failures.push(
+        (
+          `${wrapperURL}: `
+          + (
+              error?.message
+              || error
+            )
+        )
+      );
+    }
+  }
+
+  throw new Error(
+    (
+      "Could not load the FFmpeg wrapper from any CDN.\n"
+      + failures.join("\n")
+    )
+  );
+}
+
+function attachFFmpegLogging(
+  ffmpeg
+) {
+  ffmpeg.on(
+    "log",
+    ({message}) => {
+      if (
+        /error|invalid|failed/i.test(
+          message
+        )
+      ) {
+        log(
+          message,
+          "FFMPEG"
+        );
+      }
+    }
+  );
+
+  ffmpeg.on(
+    "progress",
+    ({progress}) => {
+      if (
+        Number.isFinite(
+          progress
+        )
+      ) {
+        const percent =
+          8
+          + clamp(
+              progress,
+              0,
+              1
+            )
+            * 45;
+
+        E.progressBar.style.width =
+          `${percent}%`;
+      }
+    }
+  );
+}
+
+async function loadFFmpegCoreCandidate(
+  FFmpegClass,
+  candidate
+) {
+  const classWorkerURL =
+    makeInlineFFmpegClassWorker();
+
+  const ffmpeg =
+    new FFmpegClass();
+
+  attachFFmpegLogging(
+    ffmpeg
+  );
+
+  try {
+    await ffmpeg.load(
+      {
+        classWorkerURL,
+        coreURL:
+          `${candidate.coreBase}/ffmpeg-core.js`,
+        wasmURL:
+          `${candidate.coreBase}/ffmpeg-core.wasm`
+      }
     );
 
-    if (!ffmpegModule?.FFmpeg) {
-      throw new Error("The FFmpeg ESM module loaded without its FFmpeg export.");
+    return {
+      ffmpeg,
+      classWorkerURL
+    };
+  } catch (error) {
+    try {
+      ffmpeg.terminate();
+    } catch {
+      // Worker construction may have failed before termination was possible.
     }
 
-    const ffmpeg = new ffmpegModule.FFmpeg();
+    URL.revokeObjectURL(
+      classWorkerURL
+    );
 
-    ffmpeg.on("log", ({message}) => {
-      if (/error|invalid|failed/i.test(message)) log(message, "FFMPEG");
-    });
+    throw error;
+  }
+}
 
-    ffmpeg.on("progress", ({progress}) => {
-      if (Number.isFinite(progress)) {
-        const pct = 8 + clamp(progress, 0, 1) * 45;
-        E.progressBar.style.width = `${pct}%`;
+async function ensureFFmpeg() {
+  if (
+    state.ffmpegLoaded
+  ) {
+    return state.ffmpeg;
+  }
+
+  if (
+    state.ffmpegLoading
+  ) {
+    return state.ffmpegLoading;
+  }
+
+  state.ffmpegLoading = (
+    async () => {
+      setProgress(
+        3,
+        (
+          "Loading the browser media engine "
+          + "(~32 MB once, then browser-cached)…"
+        )
+      );
+
+      const {
+        module: ffmpegModule,
+        wrapperURL
+      } =
+        await importFFmpegWrapper();
+
+      const coreCandidates = [
+        {
+          name: "jsDelivr core",
+          coreBase:
+            (
+              "https://cdn.jsdelivr.net/npm/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        },
+        {
+          name: "UNPKG core",
+          coreBase:
+            (
+              "https://unpkg.com/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        }
+      ];
+
+      const failures = [];
+
+      for (
+        const candidate
+        of coreCandidates
+      ) {
+        try {
+          setProgress(
+            5,
+            (
+              "Starting the inline browser worker "
+              + `with ${candidate.name}…`
+            )
+          );
+
+          const loaded =
+            await loadFFmpegCoreCandidate(
+              ffmpegModule.FFmpeg,
+              candidate
+            );
+
+          state.ffmpeg =
+            loaded.ffmpeg;
+
+          state.ffmpegClassWorkerURL =
+            loaded.classWorkerURL;
+
+          state.ffmpegLoaded =
+            true;
+
+          E.runtimeBadge.textContent =
+            "ffmpeg.wasm loaded";
+
+          log(
+            (
+              "Browser media engine loaded with a "
+              + "self-contained same-origin worker. "
+              + `Wrapper: ${wrapperURL}. `
+              + `Core: ${candidate.name}.`
+            ),
+            "OK"
+          );
+
+          return state.ffmpeg;
+        } catch (error) {
+          const message =
+            error?.message
+            || String(error);
+
+          failures.push(
+            `${candidate.name}: ${message}`
+          );
+
+          log(
+            (
+              `${candidate.name} attempt failed: `
+              + message
+            ),
+            "WARN"
+          );
+        }
       }
-    });
 
-    // Single-thread core: no SharedArrayBuffer or cross-origin isolation is
-    // required. These remain normal HTTPS URLs so the module loader never has
-    // to resolve a blob: module.
-    const coreBase =
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
-
-    await ffmpeg.load({
-      coreURL: `${coreBase}/ffmpeg-core.js`,
-      wasmURL: `${coreBase}/ffmpeg-core.wasm`,
-    });
-
-    state.ffmpeg = ffmpeg;
-    state.ffmpegLoaded = true;
-    E.runtimeBadge.textContent = "ffmpeg.wasm loaded";
-    log("Browser media engine loaded with direct HTTPS module workers.", "OK");
-    return ffmpeg;
-  })();
+      throw new Error(
+        (
+          "All FFmpeg core CDN attempts failed.\n"
+          + failures.join("\n")
+          + "\n\nThe host must allow worker-src blob: "
+          + "and connect-src/script-src access to jsdelivr or unpkg."
+        )
+      );
+    }
+  )();
 
   try {
     return await state.ffmpegLoading;
