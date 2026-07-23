@@ -418,6 +418,19 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
       <p class="note">The key is sent directly to ElevenLabs for transcription. It is not sent to the site host. “Remember” saves it in this browser.</p>
     </div>
 
+    <div class="field" id="localQualityBlock">
+      <label for="localQuality">Local transcription quality</label>
+      <select id="localQuality">
+        <option value="better" selected>Better — Whisper Base English</option>
+        <option value="best">Best — Whisper Small English (large download)</option>
+        <option value="fast">Fast — Whisper Tiny English</option>
+      </select>
+      <p class="note">
+        Better is the default. Best is slower and uses more memory. ElevenLabs
+        is still recommended for shouting, music, or heavily distorted audio.
+      </p>
+    </div>
+
     <details>
       <summary>Edit word list</summary>
       <div class="details-body">
@@ -642,6 +655,7 @@ const E = {
   sourceAudio: $("#sourceAudio"), sourceVideo: $("#sourceVideo"),
   protocolWarning: $("#protocolWarning"), apiKey: $("#apiKey"), rememberKey: $("#rememberKey"),
   keyterms: $("#keyterms"), showKeyBtn: $("#showKeyBtn"), keyBlock: $("#keyBlock"),
+  localQualityBlock: $("#localQualityBlock"), localQuality: $("#localQuality"),
   providerHelp: $("#providerHelp"), providerBadge: $("#providerBadge"),
   roots: $("#roots"), aliases: $("#aliases"), transcribeBtn: $("#transcribeBtn"),
   progressBox: $("#progressBox"), progressBar: $("#progressBar"), progressText: $("#progressText"),
@@ -687,6 +701,45 @@ const ROOT_SUFFIXES = new Set(["s","es","ed","er","ers","ing","ings","in","y","i
 const COMPOUND_PREFIXES = new Set(["ape","bad","bat","bull","cluster","dip","dog","dumb","fat","god","horse","holy","jack","lazy","mother","smart","wise"]);
 const COMPOUND_SUFFIXES = new Set(["bag","bird","box","brain","bucket","face","faced","fest","head","hole","lord","mouth","show","stain","stick","storm","ton","wad","wipe"]);
 
+const LOCAL_MODELS = {
+  fast: {
+    id: "onnx-community/whisper-tiny.en_timestamped",
+    label: "Whisper Tiny English",
+  },
+  better: {
+    id: "onnx-community/whisper-base.en_timestamped",
+    label: "Whisper Base English",
+  },
+  best: {
+    id: "onnx-community/whisper-small.en_timestamped",
+    label: "Whisper Small English",
+  },
+};
+
+const LOCAL_ESCALATION = {
+  fast: ["fast", "better", "best"],
+  better: ["better", "best"],
+  best: ["best"],
+};
+
+const SOUND_LABELS = new Set([
+  "applause",
+  "breathing",
+  "cheering",
+  "crowd",
+  "crying",
+  "inaudible",
+  "laughter",
+  "laughing",
+  "music",
+  "noise",
+  "silence",
+  "singing",
+  "scream",
+  "screaming",
+  "sound",
+]);
+
 const state = {
   file: null, sourceURL: null, resultURLs: [],
   ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null,
@@ -694,7 +747,11 @@ const state = {
   inputFsName: null, decodedFsName: null,
   wavBytes: null, wav: null, durationMs: 0,
   words: [], flagged: new Set(), selected: new Set(),
-  provider: null, busy: false, localTranscriber: null,
+  provider: null, busy: false,
+  localTranscriber: null,
+  localModelKey: null,
+  localModelUsed: null,
+  transformersModule: null,
 };
 
 /* -------------------------------------------------------------------------
@@ -1466,102 +1523,423 @@ async function transcribeElevenLabs(key) {
   setProgress(83,"Parsing Scribe word timestamps…");
   return parseElevenLabs(await response.json());
 }
-function splitChunk(text,start,end,source) {
-  const tokens = String(text || "").trim().split(/\s+/).filter(Boolean);
-  if (!tokens.length) return [];
-  const safeEnd = Number.isFinite(end) && end>start ? end : start + Math.max(.2,tokens.length*.24);
-  const weights = tokens.map(t => Math.max(1,normalizeWord(t).length));
-  const total = weights.reduce((a,b)=>a+b,0);
-  let cursor = start;
-  return tokens.map((token,i) => {
-    const duration = (safeEnd-start)*weights[i]/total;
-    const word = {text:token,normalized:normalizeWord(token),start:cursor,end:i===tokens.length-1?safeEnd:cursor+duration,probability:0,source};
-    cursor += duration;
-    return word;
-  }).filter(w=>w.normalized);
+function isWrappedSoundLabel(rawToken) {
+  const raw = String(rawToken || "").trim();
+
+  if (!raw) {
+    return false;
+  }
+
+  const wrapped =
+    (
+      /^\*[^*]+\*$/.test(raw)
+      || /^\[[^\]]+\]$/.test(raw)
+      || /^\([^)]+\)$/.test(raw)
+      || /^<[^>]+>$/.test(raw)
+    );
+
+  if (!wrapped) {
+    return false;
+  }
+
+  const label = normalizeWord(
+    raw.replace(
+      /^[*[(<\s_-]+|[*\])>\s_-]+$/g,
+      ""
+    )
+  );
+
+  return SOUND_LABELS.has(label);
 }
-async function loadLocalTranscriber() {
-  if (state.localTranscriber) return state.localTranscriber;
+
+function cleanLocalText(value) {
+  const tokens =
+    String(value || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+  return tokens
+    .filter(
+      token => !isWrappedSoundLabel(token)
+    )
+    .join(" ")
+    .trim();
+}
+
+function localResultIsAnnotationOnly(result) {
+  const rawParts = [];
+
+  if (typeof result?.text === "string") {
+    rawParts.push(result.text);
+  }
+
+  if (Array.isArray(result?.chunks)) {
+    for (const chunk of result.chunks) {
+      if (typeof chunk?.text === "string") {
+        rawParts.push(chunk.text);
+      }
+    }
+  }
+
+  const raw =
+    rawParts
+      .join(" ")
+      .trim();
+
+  if (!raw) {
+    return false;
+  }
+
+  const cleaned =
+    cleanLocalText(raw);
+
+  return (
+    !cleaned
+    && rawParts.some(
+      part => String(part).trim()
+    )
+  );
+}
+
+function splitChunk(text,start,end,source) {
+  const cleaned =
+    cleanLocalText(text);
+
+  const tokens =
+    cleaned
+      .split(/\s+/)
+      .filter(Boolean);
+
+  if (!tokens.length) {
+    return [];
+  }
+
+  const safeEnd =
+    Number.isFinite(end)
+    && end > start
+      ? end
+      : start
+        + Math.max(
+            .2,
+            tokens.length * .24
+          );
+
+  const weights =
+    tokens.map(
+      token =>
+        Math.max(
+          1,
+          normalizeWord(token).length
+        )
+    );
+
+  const total =
+    weights.reduce(
+      (sum, value) => sum + value,
+      0
+    );
+
+  let cursor = start;
+
+  return tokens
+    .map(
+      (token,index) => {
+        const duration =
+          (
+            safeEnd - start
+          )
+          * weights[index]
+          / total;
+
+        const word = {
+          text: token,
+          normalized:
+            normalizeWord(token),
+          start: cursor,
+          end:
+            index === tokens.length - 1
+              ? safeEnd
+              : cursor + duration,
+          probability: 0,
+          source,
+        };
+
+        cursor += duration;
+        return word;
+      }
+    )
+    .filter(
+      word => word.normalized
+    );
+}
+
+async function getTransformersModule() {
+  if (state.transformersModule) {
+    return state.transformersModule;
+  }
+
+  state.transformersModule =
+    await import(
+      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1"
+    );
+
+  state.transformersModule.env.allowLocalModels =
+    false;
+
+  state.transformersModule.env.useBrowserCache =
+    true;
+
+  if (
+    state.transformersModule.env
+      ?.backends
+      ?.onnx
+      ?.wasm
+  ) {
+    state.transformersModule.env.backends.onnx.wasm.proxy =
+      false;
+
+    state.transformersModule.env.backends.onnx.wasm.numThreads =
+      1;
+  }
+
+  return state.transformersModule;
+}
+
+async function disposeLocalTranscriber() {
+  if (
+    state.localTranscriber
+    && typeof state.localTranscriber.dispose === "function"
+  ) {
+    try {
+      await state.localTranscriber.dispose();
+    } catch {
+      // The browser can release the old model later.
+    }
+  }
+
+  state.localTranscriber = null;
+  state.localModelKey = null;
+}
+
+async function loadLocalTranscriber(modelKey) {
+  const config =
+    LOCAL_MODELS[modelKey]
+    || LOCAL_MODELS.better;
+
+  if (
+    state.localTranscriber
+    && state.localModelKey === modelKey
+  ) {
+    return state.localTranscriber;
+  }
+
+  if (state.localTranscriber) {
+    await disposeLocalTranscriber();
+  }
 
   setProgress(
     54,
-    "Loading Transformers.js and local Whisper. First use downloads model files…"
+    `Loading ${config.label}. First use downloads the model…`
   );
 
-  // This is the official direct-CDN import form. Avoid the +esm rewrite
-  // endpoint because rewritten module graphs can create incompatible worker
-  // module URLs on some static hosting platforms.
-  const module = await import(
-    "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1"
-  );
+  const module =
+    await getTransformersModule();
 
-  module.env.allowLocalModels = false;
-  module.env.useBrowserCache = true;
+  const progress_callback =
+    info => {
+      if (
+        info?.status === "progress"
+        && Number.isFinite(info.progress)
+      ) {
+        setProgress(
+          54 + info.progress * .25,
+          `Downloading ${config.label}: ${Math.round(info.progress)}%`
+        );
+      } else if (info?.status) {
+        E.progressText.textContent =
+          `${config.label}: ${info.status}${info.file ? " — " + info.file : ""}`;
+      }
+    };
 
-  // Reliability mode for a single-file static site:
-  // - no ONNX proxy worker (which otherwise uses a generated blob: module)
-  // - one WASM thread (no SharedArrayBuffer / COOP+COEP requirement)
-  if (module.env?.backends?.onnx?.wasm) {
-    module.env.backends.onnx.wasm.proxy = false;
-    module.env.backends.onnx.wasm.numThreads = 1;
-  }
+  state.localTranscriber =
+    await module.pipeline(
+      "automatic-speech-recognition",
+      config.id,
+      {
+        progress_callback,
+        device: "wasm",
+        dtype: "q8",
+      }
+    );
 
-  const progress_callback = info => {
-    if (info?.status === "progress" && Number.isFinite(info.progress)) {
-      setProgress(
-        54 + info.progress * 0.25,
-        `Downloading local Whisper: ${Math.round(info.progress)}%`
-      );
-    } else if (info?.status) {
-      E.progressText.textContent =
-        `Local Whisper: ${info.status}${info.file ? " — " + info.file : ""}`;
-    }
-  };
+  state.localModelKey =
+    modelKey;
 
-  state.localTranscriber = await module.pipeline(
-    "automatic-speech-recognition",
-    "onnx-community/whisper-tiny.en_timestamped",
-    {
-      progress_callback,
-      device: "wasm",
-      dtype: "q8",
-    }
-  );
-
-  log("Local transcription ready.");
-
+  log(`${config.label} ready.`);
   return state.localTranscriber;
 }
-async function transcribeLocal() {
-  const transcriber = await loadLocalTranscriber();
-  setProgress(80,"Resampling audio to 16 kHz mono for local Whisper…");
-  const audio = await mono16kFloat();
-  setProgress(84,"Running local Whisper…");
-  /*
-    This is an English-only Whisper model. Do not pass `task` or `language`.
-    Transformers.js rejects those options for .en models because English
-    transcription is already built into the model configuration.
-  */
-  const result = await transcriber(
-    audio,
-    {
-      return_timestamps: "word",
-      chunk_length_s: 30,
-      stride_length_s: 5
-    }
-  );
+
+function parseLocalWords(result,source) {
   let words = [];
-  if (Array.isArray(result?.chunks) && result.chunks.length) {
+
+  if (
+    Array.isArray(result?.chunks)
+    && result.chunks.length
+  ) {
     for (const chunk of result.chunks) {
-      const ts = chunk.timestamp || chunk.timestamps || [0,null];
-      words.push(...splitChunk(chunk.text,Number(ts[0])||0,Number(ts[1]),"local-whisper"));
+      const timestamp =
+        chunk.timestamp
+        || chunk.timestamps
+        || [0,null];
+
+      words.push(
+        ...splitChunk(
+          chunk.text,
+          Number(timestamp[0]) || 0,
+          Number(timestamp[1]),
+          source
+        )
+      );
     }
   } else {
-    words = splitChunk(result?.text || "",0,state.durationMs/1000,"local-whisper");
+    words =
+      splitChunk(
+        result?.text || "",
+        0,
+        state.durationMs / 1000,
+        source
+      );
   }
-  words.sort((a,b)=>a.start-b.start||a.end-b.end);
-  if (!words.length) throw new Error("Local Whisper returned no timestamped words.");
+
+  words.sort(
+    (first,second) =>
+      first.start - second.start
+      || first.end - second.end
+  );
+
   return words;
+}
+
+async function runLocalModel(audio,modelKey) {
+  const config =
+    LOCAL_MODELS[modelKey];
+
+  const transcriber =
+    await loadLocalTranscriber(
+      modelKey
+    );
+
+  setProgress(
+    84,
+    `Running ${config.label}…`
+  );
+
+  /*
+    English-only models do not accept explicit task/language settings.
+    Beam search is used for a more careful transcription. Shorter chunks reduce
+    the chance of one difficult section poisoning a long segment.
+  */
+  const result =
+    await transcriber(
+      audio,
+      {
+        return_timestamps: "word",
+        chunk_length_s: 20,
+        stride_length_s: 4,
+        num_beams: 5,
+        temperature: 0,
+      }
+    );
+
+  return {
+    result,
+    words:
+      parseLocalWords(
+        result,
+        `local-${modelKey}`
+      ),
+  };
+}
+
+async function transcribeLocal() {
+  setProgress(
+    78,
+    "Resampling audio for local transcription…"
+  );
+
+  const audio =
+    await mono16kFloat();
+
+  const requested =
+    E.localQuality.value
+    in LOCAL_ESCALATION
+      ? E.localQuality.value
+      : "better";
+
+  const attempts =
+    LOCAL_ESCALATION[requested];
+
+  let lastProblem =
+    "No words were recognized.";
+
+  for (
+    let index = 0;
+    index < attempts.length;
+    index++
+  ) {
+    const modelKey =
+      attempts[index];
+
+    const config =
+      LOCAL_MODELS[modelKey];
+
+    const {
+      result,
+      words,
+    } =
+      await runLocalModel(
+        audio,
+        modelKey
+      );
+
+    const annotationOnly =
+      localResultIsAnnotationOnly(
+        result
+      );
+
+    if (
+      words.length
+      && !annotationOnly
+    ) {
+      state.localModelUsed =
+        modelKey;
+
+      return words;
+    }
+
+    lastProblem =
+      annotationOnly
+        ? `${config.label} only detected a sound label.`
+        : `${config.label} returned no usable words.`;
+
+    if (
+      index
+      < attempts.length - 1
+    ) {
+      log(
+        `${lastProblem} Trying a stronger local model.`
+      );
+    }
+  }
+
+  throw new Error(
+    (
+      `${lastProblem} `
+      + "This audio is too difficult for the local browser models. "
+      + "ElevenLabs is recommended for shouting, music, or distorted speech."
+    )
+  );
 }
 async function transcribe() {
   if (state.busy || !state.file) return;
@@ -1589,7 +1967,17 @@ async function transcribe() {
     E.stats.classList.remove("hidden");
     E.statWords.textContent = state.words.length;
     E.statSelected.textContent = state.selected.size;
-    E.statEngine.textContent = provider === "elevenlabs" ? "Scribe v2" : "Whisper";
+    E.statEngine.textContent =
+      provider === "elevenlabs"
+        ? "Scribe v2"
+        : (
+            LOCAL_MODELS[
+              state.localModelUsed
+              || E.localQuality.value
+              || "better"
+            ]?.label
+            || "Local"
+          );
     E.transcriptText.textContent = `${state.words.length} recognized · ${state.flagged.size} auto-selected`;
     E.providerBadge.textContent = `Provider: ${provider === "elevenlabs" ? "ElevenLabs" : "Local Whisper"}`;
     E.wordSearch.value = ""; E.modalSearch.value = "";
@@ -1842,7 +2230,7 @@ async function chooseFile(file) {
 async function reset(clearFile=true) {
   closeModal(); revokeResults();
   E.resultPanel.classList.add("hidden"); E.wordPanel.classList.add("hidden"); E.stats.classList.add("hidden");
-  state.words=[]; state.flagged=new Set(); state.selected=new Set(); state.provider=null;
+  state.words=[]; state.flagged=new Set(); state.selected=new Set(); state.provider=null; state.localModelUsed=null;
   state.wavBytes=null; state.wav=null; state.durationMs=0;
   await safeDelete(state.decodedFsName); await safeDelete(state.inputFsName);
   state.decodedFsName=null; state.inputFsName=null;
@@ -1856,12 +2244,26 @@ async function reset(clearFile=true) {
 }
 function providerUi() {
   const p = providerChoice();
-  E.providerBadge.textContent = `Provider: ${p==="elevenlabs"?"ElevenLabs":p==="local"?"Local Whisper":"Auto"}`;
-  E.keyBlock.classList.toggle("hidden",p==="local");
+
+  E.providerBadge.textContent =
+    `Provider: ${p === "elevenlabs" ? "ElevenLabs" : p === "local" ? "Local" : "Auto"}`;
+
+  E.keyBlock.classList.toggle(
+    "hidden",
+    p === "local"
+  );
+
+  E.localQualityBlock.classList.toggle(
+    "hidden",
+    p === "elevenlabs"
+  );
+
   E.providerHelp.textContent =
-    p==="elevenlabs" ? "Uses ElevenLabs and requires the API key below."
-    : p==="local" ? "Uses local Whisper. No API key is needed."
-    : "Uses ElevenLabs with a key, or local Whisper without one.";
+    p === "elevenlabs"
+      ? "Uses ElevenLabs and requires the API key below."
+      : p === "local"
+        ? "Uses the selected local model. No API key is needed."
+        : "Uses ElevenLabs with a key, or the selected local model without one.";
 }
 
 E.dropZone.addEventListener("click",()=>E.fileInput.click());
