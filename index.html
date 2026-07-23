@@ -21,7 +21,6 @@
   fail when an HTML file is opened directly with file://.
 -->
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
 
 <style>
 :root {
@@ -463,7 +462,7 @@ biatch=bitch</textarea>
   <article class="panel hidden" id="wordPanel">
     <div class="panel-head">
       <div><p class="kicker">3 · Word picker</p><h2>Tap every word that should be censored</h2></div>
-      <button class="button ghost small" id="fullPickerBtn" type="button">Full-screen picker</button>
+      <button class="button ghost small" id="fullPickerBtn" type="button">Word picker — select words</button>
     </div>
 
     <div class="toolbar">
@@ -479,6 +478,11 @@ biatch=bitch</textarea>
       <strong id="selectionText">0 words selected</strong>
       <span id="transcriptText"></span>
     </div>
+    <p class="help" style="margin-bottom:10px">
+      Click or tap any transcript chip to toggle it. Yellow chips are selected
+      for censorship. Automatically detected profanity starts selected, but you
+      can click it to spare it or select any additional word.
+    </p>
     <div class="words" id="wordChips" role="list"></div>
   </article>
 
@@ -564,7 +568,7 @@ biatch=bitch</textarea>
   <article class="panel result hidden" id="resultPanel">
     <div class="panel-head">
       <div><p class="kicker">Finished</p><h2>Listen before downloading</h2></div>
-      <button class="button ghost small" id="redoBtn" type="button">Adjust and redo</button>
+      <button class="button ghost small" id="redoBtn" type="button">Word picker / redo</button>
     </div>
 
     <div id="resultPreview"></div>
@@ -799,24 +803,33 @@ function refreshButtons() {
    FFMPEG.WASM
    ------------------------------------------------------------------------- */
 
-async function toBlobURL(url, mime) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Could not download ${url}: HTTP ${response.status}`);
-  return URL.createObjectURL(new Blob([await response.arrayBuffer()], {type: mime}));
-}
 async function ensureFFmpeg() {
   if (state.ffmpegLoaded) return state.ffmpeg;
   if (state.ffmpegLoading) return state.ffmpegLoading;
 
   state.ffmpegLoading = (async () => {
-    if (!window.FFmpegWASM?.FFmpeg) {
-      throw new Error("The ffmpeg.wasm wrapper did not load. Check the host's Content Security Policy or CDN access.");
-    }
     setProgress(3, "Loading the browser media engine (~32 MB once, then browser-cached)…");
-    const ffmpeg = new window.FFmpegWASM.FFmpeg();
+
+    // IMPORTANT:
+    // Import the official ESM files from their real HTTPS locations. Do not
+    // convert the FFmpeg wrapper/worker/core JavaScript into blob: module
+    // URLs. A module worker loaded from blob: loses the relative module graph
+    // used by worker.js and caused the hosted-site error:
+    //   Cannot find module 'blob:https://...'
+    const ffmpegModule = await import(
+      "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/esm/index.js"
+    );
+
+    if (!ffmpegModule?.FFmpeg) {
+      throw new Error("The FFmpeg ESM module loaded without its FFmpeg export.");
+    }
+
+    const ffmpeg = new ffmpegModule.FFmpeg();
+
     ffmpeg.on("log", ({message}) => {
       if (/error|invalid|failed/i.test(message)) log(message, "FFMPEG");
     });
+
     ffmpeg.on("progress", ({progress}) => {
       if (Number.isFinite(progress)) {
         const pct = 8 + clamp(progress, 0, 1) * 45;
@@ -824,24 +837,29 @@ async function ensureFFmpeg() {
       }
     });
 
-    const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
-    const workerURL = await toBlobURL(
-      "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/814.ffmpeg.min.js",
-      "text/javascript"
-    );
-    const coreURL = await toBlobURL(`${coreBase}/ffmpeg-core.js`, "text/javascript");
-    const wasmURL = await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, "application/wasm");
+    // Single-thread core: no SharedArrayBuffer or cross-origin isolation is
+    // required. These remain normal HTTPS URLs so the module loader never has
+    // to resolve a blob: module.
+    const coreBase =
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
 
-    await ffmpeg.load({ classWorkerURL: workerURL, coreURL, wasmURL });
+    await ffmpeg.load({
+      coreURL: `${coreBase}/ffmpeg-core.js`,
+      wasmURL: `${coreBase}/ffmpeg-core.wasm`,
+    });
+
     state.ffmpeg = ffmpeg;
     state.ffmpegLoaded = true;
     E.runtimeBadge.textContent = "ffmpeg.wasm loaded";
-    log("Browser media engine loaded.", "OK");
+    log("Browser media engine loaded with direct HTTPS module workers.", "OK");
     return ffmpeg;
   })();
 
-  try { return await state.ffmpegLoading; }
-  finally { state.ffmpegLoading = null; }
+  try {
+    return await state.ffmpegLoading;
+  } finally {
+    state.ffmpegLoading = null;
+  }
 }
 async function safeDelete(name) {
   if (!state.ffmpeg || !name) return;
@@ -1234,29 +1252,57 @@ function splitChunk(text,start,end,source) {
 }
 async function loadLocalTranscriber() {
   if (state.localTranscriber) return state.localTranscriber;
-  setProgress(54,"Loading Transformers.js and the local Whisper model. First use downloads model files…");
-  const module = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm");
+
+  setProgress(
+    54,
+    "Loading Transformers.js and local Whisper. First use downloads model files…"
+  );
+
+  // This is the official direct-CDN import form. Avoid the +esm rewrite
+  // endpoint because rewritten module graphs can create incompatible worker
+  // module URLs on some static hosting platforms.
+  const module = await import(
+    "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1"
+  );
+
   module.env.allowLocalModels = false;
   module.env.useBrowserCache = true;
 
+  // Reliability mode for a single-file static site:
+  // - no ONNX proxy worker (which otherwise uses a generated blob: module)
+  // - one WASM thread (no SharedArrayBuffer / COOP+COEP requirement)
+  if (module.env?.backends?.onnx?.wasm) {
+    module.env.backends.onnx.wasm.proxy = false;
+    module.env.backends.onnx.wasm.numThreads = 1;
+  }
+
   const progress_callback = info => {
     if (info?.status === "progress" && Number.isFinite(info.progress)) {
-      setProgress(54 + info.progress*.25, `Downloading local Whisper: ${Math.round(info.progress)}%`);
+      setProgress(
+        54 + info.progress * 0.25,
+        `Downloading local Whisper: ${Math.round(info.progress)}%`
+      );
     } else if (info?.status) {
-      E.progressText.textContent = `Local Whisper: ${info.status}${info.file ? " — "+info.file : ""}`;
+      E.progressText.textContent =
+        `Local Whisper: ${info.status}${info.file ? " — " + info.file : ""}`;
     }
   };
 
-  const options = { progress_callback };
-  if (navigator.gpu) options.device = "webgpu";
-  try {
-    state.localTranscriber = await module.pipeline("automatic-speech-recognition","onnx-community/whisper-tiny.en_timestamped",options);
-  } catch (first) {
-    if (options.device) {
-      log(`WebGPU model load failed; retrying with WebAssembly. ${first.message || first}`, "WARN");
-      state.localTranscriber = await module.pipeline("automatic-speech-recognition","onnx-community/whisper-tiny.en_timestamped",{progress_callback,device:"wasm"});
-    } else throw first;
-  }
+  state.localTranscriber = await module.pipeline(
+    "automatic-speech-recognition",
+    "onnx-community/whisper-tiny.en_timestamped",
+    {
+      progress_callback,
+      device: "wasm",
+      dtype: "q8",
+    }
+  );
+
+  log(
+    "Local Whisper loaded in single-thread WASM mode without proxy/blob workers.",
+    "OK"
+  );
+
   return state.localTranscriber;
 }
 async function transcribeLocal() {
@@ -1319,7 +1365,11 @@ async function transcribe() {
     setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
     openModal();
   } catch (error) {
-    status("Transcription failed",error.message || String(error),"error");
+    const message = error.message || String(error);
+    const extra = /worker|module|content security|cors/i.test(message)
+      ? " Check that the host allows scripts/workers from cdnjs.cloudflare.com and cdn.jsdelivr.net."
+      : "";
+    status("Transcription failed", message + extra, "error");
     log(error.stack || error.message || String(error),"ERROR");
     E.progressBox.classList.add("hidden");
   } finally {
@@ -1339,7 +1389,9 @@ function renderInto(container, query="") {
     const button = document.createElement("button");
     button.type = "button"; button.className = "word"; button.textContent = word.text;
     button.title = `${word.start.toFixed(3)}s – ${word.end.toFixed(3)}s`;
-    if (state.selected.has(index)) button.classList.add("selected");
+    const isSelected = state.selected.has(index);
+    button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    if (isSelected) button.classList.add("selected");
     if (state.flagged.has(index)) button.classList.add("auto");
     button.addEventListener("click",()=>{
       state.selected.has(index) ? state.selected.delete(index) : state.selected.add(index);
