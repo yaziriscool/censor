@@ -1,0 +1,1620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0a">
+<meta name="color-scheme" content="dark">
+<title>Audio Profanity Censor — Standalone HTML</title>
+
+<!--
+  SINGLE-FILE WEBSITE
+  -------------------
+  This ZIP intentionally contains this HTML file only.
+
+  Runtime libraries are fetched from pinned CDNs:
+    - ffmpeg.wasm 0.12.15 wrapper
+    - ffmpeg.wasm single-thread core 0.12.10
+    - Transformers.js 3.8.1 only when Local Whisper is selected
+
+  Host this HTML over HTTP/HTTPS. Browser workers and WebAssembly frequently
+  fail when an HTML file is opened directly with file://.
+-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
+
+<style>
+:root {
+  --bg: #0b0b0a;
+  --panel: #141412;
+  --panel2: #1d1c18;
+  --panel3: #25231d;
+  --border: #2c2a22;
+  --border2: #4b4534;
+  --yellow: #fae29d;
+  --yellow2: #ffefbe;
+  --yellow-dim: #8c7f58;
+  --text: #efe8d6;
+  --dim: #9a937e;
+  --faint: #6e6859;
+  --error: #e8846f;
+  --ok: #b7dd9b;
+  --ink: #151310;
+  --radius: 15px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; background: var(--bg); scroll-behavior: smooth; }
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at 80% -5%, rgba(250,226,157,.065), transparent 35rem),
+    var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+button, label, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button { border: 0; }
+a { color: inherit; }
+.hidden { display: none !important; }
+.sr {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important;
+}
+.topline {
+  position: fixed; z-index: 1000; inset: 0 0 auto; height: 4px;
+  background: linear-gradient(90deg, var(--yellow-dim), var(--yellow), var(--yellow2));
+  box-shadow: 0 0 24px rgba(250,226,157,.3);
+}
+.shell { width: min(1180px, calc(100% - 30px)); margin-inline: auto; }
+header {
+  display: flex; align-items: end; justify-content: space-between; gap: 22px;
+  padding: 32px 0 19px;
+}
+.eyebrow, .kicker {
+  margin: 0 0 5px; color: var(--yellow-dim); font-size: .7rem; font-weight: 850;
+  letter-spacing: .14em; text-transform: uppercase;
+}
+h1, h2, p { margin-top: 0; }
+h1 {
+  margin-bottom: 5px; color: var(--yellow); font-size: clamp(1.65rem, 4vw, 2.5rem);
+  line-height: 1.03; letter-spacing: -.04em;
+}
+h2 { margin-bottom: 0; font-size: 1.08rem; letter-spacing: -.02em; }
+.subtitle { max-width: 700px; margin: 0; color: var(--dim); font-size: .9rem; line-height: 1.5; }
+.badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.badge {
+  display: inline-flex; min-height: 30px; align-items: center; padding: 5px 10px;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--panel);
+  color: var(--yellow); font-size: .7rem; font-weight: 800;
+}
+.grid {
+  display: grid; grid-template-columns: minmax(0,1fr) 315px; gap: 14px;
+  align-items: start; padding-bottom: 80px;
+}
+.main { display: grid; min-width: 0; gap: 11px; }
+.panel {
+  min-width: 0; padding: 17px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255,255,255,.012), transparent 45%), var(--panel);
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px;
+}
+.sticky { position: sticky; top: 18px; max-height: calc(100vh - 36px); overflow: hidden; }
+.button {
+  display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 14px; border: 1px solid transparent; border-radius: 9px; cursor: pointer;
+  font-weight: 850; line-height: 1.1; transition: transform .12s, background .12s, opacity .12s;
+}
+.button:hover:not(:disabled) { transform: translateY(-1px); }
+.button:active:not(:disabled) { transform: translateY(0); }
+.button:disabled { cursor: not-allowed; opacity: .43; }
+.primary { background: var(--yellow); color: var(--ink); box-shadow: 0 10px 28px rgba(250,226,157,.13); }
+.primary:hover:not(:disabled) { background: var(--yellow2); }
+.secondary { border-color: var(--yellow-dim); background: rgba(250,226,157,.07); color: var(--yellow); }
+.ghost { border-color: var(--border); background: var(--panel2); color: var(--yellow); }
+.small { min-height: 35px; padding: 7px 10px; border-radius: 8px; font-size: .76rem; }
+.large { width: 100%; min-height: 54px; margin-top: 15px; font-size: .94rem; }
+.button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+.word:focus-visible, .drop:focus-visible, .icon:focus-visible {
+  outline: 2px solid var(--yellow); outline-offset: 2px;
+}
+.drop {
+  width: 100%; min-height: 180px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 7px; padding: 22px; border: 1px dashed var(--border2);
+  border-radius: 13px; background: radial-gradient(circle, rgba(250,226,157,.035), transparent 68%), var(--panel2);
+  color: var(--text); cursor: pointer;
+}
+.drop:hover, .drop.drag { border-color: var(--yellow); background: rgba(250,226,157,.065); }
+.drop-icon {
+  display: grid; width: 45px; height: 45px; place-items: center; border: 1px solid var(--yellow-dim);
+  border-radius: 50%; color: var(--yellow); font-size: 1.45rem;
+}
+.drop strong { color: var(--yellow); }
+.drop span { max-width: 560px; color: var(--dim); font-size: .78rem; text-align: center; line-height: 1.45; }
+.drop .formats { color: var(--faint); font-size: .66rem; letter-spacing: .04em; }
+.file-card {
+  display: flex; align-items: center; gap: 11px; min-width: 0; padding: 11px;
+  border: 1px solid var(--border); border-radius: 11px; background: var(--panel2);
+}
+.file-icon {
+  display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center;
+  border-radius: 9px; background: rgba(250,226,157,.09); color: var(--yellow); font-size: 1.2rem;
+}
+.file-copy { min-width: 0; flex: 1; }
+.file-copy strong, .file-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-copy strong { font-size: .87rem; }
+.file-copy span { margin-top: 3px; color: var(--dim); font-size: .72rem; }
+.preview { width: 100%; max-height: 420px; margin-top: 11px; border-radius: 11px; background: #000; }
+audio.preview { max-height: none; }
+.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.segmented label { min-width: 0; cursor: pointer; }
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented span {
+  min-height: 41px; display: grid; place-items: center; padding: 8px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel2);
+  color: var(--dim); font-size: .76rem; font-weight: 850; text-align: center;
+}
+.segmented input:checked + span { border-color: var(--yellow); background: var(--yellow); color: var(--ink); }
+.help, .note { margin: 8px 0 0; color: var(--dim); font-size: .73rem; line-height: 1.48; }
+.note { color: var(--faint); }
+.field { margin-top: 13px; }
+.field label, .label {
+  display: block; margin-bottom: 7px; color: var(--dim); font-size: .72rem; font-weight: 800;
+}
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.label-row label { margin: 0; }
+.text, select, textarea, .number {
+  width: 100%; min-height: 43px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel2); color: var(--text);
+}
+.text, textarea, select { padding: 9px 10px; }
+textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; line-height: 1.45; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.text-btn { padding: 3px; background: transparent; color: var(--yellow-dim); cursor: pointer; font-size: .72rem; font-weight: 850; }
+.text-btn:hover { color: var(--yellow); }
+.checks { display: flex; flex-wrap: wrap; gap: 11px 18px; margin-top: 9px; }
+.check { display: inline-flex; min-height: 28px; align-items: center; gap: 7px; color: var(--dim); cursor: pointer; font-size: .74rem; }
+.check input { width: 17px; height: 17px; accent-color: var(--yellow); }
+.check em { color: var(--yellow-dim); font-style: normal; }
+details {
+  margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(0,0,0,.1);
+}
+summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-size: .76rem; font-weight: 850; }
+.details-body { padding: 0 11px 11px; }
+.progress-box { margin-top: 13px; }
+.track { height: 7px; overflow: hidden; border-radius: 999px; background: var(--panel2); }
+.bar { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--yellow-dim), var(--yellow)); transition: width .18s; }
+.progress-box p { margin: 7px 0 0; color: var(--dim); font-size: .7rem; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.search { width: min(250px, 46%); min-height: 38px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel2); color: var(--text); }
+.summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-bottom: 9px; color: var(--dim); font-size: .73rem; }
+.summary strong { color: var(--yellow); }
+.words {
+  display: flex; max-height: 380px; flex-wrap: wrap; align-content: flex-start; gap: 6px;
+  overflow: auto; padding: 11px; border: 1px solid var(--border); border-radius: 11px; background: #0e0e0d;
+}
+.word {
+  min-height: 37px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel2); color: var(--text); cursor: pointer; font-size: .77rem;
+}
+.word:hover { border-color: var(--yellow-dim); }
+.word.selected { border-color: var(--yellow); background: var(--yellow); color: var(--ink); font-weight: 850; }
+.word.auto::after { content: "•"; margin-left: 5px; color: rgba(21,19,16,.55); }
+.presets { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.preset { position: relative; min-width: 0; cursor: pointer; }
+.preset.wide { grid-column: 1/-1; }
+.preset input { position: absolute; opacity: 0; pointer-events: none; }
+.preset span { display: block; border-inline: 1px solid var(--border); background: var(--panel2); }
+.preset .name { padding: 10px 10px 3px; border-top: 1px solid var(--border); border-radius: 9px 9px 0 0; font-size: .8rem; font-weight: 850; }
+.preset .desc { min-height: 36px; padding: 3px 10px 10px; border-bottom: 1px solid var(--border); border-radius: 0 0 9px 9px; color: var(--dim); font-size: .68rem; }
+.preset input:checked ~ span { border-color: var(--yellow-dim); background: rgba(250,226,157,.09); }
+.preset input:checked + .name { color: var(--yellow); }
+.custom {
+  margin-top: 11px; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel2);
+}
+.range {
+  display: grid; grid-template-columns: 105px minmax(0,1fr) 50px; align-items: center; gap: 9px;
+  color: var(--dim); font-size: .73rem;
+}
+.range input[type=range] { width: 100%; accent-color: var(--yellow); }
+.range output { color: var(--yellow); font-weight: 850; text-align: right; }
+.two { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin-top: 11px; }
+.unit { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+.unit input { min-width: 0; padding: 8px 9px; border: 0; background: transparent; color: var(--text); }
+.unit span { padding-right: 8px; color: var(--faint); font-size: .68rem; }
+.divider { height: 1px; margin: 15px 0; background: var(--border); }
+.setting { display: grid; grid-template-columns: 85px minmax(0,1fr); align-items: center; gap: 11px; margin-top: 11px; }
+.setting > strong { color: var(--dim); font-size: .72rem; }
+.setting-extra { grid-column: 2; margin-top: 8px; }
+.output-grid { display: grid; grid-template-columns: minmax(180px,.8fr) minmax(0,1.2fr); gap: 15px; align-items: end; }
+.result {
+  border-color: var(--yellow-dim); box-shadow: 0 22px 65px rgba(0,0,0,.3);
+}
+.downloads { display: grid; gap: 7px; margin-top: 11px; }
+.download {
+  display: flex; min-width: 0; align-items: center; gap: 10px; padding: 10px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel2);
+}
+.download-copy { min-width: 0; flex: 1; }
+.download-copy strong, .download-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-copy strong { font-size: .78rem; }
+.download-copy span { margin-top: 3px; color: var(--dim); font-size: .68rem; }
+.status-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--yellow-dim);
+  box-shadow: 0 0 0 5px rgba(250,226,157,.05);
+}
+.status-dot.busy { background: var(--yellow); animation: pulse 1.1s ease-in-out infinite; }
+.status-dot.error { background: var(--error); }
+.status-dot.ok { background: var(--ok); }
+@keyframes pulse { 0%,100%{opacity:.4;transform:scale(.85)} 50%{opacity:1;transform:scale(1)} }
+.status-message { min-height: 42px; margin: 0 0 12px; color: var(--dim); font-size: .76rem; line-height: 1.5; }
+.stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin-bottom: 12px; }
+.stats div { min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel2); }
+.stats span, .stats strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats span { color: var(--faint); font-size: .61rem; text-transform: uppercase; letter-spacing: .06em; }
+.stats strong { margin-top: 3px; color: var(--yellow); font-size: .76rem; }
+.log-head { display: flex; justify-content: space-between; align-items: center; padding-top: 11px; border-top: 1px solid var(--border); color: var(--dim); font-size: .7rem; font-weight: 850; }
+.log {
+  min-height: 190px; max-height: calc(100vh - 315px); margin: 7px 0 0; overflow: auto;
+  padding: 10px; border: 1px solid var(--border); border-radius: 9px; background: #090908;
+  color: var(--dim); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .67rem; line-height: 1.52; white-space: pre-wrap; word-break: break-word;
+}
+.mobile { display: none; }
+.warning {
+  padding: 10px 11px; border: 1px solid rgba(232,132,111,.45); border-radius: 9px;
+  background: rgba(232,132,111,.065); color: #efad9f; font-size: .73rem; line-height: 1.45;
+}
+.modal {
+  position: fixed; z-index: 500; inset: 0; display: grid; place-items: center; padding: 18px;
+  background: rgba(0,0,0,.78); backdrop-filter: blur(8px);
+}
+.modal-card {
+  width: min(920px,100%); max-height: calc(100vh - 36px); display: grid;
+  grid-template-rows: auto auto auto minmax(0,1fr) auto; overflow: hidden;
+  border: 1px solid var(--border2); border-radius: 17px; background: var(--panel);
+}
+.modal-head, .modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px; border-bottom: 1px solid var(--border); }
+.modal-foot { justify-content: flex-end; border: 0; border-top: 1px solid var(--border); }
+.icon { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--panel2); color: var(--yellow); cursor: pointer; font-size: 1.4rem; }
+.modal .toolbar, .modal .summary { margin: 0; padding: 11px 15px; border-bottom: 1px solid var(--border); }
+.modal .words { max-height: none; min-height: 0; margin: 11px 15px 15px; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .aside { order: -1; }
+  .sticky { position: static; max-height: none; }
+  .log { max-height: 210px; }
+}
+@media (max-width: 680px) {
+  .shell { width: calc(100% - 18px); }
+  header { display: block; padding-top: 25px; }
+  .badges { justify-content: flex-start; margin-top: 12px; }
+  .grid { padding-bottom: calc(100px + var(--safe-bottom)); }
+  .panel { padding: 13px; border-radius: 12px; }
+  .drop { min-height: 155px; padding: 17px 10px; }
+  .provider { grid-auto-flow: row; grid-template-columns: 1fr; }
+  .provider span { justify-content: flex-start; padding-inline: 12px; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .search { width: 100%; }
+  .words { max-height: 315px; }
+  .word { min-height: 40px; padding: 8px 10px; }
+  .setting { grid-template-columns: 1fr; }
+  .setting-extra { grid-column: 1; }
+  .output-grid, .two { grid-template-columns: 1fr; }
+  .aside { display: none; }
+  .mobile {
+    position: fixed; z-index: 250; inset: auto 0 0; display: flex; min-height: 74px;
+    align-items: center; justify-content: space-between; gap: 9px;
+    padding: 10px max(10px, env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px, env(safe-area-inset-left));
+    border-top: 1px solid var(--border2); background: rgba(20,20,18,.96);
+    box-shadow: 0 -15px 40px rgba(0,0,0,.4); backdrop-filter: blur(12px);
+  }
+  .mobile span { min-width: 0; overflow: hidden; color: var(--dim); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile .button { min-width: 130px; flex: 0 0 auto; }
+  .modal { padding: 0; }
+  .modal-card { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; }
+  .modal-head { padding-top: max(13px, env(safe-area-inset-top)); }
+  .modal-foot { padding-bottom: calc(11px + var(--safe-bottom)); }
+  .modal-foot .button { width: 100%; }
+}
+@media (max-width: 430px) {
+  .presets { grid-template-columns: 1fr; }
+  .preset.wide { grid-column: auto; }
+  .segmented { grid-auto-flow: row; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .provider { grid-template-columns: 1fr; }
+  .actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .file-card { flex-wrap: wrap; }
+  .file-copy { flex-basis: calc(100% - 55px); }
+  .file-card .button { width: 100%; }
+  .download { flex-wrap: wrap; }
+  .download a { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { animation-duration:.001ms!important; transition-duration:.001ms!important; scroll-behavior:auto!important; }
+}
+</style>
+</head>
+
+<body>
+<div class="topline"></div>
+
+<header class="shell">
+  <div>
+    <p class="eyebrow">Standalone browser edition</p>
+    <h1>Audio Profanity Censor</h1>
+    <p class="subtitle">One HTML file. Upload, transcribe, tap words, generate, listen to the result immediately, then adjust and redo it without transcribing again.</p>
+  </div>
+  <div class="badges">
+    <span class="badge" id="runtimeBadge">Browser processing</span>
+    <span class="badge" id="providerBadge">Provider: Auto</span>
+  </div>
+</header>
+
+<main class="shell grid">
+<section class="main">
+
+  <article class="panel">
+    <div class="panel-head">
+      <div><p class="kicker">1 · Source</p><h2>Upload audio or video</h2></div>
+      <button class="button ghost small" id="resetBtn" type="button">Reset</button>
+    </div>
+
+    <div id="protocolWarning" class="warning hidden">
+      This page is opened through <b>file://</b>. Host the HTML on an HTTP/HTTPS static site or localhost; browser workers and WebAssembly commonly fail when opened directly from disk.
+    </div>
+
+    <input class="sr" id="fileInput" type="file"
+      accept="audio/*,video/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,.aiff,.aif,.mp4,.mov,.mkv,.webm,.avi,.wmv,.flv,.mpeg,.mpg,.3gp,.3gpp">
+
+    <button class="drop" id="dropZone" type="button">
+      <span class="drop-icon">↑</span>
+      <strong>Choose a media file</strong>
+      <span>Tap to browse on a phone, or drag and drop on desktop.</span>
+      <span class="formats">MP3 · WAV · OGG · FLAC · M4A · OPUS · MP4 · MOV · MKV · WEBM · AVI</span>
+    </button>
+
+    <div class="file-card hidden" id="fileCard">
+      <div class="file-icon" id="fileIcon">♪</div>
+      <div class="file-copy">
+        <strong id="fileName"></strong>
+        <span id="fileMeta"></span>
+      </div>
+      <button class="button ghost small" id="changeBtn" type="button">Change</button>
+    </div>
+
+    <div id="sourcePreviewWrap" class="hidden">
+      <audio id="sourceAudio" class="preview hidden" controls preload="metadata"></audio>
+      <video id="sourceVideo" class="preview hidden" controls playsinline preload="metadata"></video>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><p class="kicker">2 · Transcription</p><h2>Choose recognition mode</h2></div></div>
+
+    <div class="segmented provider" role="radiogroup">
+      <label><input type="radio" name="provider" value="auto" checked><span>Auto</span></label>
+      <label><input type="radio" name="provider" value="elevenlabs"><span>ElevenLabs Scribe v2</span></label>
+      <label><input type="radio" name="provider" value="local"><span>Local Whisper</span></label>
+    </div>
+    <p class="help" id="providerHelp">Auto uses ElevenLabs when a key is entered; otherwise it loads Whisper Tiny English in the browser.</p>
+
+    <div class="field" id="keyBlock">
+      <div class="label-row">
+        <label for="apiKey">ElevenLabs API key <span style="color:var(--faint)">optional</span></label>
+        <button class="text-btn" id="showKeyBtn" type="button">Show</button>
+      </div>
+      <input class="text mono" id="apiKey" type="password" autocomplete="off" spellcheck="false"
+        placeholder="Leave blank for local in-browser Whisper">
+      <div class="checks">
+        <label class="check"><input id="rememberKey" type="checkbox"><span>Remember in this browser</span></label>
+        <label class="check"><input id="keyterms" type="checkbox"><span>Profanity keyterm boost <em>extra API cost</em></span></label>
+      </div>
+      <p class="note">A key you enter is sent directly from this browser to ElevenLabs. It is not sent to your static web host. “Remember” stores it in this browser’s localStorage.</p>
+    </div>
+
+    <details>
+      <summary>Edit embedded base roots and aliases</summary>
+      <div class="details-body">
+        <label class="label" for="roots">Base roots — one per line</label>
+        <textarea id="roots" spellcheck="false">ass
+bastard
+bitch
+cock
+crap
+cunt
+damn
+dick
+douche
+fuck
+piss
+prick
+pussy
+shit
+slut
+twat
+wank
+whore</textarea>
+
+        <label class="label" for="aliases" style="margin-top:10px">Aliases — heard=base</label>
+        <textarea id="aliases" spellcheck="false" style="min-height:100px">fck=fuck
+fuk=fuck
+fuckking=fuck
+shyt=shit
+biatch=bitch</textarea>
+      </div>
+    </details>
+
+    <button class="button primary large" id="transcribeBtn" type="button">1. Decode and transcribe</button>
+
+    <div class="progress-box hidden" id="progressBox">
+      <div class="track"><div class="bar" id="progressBar"></div></div>
+      <p id="progressText">Preparing…</p>
+    </div>
+  </article>
+
+  <article class="panel hidden" id="wordPanel">
+    <div class="panel-head">
+      <div><p class="kicker">3 · Word picker</p><h2>Tap every word that should be censored</h2></div>
+      <button class="button ghost small" id="fullPickerBtn" type="button">Full-screen picker</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="actions">
+        <button class="button secondary small" id="autoBtn" type="button">Auto-select</button>
+        <button class="button ghost small" id="allBtn" type="button">Select all</button>
+        <button class="button ghost small" id="clearBtn" type="button">Clear</button>
+      </div>
+      <input class="search" id="wordSearch" type="search" placeholder="Filter words">
+    </div>
+
+    <div class="summary">
+      <strong id="selectionText">0 words selected</strong>
+      <span id="transcriptText"></span>
+    </div>
+    <div class="words" id="wordChips" role="list"></div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><p class="kicker">4 · Censor style</p><h2>Length, timing, and effect</h2></div></div>
+
+    <div class="presets" role="radiogroup">
+      <label class="preset"><input type="radio" name="preset" value="very_short"><span class="name">Very Short</span><span class="desc">Middle 35%</span></label>
+      <label class="preset"><input type="radio" name="preset" value="short"><span class="name">Short</span><span class="desc">Middle 55%</span></label>
+      <label class="preset"><input type="radio" name="preset" value="standard" checked><span class="name">Standard</span><span class="desc">80% + light padding</span></label>
+      <label class="preset"><input type="radio" name="preset" value="full"><span class="name">Full / Strict</span><span class="desc">Entire word + padding</span></label>
+      <label class="preset wide"><input type="radio" name="preset" value="custom"><span class="name">Custom</span><span class="desc">Exact coverage and padding</span></label>
+    </div>
+
+    <div class="custom hidden" id="customBox">
+      <label class="range">
+        <span>Coverage</span>
+        <input id="coverage" type="range" min="10" max="150" step="5" value="80">
+        <output id="coverageOut">80%</output>
+      </label>
+      <div class="two">
+        <label><span class="label">Padding before</span><span class="unit"><input id="padBefore" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
+        <label><span class="label">Padding after</span><span class="unit"><input id="padAfter" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="setting">
+      <strong>Timing</strong>
+      <div class="segmented">
+        <label><input type="radio" name="timing" value="-70"><span>Early</span></label>
+        <label><input type="radio" name="timing" value="0" checked><span>Centered</span></label>
+        <label><input type="radio" name="timing" value="70"><span>Late</span></label>
+        <label><input type="radio" name="timing" value="custom"><span>Custom</span></label>
+      </div>
+      <div class="setting-extra hidden" id="timingBox">
+        <label class="label" for="timingCustom">Custom shift</label>
+        <span class="unit" style="max-width:180px"><input id="timingCustom" type="number" min="-500" max="500" step="5" value="0"><span>ms</span></span>
+      </div>
+    </div>
+
+    <div class="setting">
+      <strong>Effect</strong>
+      <div class="segmented">
+        <label><input type="radio" name="effect" value="beep" checked><span>Beep</span></label>
+        <label><input type="radio" name="effect" value="mute"><span>Silence</span></label>
+      </div>
+      <label class="range setting-extra" id="volumeRow">
+        <span>Beep volume</span>
+        <input id="beepVolume" type="range" min="0" max="100" step="1" value="42">
+        <output id="volumeOut">42%</output>
+      </label>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><p class="kicker">5 · Output</p><h2>Generate locally in this browser</h2></div></div>
+
+    <div class="output-grid">
+      <label>
+        <span class="label">Audio output format</span>
+        <select id="outputFormat">
+          <option value="same">Same as input</option>
+          <option value="wav">WAV</option>
+          <option value="mp3">MP3</option>
+          <option value="ogg">OGG</option>
+          <option value="flac">FLAC</option>
+          <option value="m4a">M4A</option>
+          <option value="opus">OPUS</option>
+        </select>
+      </label>
+      <div class="checks">
+        <label class="check"><input id="reportCheck" type="checkbox" checked><span>Create timestamp report</span></label>
+        <label class="check"><input id="strictWholeWord" type="checkbox" checked><span>Strict preset covers whole word</span></label>
+      </div>
+    </div>
+
+    <p class="help">Video inputs export as MP4. Encoding happens in the browser with ffmpeg.wasm. Large or long videos can exceed a phone browser’s memory; desktop is safer for very large media.</p>
+    <button class="button primary large" id="generateBtn" type="button" disabled>2. Generate censored result</button>
+  </article>
+
+  <article class="panel result hidden" id="resultPanel">
+    <div class="panel-head">
+      <div><p class="kicker">Finished</p><h2>Listen before downloading</h2></div>
+      <button class="button ghost small" id="redoBtn" type="button">Adjust and redo</button>
+    </div>
+
+    <div id="resultPreview"></div>
+    <div class="downloads" id="downloads"></div>
+    <p class="help">Playback uses the generated Blob directly. Change words or timing and press Generate again; the transcript and decoded audio stay loaded.</p>
+  </article>
+
+</section>
+
+<aside class="aside">
+  <article class="panel sticky">
+    <div class="panel-head">
+      <div><p class="kicker">Status</p><h2 id="statusTitle">Ready</h2></div>
+      <span class="status-dot" id="statusDot"></span>
+    </div>
+    <p class="status-message" id="statusMessage">Choose a media file to begin.</p>
+
+    <div class="stats hidden" id="stats">
+      <div><span>Words</span><strong id="statWords">0</strong></div>
+      <div><span>Selected</span><strong id="statSelected">0</strong></div>
+      <div><span>Engine</span><strong id="statEngine">—</strong></div>
+    </div>
+
+    <div class="log-head"><span>Activity log</span><button class="text-btn" id="clearLogBtn" type="button">Clear</button></div>
+    <pre class="log" id="log"></pre>
+  </article>
+</aside>
+</main>
+
+<div class="mobile">
+  <span id="mobileText">No media selected</span>
+  <button class="button primary" id="mobileBtn" type="button" disabled>Transcribe</button>
+</div>
+
+<div class="modal hidden" id="pickerModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><p class="kicker">Word picker</p><h2 id="modalTitle">Select words to censor</h2></div>
+      <button class="icon" id="closeModalBtn" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="toolbar">
+      <div class="actions">
+        <button class="button secondary small" id="modalAutoBtn" type="button">Auto</button>
+        <button class="button ghost small" id="modalAllBtn" type="button">All</button>
+        <button class="button ghost small" id="modalClearBtn" type="button">Clear</button>
+      </div>
+      <input class="search" id="modalSearch" type="search" placeholder="Filter words">
+    </div>
+    <div class="summary"><strong id="modalSelection">0 words selected</strong></div>
+    <div class="words" id="modalWords"></div>
+    <div class="modal-foot"><button class="button primary" id="modalGenerateBtn" type="button">Generate censored result</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* -------------------------------------------------------------------------
+   STATE AND CONSTANTS
+   ------------------------------------------------------------------------- */
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+
+const E = {
+  fileInput: $("#fileInput"), dropZone: $("#dropZone"), fileCard: $("#fileCard"),
+  fileIcon: $("#fileIcon"), fileName: $("#fileName"), fileMeta: $("#fileMeta"),
+  changeBtn: $("#changeBtn"), sourcePreviewWrap: $("#sourcePreviewWrap"),
+  sourceAudio: $("#sourceAudio"), sourceVideo: $("#sourceVideo"),
+  protocolWarning: $("#protocolWarning"), apiKey: $("#apiKey"), rememberKey: $("#rememberKey"),
+  keyterms: $("#keyterms"), showKeyBtn: $("#showKeyBtn"), keyBlock: $("#keyBlock"),
+  providerHelp: $("#providerHelp"), providerBadge: $("#providerBadge"),
+  roots: $("#roots"), aliases: $("#aliases"), transcribeBtn: $("#transcribeBtn"),
+  progressBox: $("#progressBox"), progressBar: $("#progressBar"), progressText: $("#progressText"),
+  wordPanel: $("#wordPanel"), wordChips: $("#wordChips"), wordSearch: $("#wordSearch"),
+  autoBtn: $("#autoBtn"), allBtn: $("#allBtn"), clearBtn: $("#clearBtn"),
+  fullPickerBtn: $("#fullPickerBtn"), selectionText: $("#selectionText"),
+  transcriptText: $("#transcriptText"), customBox: $("#customBox"),
+  coverage: $("#coverage"), coverageOut: $("#coverageOut"),
+  padBefore: $("#padBefore"), padAfter: $("#padAfter"),
+  timingBox: $("#timingBox"), timingCustom: $("#timingCustom"),
+  volumeRow: $("#volumeRow"), beepVolume: $("#beepVolume"), volumeOut: $("#volumeOut"),
+  outputFormat: $("#outputFormat"), reportCheck: $("#reportCheck"),
+  strictWholeWord: $("#strictWholeWord"), generateBtn: $("#generateBtn"),
+  resultPanel: $("#resultPanel"), resultPreview: $("#resultPreview"),
+  downloads: $("#downloads"), redoBtn: $("#redoBtn"), resetBtn: $("#resetBtn"),
+  statusTitle: $("#statusTitle"), statusMessage: $("#statusMessage"), statusDot: $("#statusDot"),
+  stats: $("#stats"), statWords: $("#statWords"), statSelected: $("#statSelected"),
+  statEngine: $("#statEngine"), log: $("#log"), clearLogBtn: $("#clearLogBtn"),
+  mobileText: $("#mobileText"), mobileBtn: $("#mobileBtn"),
+  pickerModal: $("#pickerModal"), closeModalBtn: $("#closeModalBtn"),
+  modalAutoBtn: $("#modalAutoBtn"), modalAllBtn: $("#modalAllBtn"),
+  modalClearBtn: $("#modalClearBtn"), modalSearch: $("#modalSearch"),
+  modalWords: $("#modalWords"), modalSelection: $("#modalSelection"),
+  modalGenerateBtn: $("#modalGenerateBtn"), runtimeBadge: $("#runtimeBadge"),
+};
+
+const VIDEO_EXTS = new Set(["mp4","mov","mkv","webm","avi","wmv","flv","mpeg","mpg","3gp","3gpp"]);
+const AUDIO_OUT = {
+  wav:  { ext: "wav",  mime: "audio/wav",  args: ["-c:a","pcm_s16le"] },
+  mp3:  { ext: "mp3",  mime: "audio/mpeg", args: ["-c:a","libmp3lame","-q:a","2"] },
+  ogg:  { ext: "ogg",  mime: "audio/ogg",  args: ["-c:a","libvorbis","-q:a","6"] },
+  flac: { ext: "flac", mime: "audio/flac", args: ["-c:a","flac"] },
+  m4a:  { ext: "m4a",  mime: "audio/mp4",  args: ["-c:a","aac","-b:a","256k"] },
+  opus: { ext: "opus", mime: "audio/ogg",  args: ["-c:a","libopus","-b:a","192k"] },
+};
+const PRESETS = {
+  very_short: { coverage: .35, before: 0, after: 0, merge: 0 },
+  short:      { coverage: .55, before: 0, after: 0, merge: 0 },
+  standard:   { coverage: .80, before: 10, after: 15, merge: 10 },
+  full:       { coverage: 1, before: 50, after: 65, merge: 25 },
+};
+const ROOT_SUFFIXES = new Set(["s","es","ed","er","ers","ing","ings","in","y","ier","iest","ish"]);
+const COMPOUND_PREFIXES = new Set(["ape","bad","bat","bull","cluster","dip","dog","dumb","fat","god","horse","holy","jack","lazy","mother","smart","wise"]);
+const COMPOUND_SUFFIXES = new Set(["bag","bird","box","brain","bucket","face","faced","fest","head","hole","lord","mouth","show","stain","stick","storm","ton","wad","wipe"]);
+
+const state = {
+  file: null, sourceURL: null, resultURLs: [],
+  ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null,
+  inputFsName: null, decodedFsName: null,
+  wavBytes: null, wav: null, durationMs: 0,
+  words: [], flagged: new Set(), selected: new Set(),
+  provider: null, busy: false, localTranscriber: null,
+};
+
+/* -------------------------------------------------------------------------
+   GENERAL HELPERS
+   ------------------------------------------------------------------------- */
+
+function extension(name) {
+  const m = /\.([^.]+)$/.exec(name || "");
+  return m ? m[1].toLowerCase() : "";
+}
+function stem(name) {
+  return (name || "media").replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9._ -]+/g, "_").replace(/[ .]+$/g, "") || "media";
+}
+function isVideo(file) {
+  return !!file && ((file.type || "").startsWith("video/") || VIDEO_EXTS.has(extension(file.name)));
+}
+function formatBytes(n) {
+  if (!Number.isFinite(n)) return "";
+  const u = ["B","KB","MB","GB"]; let v = n, i = 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
+}
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) return "";
+  const s = Math.max(0, Math.round(seconds));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return h ? `${h}:${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}` : `${m}:${String(r).padStart(2,"0")}`;
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function escapeHtml(v) {
+  return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function log(message, kind="INFO") {
+  const t = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  E.log.textContent += `[${t}] ${kind}: ${message}\n`;
+  E.log.scrollTop = E.log.scrollHeight;
+}
+function status(title, message, kind="") {
+  E.statusTitle.textContent = title;
+  E.statusMessage.textContent = message;
+  E.statusDot.className = "status-dot" + (kind ? ` ${kind}` : "");
+}
+function setProgress(percent, text) {
+  E.progressBox.classList.remove("hidden");
+  E.progressBar.style.width = `${clamp(percent,0,100)}%`;
+  E.progressText.textContent = text;
+}
+function providerChoice() { return $('input[name="provider"]:checked')?.value || "auto"; }
+function presetChoice() { return $('input[name="preset"]:checked')?.value || "standard"; }
+function effectChoice() { return $('input[name="effect"]:checked')?.value || "beep"; }
+function timingShift() {
+  const v = $('input[name="timing"]:checked')?.value || "0";
+  return v === "custom" ? clamp(Number(E.timingCustom.value) || 0, -500, 500) : Number(v);
+}
+function revokeResults() {
+  for (const url of state.resultURLs) URL.revokeObjectURL(url);
+  state.resultURLs = [];
+}
+function objectURL(blob) {
+  const url = URL.createObjectURL(blob);
+  state.resultURLs.push(url);
+  return url;
+}
+function downloadName(base, suffix, ext) { return `${stem(base)}_${suffix}.${ext}`; }
+function saveBlobLink(blob, filename, description) {
+  const url = objectURL(blob);
+  const row = document.createElement("div");
+  row.className = "download";
+  row.innerHTML = `<div class="download-copy"><strong>${escapeHtml(filename)}</strong><span>${escapeHtml(description)}</span></div>`;
+  const a = document.createElement("a");
+  a.className = "button secondary small";
+  a.href = url;
+  a.download = filename;
+  a.textContent = "Download";
+  row.appendChild(a);
+  E.downloads.appendChild(row);
+  return url;
+}
+function setBusy(value, message="") {
+  state.busy = value;
+  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn]) {
+    if (el) el.disabled = value;
+  }
+  E.fileInput.disabled = value;
+  if (value) status("Working", message, "busy");
+  refreshButtons();
+}
+function refreshButtons() {
+  const ready = state.words.length > 0 && state.wav;
+  E.generateBtn.disabled = state.busy || !ready;
+  E.modalGenerateBtn.disabled = state.busy || !ready;
+  E.transcribeBtn.disabled = state.busy || !state.file;
+  if (ready) {
+    const n = state.selected.size;
+    E.generateBtn.textContent = n ? `2. Generate with ${n} selected word${n===1?"":"s"}` : "2. Generate uncensored copy";
+    E.modalGenerateBtn.textContent = n ? `Generate with ${n} selected` : "Generate uncensored copy";
+    E.mobileBtn.textContent = n ? `Generate ${n}` : "Generate";
+    E.mobileBtn.disabled = state.busy;
+    E.mobileText.textContent = `${n} of ${state.words.length} selected`;
+  } else {
+    E.mobileBtn.textContent = "Transcribe";
+    E.mobileBtn.disabled = state.busy || !state.file;
+    E.mobileText.textContent = state.file ? state.file.name : "No media selected";
+  }
+}
+
+/* -------------------------------------------------------------------------
+   FFMPEG.WASM
+   ------------------------------------------------------------------------- */
+
+async function toBlobURL(url, mime) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not download ${url}: HTTP ${response.status}`);
+  return URL.createObjectURL(new Blob([await response.arrayBuffer()], {type: mime}));
+}
+async function ensureFFmpeg() {
+  if (state.ffmpegLoaded) return state.ffmpeg;
+  if (state.ffmpegLoading) return state.ffmpegLoading;
+
+  state.ffmpegLoading = (async () => {
+    if (!window.FFmpegWASM?.FFmpeg) {
+      throw new Error("The ffmpeg.wasm wrapper did not load. Check the host's Content Security Policy or CDN access.");
+    }
+    setProgress(3, "Loading the browser media engine (~32 MB once, then browser-cached)…");
+    const ffmpeg = new window.FFmpegWASM.FFmpeg();
+    ffmpeg.on("log", ({message}) => {
+      if (/error|invalid|failed/i.test(message)) log(message, "FFMPEG");
+    });
+    ffmpeg.on("progress", ({progress}) => {
+      if (Number.isFinite(progress)) {
+        const pct = 8 + clamp(progress, 0, 1) * 45;
+        E.progressBar.style.width = `${pct}%`;
+      }
+    });
+
+    const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+    const workerURL = await toBlobURL(
+      "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/814.ffmpeg.min.js",
+      "text/javascript"
+    );
+    const coreURL = await toBlobURL(`${coreBase}/ffmpeg-core.js`, "text/javascript");
+    const wasmURL = await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, "application/wasm");
+
+    await ffmpeg.load({ classWorkerURL: workerURL, coreURL, wasmURL });
+    state.ffmpeg = ffmpeg;
+    state.ffmpegLoaded = true;
+    E.runtimeBadge.textContent = "ffmpeg.wasm loaded";
+    log("Browser media engine loaded.", "OK");
+    return ffmpeg;
+  })();
+
+  try { return await state.ffmpegLoading; }
+  finally { state.ffmpegLoading = null; }
+}
+async function safeDelete(name) {
+  if (!state.ffmpeg || !name) return;
+  try { await state.ffmpeg.deleteFile(name); } catch {}
+}
+async function decodeFile() {
+  const ffmpeg = await ensureFFmpeg();
+  const ext = extension(state.file.name) || "bin";
+  const nonce = Date.now().toString(36);
+  const inputName = `input_${nonce}.${ext}`;
+  const decodedName = `decoded_${nonce}.wav`;
+  state.inputFsName = inputName;
+  state.decodedFsName = decodedName;
+
+  setProgress(12, "Copying the selected media into browser memory…");
+  await ffmpeg.writeFile(inputName, new Uint8Array(await state.file.arrayBuffer()));
+
+  setProgress(22, "Decoding the first audio track to an exact PCM timeline…");
+  const rc = await ffmpeg.exec([
+    "-i", inputName, "-vn", "-map", "0:a:0",
+    "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le", decodedName
+  ]);
+  if (rc !== 0) throw new Error("FFmpeg could not decode an audio track from this file.");
+
+  const data = await ffmpeg.readFile(decodedName);
+  state.wavBytes = new Uint8Array(data);
+  state.wav = parseWav(state.wavBytes);
+  state.durationMs = Math.round(state.wav.frameCount * 1000 / state.wav.sampleRate);
+  setProgress(47, `Decoded ${formatTime(state.durationMs / 1000)} of audio.`);
+  log(`Decoded PCM: ${state.wav.sampleRate} Hz, ${state.wav.channels} channels, ${formatTime(state.durationMs/1000)}.`, "OK");
+}
+
+/* -------------------------------------------------------------------------
+   WAV PARSING, RESAMPLING, AND OUTPUT
+   ------------------------------------------------------------------------- */
+
+function ascii(view, offset, length) {
+  let s = "";
+  for (let i=0;i<length;i++) s += String.fromCharCode(view.getUint8(offset+i));
+  return s;
+}
+function parseWav(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (ascii(view,0,4)!=="RIFF" || ascii(view,8,4)!=="WAVE") throw new Error("Decoded WAV has an invalid RIFF header.");
+  let offset = 12, fmt = null, dataOffset = -1, dataSize = 0;
+  while (offset + 8 <= view.byteLength) {
+    const id = ascii(view, offset, 4);
+    const size = view.getUint32(offset + 4, true);
+    const start = offset + 8;
+    if (id === "fmt " && size >= 16) {
+      fmt = {
+        format: view.getUint16(start, true),
+        channels: view.getUint16(start+2, true),
+        sampleRate: view.getUint32(start+4, true),
+        bits: view.getUint16(start+14, true),
+      };
+    } else if (id === "data") {
+      dataOffset = start;
+      dataSize = Math.min(size, view.byteLength - start);
+      break;
+    }
+    offset = start + size + (size & 1);
+  }
+  if (!fmt || dataOffset < 0) throw new Error("Decoded WAV is missing fmt or data chunks.");
+  if (fmt.format !== 1 || fmt.bits !== 16) throw new Error(`Expected PCM 16-bit WAV, received format ${fmt.format}, ${fmt.bits} bits.`);
+  const sampleBuffer = bytes.buffer.slice(bytes.byteOffset + dataOffset, bytes.byteOffset + dataOffset + dataSize);
+  const samples = new Int16Array(sampleBuffer);
+  return {
+    channels: fmt.channels, sampleRate: fmt.sampleRate, bits: fmt.bits,
+    samples, frameCount: Math.floor(samples.length / fmt.channels),
+  };
+}
+function writeAscii(view, offset, text) {
+  for (let i=0;i<text.length;i++) view.setUint8(offset+i, text.charCodeAt(i));
+}
+function wavBlob(samples, sampleRate, channels) {
+  const dataBytes = samples.length * 2;
+  const buffer = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(buffer);
+  writeAscii(view,0,"RIFF"); view.setUint32(4,36+dataBytes,true); writeAscii(view,8,"WAVE");
+  writeAscii(view,12,"fmt "); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,channels,true); view.setUint32(24,sampleRate,true);
+  view.setUint32(28,sampleRate*channels*2,true); view.setUint16(32,channels*2,true);
+  view.setUint16(34,16,true); writeAscii(view,36,"data"); view.setUint32(40,dataBytes,true);
+  new Int16Array(buffer,44).set(samples);
+  return new Blob([buffer], {type:"audio/wav"});
+}
+async function mono16kFloat() {
+  const {samples, channels, sampleRate, frameCount} = state.wav;
+  const mono = new Float32Array(frameCount);
+  for (let f=0; f<frameCount; f++) {
+    let sum = 0;
+    for (let c=0;c<channels;c++) sum += samples[f*channels+c] / 32768;
+    mono[f] = sum / channels;
+  }
+
+  if (sampleRate === 16000) return mono;
+
+  try {
+    const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!Offline) throw new Error("OfflineAudioContext is unavailable.");
+    const sourceContext = new Offline(1, mono.length, sampleRate);
+    const sourceBuffer = sourceContext.createBuffer(1, mono.length, sampleRate);
+    sourceBuffer.copyToChannel(mono, 0);
+    const targetLength = Math.ceil(mono.length * 16000 / sampleRate);
+    const targetContext = new Offline(1, targetLength, 16000);
+    const node = targetContext.createBufferSource();
+    node.buffer = sourceBuffer;
+    node.connect(targetContext.destination);
+    node.start();
+    const rendered = await targetContext.startRendering();
+    return new Float32Array(rendered.getChannelData(0));
+  } catch {
+    const targetLength = Math.ceil(mono.length * 16000 / sampleRate);
+    const out = new Float32Array(targetLength);
+    const ratio = sampleRate / 16000;
+    for (let i=0;i<targetLength;i++) {
+      const position = i * ratio;
+      const left = Math.floor(position);
+      const right = Math.min(mono.length-1, left+1);
+      const t = position - left;
+      out[i] = mono[left]*(1-t) + mono[right]*t;
+    }
+    return out;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   PROFANITY ROOT MATCHING AND TIMING
+   ------------------------------------------------------------------------- */
+
+function normalizeWord(value) {
+  return String(value || "").normalize("NFKD").toLowerCase()
+    .replace(/[’`]/g,"'").replace(/[^a-z0-9']+/g,"").replace(/^'+|'+$/g,"");
+}
+function rootsList() {
+  const roots = [...new Set(E.roots.value.split(/\r?\n/).map(normalizeWord).filter(v => v.length >= 3))];
+  roots.sort((a,b) => b.length-a.length || a.localeCompare(b));
+  if (!roots.length) throw new Error("The embedded base-root list is empty.");
+  return roots;
+}
+function aliasMap() {
+  const map = new Map();
+  for (const raw of E.aliases.value.split(/\r?\n/)) {
+    if (!raw.includes("=")) continue;
+    const [a,b] = raw.split("=",2).map(normalizeWord);
+    if (a && b) map.set(a,b);
+  }
+  return map;
+}
+function directInflection(token, root) {
+  if (token === root) return [0,root.length,"root-exact"];
+  if (token.startsWith(root)) {
+    const rest = token.slice(root.length);
+    if (ROOT_SUFFIXES.has(rest)) return [0,root.length,`root-suffix-${rest}`];
+    if (token.length > root.length && token[root.length] === root[root.length-1]) {
+      const doubled = token.slice(root.length+1);
+      if (ROOT_SUFFIXES.has(doubled)) return [0,root.length,`root-doubled-${doubled}`];
+    }
+  }
+  if (root.endsWith("y")) {
+    const s = root.slice(0,-1);
+    for (const ending of ["ies","ied","ier","iest"]) if (token === s+ending) return [0,Math.min(token.length,s.length+1),`root-y-${ending}`];
+  }
+  if (root.endsWith("e")) {
+    const s = root.slice(0,-1);
+    for (const ending of ["ing","ings","in","ed","er","ers"]) if (token === s+ending) return [0,s.length,`root-drop-e-${ending}`];
+  }
+  return null;
+}
+function compoundSpans(token, root, rootSet) {
+  const out = []; let from = 0;
+  while (true) {
+    const start = token.indexOf(root, from);
+    if (start < 0) break;
+    const end = start + root.length; from = start + 1;
+    if (start === 0 && end === token.length) continue;
+    const prefix = token.slice(0,start), suffix = token.slice(end);
+    let allowed = false, type = "root-compound";
+    if (COMPOUND_PREFIXES.has(prefix) && (!suffix || ROOT_SUFFIXES.has(suffix) || COMPOUND_SUFFIXES.has(suffix) || rootSet.has(suffix))) {
+      allowed = true; type = "root-compound-prefix";
+    }
+    if ((COMPOUND_SUFFIXES.has(suffix) || rootSet.has(suffix)) && (!prefix || COMPOUND_PREFIXES.has(prefix))) {
+      allowed = true; type = "root-compound-suffix";
+    }
+    if (allowed) out.push([start,end,type]);
+  }
+  return out;
+}
+function extractRootSpans(token, roots) {
+  const rootSet = new Set(roots), candidates = [];
+  for (const root of roots) {
+    const direct = directInflection(token,root);
+    if (direct) candidates.push([root,...direct]);
+    else for (const span of compoundSpans(token,root,rootSet)) candidates.push([root,...span]);
+  }
+  candidates.sort((a,b) => a[1]-b[1] || (b[2]-b[1])-(a[2]-a[1]) || b[0].length-a[0].length);
+  const out = [];
+  for (const item of candidates) {
+    const [,s,e] = item;
+    if (out.some(prev => Math.min(e,prev[2]) > Math.max(s,prev[1]))) continue;
+    out.push(item);
+  }
+  return out;
+}
+function levenshtein(a,b) {
+  const prev = new Uint16Array(b.length+1), cur = new Uint16Array(b.length+1);
+  for (let j=0;j<=b.length;j++) prev[j]=j;
+  for (let i=1;i<=a.length;i++) {
+    cur[0]=i;
+    for (let j=1;j<=b.length;j++) cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev.set(cur);
+  }
+  return prev[b.length];
+}
+function similarity(a,b) {
+  return 100 * (1 - levenshtein(a,b) / Math.max(1,a.length,b.length));
+}
+function graphemeWeights(token) {
+  const weights = new Float64Array(token.length);
+  const vowels = new Set(["a","e","i","o","u","y"]);
+  for (let i=0;i<token.length;i++) {
+    const ch = token[i], prev = token[i-1] || "", next = token[i+1] || "";
+    let w = vowels.has(ch) ? 1.45 : 1.0;
+    if (ch === prev) w *= .62;
+    if (["th","sh","ch","ph","wh","ck","ng","qu"].includes(ch+next)) w *= .72;
+    if (["th","sh","ch","ph","wh","ck","ng","qu"].includes(prev+ch)) w *= .72;
+    if (/[lrwmn]/.test(ch)) w *= 1.08;
+    weights[i] = Math.max(.35,w);
+  }
+  return weights;
+}
+function weightedSpan(word, charStart, charEnd) {
+  const token = word.normalized || "x";
+  const weights = graphemeWeights(token);
+  let total=0, before=0, through=0;
+  for (let i=0;i<weights.length;i++) {
+    total += weights[i];
+    if (i < charStart) before += weights[i];
+    if (i < charEnd) through += weights[i];
+  }
+  const duration = Math.max(.001, word.end-word.start);
+  const margin = Math.min(.018,duration*.055);
+  return [
+    Math.max(word.start, word.start + duration*(before/total) - margin),
+    Math.min(word.end, word.start + duration*(through/total) + margin),
+  ];
+}
+function autoFlag() {
+  const roots = rootsList(), aliases = aliasMap(), rootSet = new Set(roots), flagged = new Set();
+  state.words.forEach((word,index) => {
+    if (extractRootSpans(word.normalized, roots).length) { flagged.add(index); return; }
+    if (rootSet.has(aliases.get(word.normalized))) { flagged.add(index); return; }
+    if (word.normalized.length < 4) return;
+    for (const root of roots) {
+      if (Math.abs(root.length-word.normalized.length)>2) continue;
+      if (similarity(word.normalized,root) >= 93) { flagged.add(index); break; }
+    }
+  });
+  return flagged;
+}
+function selectedRanges() {
+  const roots = rootsList(), aliases = aliasMap(), rootSet = new Set(roots);
+  const strict = presetChoice() === "full" && E.strictWholeWord.checked;
+  const ranges = [];
+  for (const index of [...state.selected].sort((a,b)=>a-b)) {
+    const word = state.words[index];
+    if (!word) continue;
+    const spans = extractRootSpans(word.normalized,roots);
+    if (spans.length && !strict) {
+      for (const [,start,end,type] of spans) ranges.push({start:weightedSpan(word,start,end)[0],end:weightedSpan(word,start,end)[1],word:word.text,type});
+    } else if (rootSet.has(aliases.get(word.normalized)) || spans.length || !spans.length) {
+      ranges.push({start:word.start,end:word.end,word:word.text,type:spans.length?"strict-whole-word":"manual-or-alias"});
+    }
+  }
+  return ranges;
+}
+function censorIntervals() {
+  const presetName = presetChoice();
+  const base = presetName === "custom"
+    ? {coverage:clamp((Number(E.coverage.value)||80)/100,.1,1.5),before:clamp(Number(E.padBefore.value)||0,0,500),after:clamp(Number(E.padAfter.value)||0,0,500),merge:10}
+    : PRESETS[presetName];
+  const shift = timingShift();
+  const raw = [];
+  for (const range of selectedRanges()) {
+    const s = Math.round(range.start*1000), e = Math.round(range.end*1000);
+    if (e<=s) continue;
+    const length = Math.max(1,Math.round((e-s)*base.coverage));
+    const center = (s+e)/2 + shift;
+    const start = Math.max(0,Math.round(center-length/2)-base.before);
+    const end = Math.min(state.durationMs,Math.round(center+length/2)+base.after);
+    if (end>start) raw.push([start,end]);
+  }
+  raw.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const merged = [];
+  for (const interval of raw) {
+    if (merged.length && interval[0] <= merged.at(-1)[1] + base.merge) merged.at(-1)[1] = Math.max(merged.at(-1)[1],interval[1]);
+    else merged.push([...interval]);
+  }
+  return merged;
+}
+
+/* -------------------------------------------------------------------------
+   TRANSCRIPTION
+   ------------------------------------------------------------------------- */
+
+function parseElevenLabs(payload) {
+  let raw = payload.words;
+  if (!raw && Array.isArray(payload.transcripts)) raw = payload.transcripts.flatMap(t => t.words || []);
+  if (!Array.isArray(raw)) throw new Error("ElevenLabs returned no timestamped words.");
+  const words = [];
+  for (const item of raw) {
+    if (item?.type !== "word" || item.start == null || item.end == null) continue;
+    const text = String(item.text || "").trim(), normalized = normalizeWord(text);
+    if (!normalized) continue;
+    const probability = Number.isFinite(item.logprob) ? clamp(Math.exp(item.logprob),0,1) : 0;
+    words.push({text,normalized,start:Number(item.start),end:Number(item.end),probability,source:"elevenlabs"});
+  }
+  words.sort((a,b)=>a.start-b.start||a.end-b.end);
+  if (!words.length) throw new Error("ElevenLabs returned no usable word timestamps.");
+  return words;
+}
+function buildKeyterms() {
+  const roots = rootsList(), terms = new Set(roots);
+  for (const root of roots) {
+    for (const suffix of ["ing","in","ed","er","ers","s","es"]) {
+      terms.add(root+suffix);
+      terms.add(root+root.at(-1)+suffix);
+    }
+  }
+  for (const term of ["motherfucker","motherfucking","bullshit","horseshit","shithead","asshole","dumbass","goddamn","dickhead"]) terms.add(term);
+  return [...terms].filter(v=>v.length<50).slice(0,1000);
+}
+async function transcribeElevenLabs(key) {
+  setProgress(55,"Uploading the original media directly to ElevenLabs Scribe v2…");
+  const form = new FormData();
+  form.append("file",state.file,state.file.name);
+  form.append("model_id","scribe_v2");
+  form.append("language_code","en");
+  form.append("tag_audio_events","false");
+  form.append("timestamps_granularity","word");
+  form.append("diarize","false");
+  form.append("no_verbatim","false");
+  form.append("temperature","0");
+  form.append("seed","42");
+  if (E.keyterms.checked) for (const term of buildKeyterms()) form.append("keyterms",term);
+
+  let response;
+  try {
+    response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method:"POST", headers:{"xi-api-key":key}, body:form
+    });
+  } catch (error) {
+    throw new Error(`The browser could not reach ElevenLabs. This is usually network or CORS blocking from the hosting platform/browser. ${error.message || error}`);
+  }
+
+  if (response.status === 422 && E.keyterms.checked) {
+    log("ElevenLabs rejected keyterms; retrying once without keyterm bias.", "WARN");
+    const retry = new FormData();
+    retry.append("file",state.file,state.file.name);
+    retry.append("model_id","scribe_v2");
+    retry.append("language_code","en");
+    retry.append("tag_audio_events","false");
+    retry.append("timestamps_granularity","word");
+    retry.append("diarize","false");
+    response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {method:"POST",headers:{"xi-api-key":key},body:retry});
+  }
+
+  if (!response.ok) {
+    let detail = await response.text();
+    try { detail = JSON.stringify(JSON.parse(detail),null,2); } catch {}
+    throw new Error(`ElevenLabs failed with HTTP ${response.status}: ${detail.slice(0,1800)}`);
+  }
+  setProgress(83,"Parsing Scribe word timestamps…");
+  return parseElevenLabs(await response.json());
+}
+function splitChunk(text,start,end,source) {
+  const tokens = String(text || "").trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const safeEnd = Number.isFinite(end) && end>start ? end : start + Math.max(.2,tokens.length*.24);
+  const weights = tokens.map(t => Math.max(1,normalizeWord(t).length));
+  const total = weights.reduce((a,b)=>a+b,0);
+  let cursor = start;
+  return tokens.map((token,i) => {
+    const duration = (safeEnd-start)*weights[i]/total;
+    const word = {text:token,normalized:normalizeWord(token),start:cursor,end:i===tokens.length-1?safeEnd:cursor+duration,probability:0,source};
+    cursor += duration;
+    return word;
+  }).filter(w=>w.normalized);
+}
+async function loadLocalTranscriber() {
+  if (state.localTranscriber) return state.localTranscriber;
+  setProgress(54,"Loading Transformers.js and the local Whisper model. First use downloads model files…");
+  const module = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm");
+  module.env.allowLocalModels = false;
+  module.env.useBrowserCache = true;
+
+  const progress_callback = info => {
+    if (info?.status === "progress" && Number.isFinite(info.progress)) {
+      setProgress(54 + info.progress*.25, `Downloading local Whisper: ${Math.round(info.progress)}%`);
+    } else if (info?.status) {
+      E.progressText.textContent = `Local Whisper: ${info.status}${info.file ? " — "+info.file : ""}`;
+    }
+  };
+
+  const options = { progress_callback };
+  if (navigator.gpu) options.device = "webgpu";
+  try {
+    state.localTranscriber = await module.pipeline("automatic-speech-recognition","onnx-community/whisper-tiny.en_timestamped",options);
+  } catch (first) {
+    if (options.device) {
+      log(`WebGPU model load failed; retrying with WebAssembly. ${first.message || first}`, "WARN");
+      state.localTranscriber = await module.pipeline("automatic-speech-recognition","onnx-community/whisper-tiny.en_timestamped",{progress_callback,device:"wasm"});
+    } else throw first;
+  }
+  return state.localTranscriber;
+}
+async function transcribeLocal() {
+  const transcriber = await loadLocalTranscriber();
+  setProgress(80,"Resampling audio to 16 kHz mono for local Whisper…");
+  const audio = await mono16kFloat();
+  setProgress(84,"Running local Whisper. Keep this tab open…");
+  const result = await transcriber(audio, {
+    return_timestamps:"word", chunk_length_s:30, stride_length_s:5,
+    task:"transcribe"
+  });
+  let words = [];
+  if (Array.isArray(result?.chunks) && result.chunks.length) {
+    for (const chunk of result.chunks) {
+      const ts = chunk.timestamp || chunk.timestamps || [0,null];
+      words.push(...splitChunk(chunk.text,Number(ts[0])||0,Number(ts[1]),"local-whisper"));
+    }
+  } else {
+    words = splitChunk(result?.text || "",0,state.durationMs/1000,"local-whisper");
+  }
+  words.sort((a,b)=>a.start-b.start||a.end-b.end);
+  if (!words.length) throw new Error("Local Whisper returned no timestamped words.");
+  return words;
+}
+async function transcribe() {
+  if (state.busy || !state.file) return;
+  const requested = providerChoice();
+  const key = E.apiKey.value.trim();
+  if (E.rememberKey.checked && key) localStorage.setItem("censorElevenLabsKey",key);
+  else localStorage.removeItem("censorElevenLabsKey");
+
+  try {
+    setBusy(true,"Decoding and transcribing the selected media…");
+    E.resultPanel.classList.add("hidden");
+    revokeResults();
+    await decodeFile();
+
+    let provider = requested;
+    if (provider === "auto") provider = key ? "elevenlabs" : "local";
+    if (provider === "elevenlabs" && !key) throw new Error("ElevenLabs was selected, but no API key was entered.");
+
+    state.words = provider === "elevenlabs" ? await transcribeElevenLabs(key) : await transcribeLocal();
+    state.provider = provider;
+    state.flagged = autoFlag();
+    state.selected = new Set(state.flagged);
+
+    E.wordPanel.classList.remove("hidden");
+    E.stats.classList.remove("hidden");
+    E.statWords.textContent = state.words.length;
+    E.statSelected.textContent = state.selected.size;
+    E.statEngine.textContent = provider === "elevenlabs" ? "Scribe v2" : "Whisper";
+    E.transcriptText.textContent = `${state.words.length} recognized · ${state.flagged.size} auto-selected`;
+    E.providerBadge.textContent = `Provider: ${provider === "elevenlabs" ? "ElevenLabs" : "Local Whisper"}`;
+    E.wordSearch.value = ""; E.modalSearch.value = "";
+    renderWords(); updateSelection();
+
+    setProgress(100,"Transcription complete.");
+    status("Transcript ready",`${state.words.length} words recognized; ${state.flagged.size} were pre-selected.`,"ok");
+    log(`Transcription finished with ${provider === "elevenlabs" ? "ElevenLabs Scribe v2" : "local Whisper"}.`, "OK");
+    setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
+    openModal();
+  } catch (error) {
+    status("Transcription failed",error.message || String(error),"error");
+    log(error.stack || error.message || String(error),"ERROR");
+    E.progressBox.classList.add("hidden");
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* -------------------------------------------------------------------------
+   WORD PICKER
+   ------------------------------------------------------------------------- */
+
+function renderInto(container, query="") {
+  container.textContent = "";
+  const q = query.trim().toLowerCase(), fragment = document.createDocumentFragment();
+  state.words.forEach((word,index) => {
+    if (q && !word.text.toLowerCase().includes(q)) return;
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "word"; button.textContent = word.text;
+    button.title = `${word.start.toFixed(3)}s – ${word.end.toFixed(3)}s`;
+    if (state.selected.has(index)) button.classList.add("selected");
+    if (state.flagged.has(index)) button.classList.add("auto");
+    button.addEventListener("click",()=>{
+      state.selected.has(index) ? state.selected.delete(index) : state.selected.add(index);
+      renderWords(); updateSelection();
+    });
+    fragment.appendChild(button);
+  });
+  container.appendChild(fragment);
+}
+function renderWords() {
+  renderInto(E.wordChips,E.wordSearch.value);
+  renderInto(E.modalWords,E.modalSearch.value);
+}
+function updateSelection() {
+  const text = `${state.selected.size} of ${state.words.length} word${state.words.length===1?"":"s"} selected`;
+  E.selectionText.textContent = text; E.modalSelection.textContent = text;
+  E.statSelected.textContent = state.selected.size;
+  refreshButtons();
+}
+function autoSelect() { state.selected = new Set(state.flagged); renderWords(); updateSelection(); }
+function selectAll() { state.selected = new Set(state.words.map((_,i)=>i)); renderWords(); updateSelection(); }
+function clearSelection() { state.selected.clear(); renderWords(); updateSelection(); }
+function openModal() {
+  if (!state.words.length) return;
+  E.pickerModal.classList.remove("hidden"); document.body.style.overflow = "hidden";
+}
+function closeModal() { E.pickerModal.classList.add("hidden"); document.body.style.overflow = ""; }
+
+/* -------------------------------------------------------------------------
+   CENSOR GENERATION, ENCODING, PLAYBACK
+   ------------------------------------------------------------------------- */
+
+function applyCensor(intervals) {
+  const {samples,channels,sampleRate,frameCount} = state.wav;
+  const out = new Int16Array(samples);
+  const effect = effectChoice(), volume = clamp((Number(E.beepVolume.value)||0)/100,0,1);
+  const amp = 32767 * volume, fadeFrames = Math.max(1,Math.round(sampleRate*.008));
+
+  for (const [startMs,endMs] of intervals) {
+    const start = clamp(Math.floor(startMs*sampleRate/1000),0,frameCount);
+    const end = clamp(Math.ceil(endMs*sampleRate/1000),0,frameCount);
+    const length = end-start;
+    if (length<=0) continue;
+
+    for (let f=0;f<length;f++) {
+      let value = 0;
+      if (effect === "beep") {
+        let env = 1;
+        if (f<fadeFrames) env = f/fadeFrames;
+        if (length-1-f<fadeFrames) env = Math.min(env,(length-1-f)/fadeFrames);
+        value = Math.round(Math.sin(2*Math.PI*1000*f/sampleRate)*amp*clamp(env,0,1));
+      }
+      for (let c=0;c<channels;c++) out[(start+f)*channels+c] = value;
+    }
+  }
+  return out;
+}
+async function encodeAudio(wav, format) {
+  if (format === "wav") return wav;
+  const ffmpeg = await ensureFFmpeg(), nonce = Date.now().toString(36);
+  const input = `censored_${nonce}.wav`, output = `censored_${nonce}.${AUDIO_OUT[format].ext}`;
+  await ffmpeg.writeFile(input,new Uint8Array(await wav.arrayBuffer()));
+  setProgress(72,`Encoding ${format.toUpperCase()} in the browser…`);
+  const rc = await ffmpeg.exec(["-i",input,...AUDIO_OUT[format].args,output]);
+  if (rc !== 0) throw new Error(`FFmpeg could not encode ${format.toUpperCase()}.`);
+  const data = await ffmpeg.readFile(output);
+  await safeDelete(input); await safeDelete(output);
+  return new Blob([data],{type:AUDIO_OUT[format].mime});
+}
+async function muxVideo(wav) {
+  const ffmpeg = await ensureFFmpeg(), nonce = Date.now().toString(36);
+  const audioName = `censored_${nonce}.wav`, outputName = `result_${nonce}.mp4`;
+  await ffmpeg.writeFile(audioName,new Uint8Array(await wav.arrayBuffer()));
+  setProgress(68,"Putting censored audio back into the video…");
+
+  let mode = "video stream copy";
+  let rc = await ffmpeg.exec([
+    "-i",state.inputFsName,"-i",audioName,"-map","0:v:0","-map","1:a:0",
+    "-map_metadata","0","-c:v","copy","-c:a","aac","-b:a","192k",
+    "-movflags","+faststart","-shortest",outputName
+  ]);
+
+  if (rc !== 0) {
+    mode = "H.264 fallback";
+    await safeDelete(outputName);
+    rc = await ffmpeg.exec([
+      "-i",state.inputFsName,"-i",audioName,"-map","0:v:0","-map","1:a:0",
+      "-c:v","libx264","-preset","veryfast","-crf","20","-pix_fmt","yuv420p",
+      "-c:a","aac","-b:a","192k","-movflags","+faststart","-shortest",outputName
+    ]);
+  }
+  if (rc !== 0) {
+    mode = "MPEG-4 fallback";
+    await safeDelete(outputName);
+    rc = await ffmpeg.exec([
+      "-i",state.inputFsName,"-i",audioName,"-map","0:v:0","-map","1:a:0",
+      "-c:v","mpeg4","-q:v","3","-c:a","aac","-b:a","192k",
+      "-movflags","+faststart","-shortest",outputName
+    ]);
+  }
+  if (rc !== 0) throw new Error("FFmpeg could not create a browser-playable MP4 from this video.");
+
+  const data = await ffmpeg.readFile(outputName);
+  await safeDelete(audioName); await safeDelete(outputName);
+  return {blob:new Blob([data],{type:"video/mp4"}),mode};
+}
+function selectedOutputFormat() {
+  let f = E.outputFormat.value;
+  if (f !== "same") return f;
+  const ext = extension(state.file.name);
+  return AUDIO_OUT[ext] ? ext : "wav";
+}
+function reportBlob(intervals) {
+  const report = {
+    input: state.file.name,
+    provider: state.provider,
+    generated_at: new Date().toISOString(),
+    settings: {
+      preset:presetChoice(), effect:effectChoice(), timing_shift_ms:timingShift(),
+      beep_volume:Number(E.beepVolume.value)/100,
+      strict_whole_word:E.strictWholeWord.checked,
+    },
+    selected_indices:[...state.selected].sort((a,b)=>a-b),
+    intervals:intervals.map(([start_ms,end_ms])=>({start_ms,end_ms})),
+    words:state.words,
+  };
+  return new Blob([JSON.stringify(report,null,2)],{type:"application/json"});
+}
+async function generate() {
+  if (state.busy || !state.wav) return;
+  closeModal();
+  revokeResults(); E.downloads.textContent = ""; E.resultPreview.textContent = "";
+  E.resultPanel.classList.remove("hidden");
+
+  try {
+    setBusy(true,"Applying censorship and creating playback media…");
+    setProgress(8,"Calculating word ranges and merged censor intervals…");
+    const intervals = censorIntervals();
+    const censoredSamples = applyCensor(intervals);
+    const wav = wavBlob(censoredSamples,state.wav.sampleRate,state.wav.channels);
+
+    let mediaBlob, mediaName, description;
+    if (isVideo(state.file)) {
+      const result = await muxVideo(wav);
+      mediaBlob = result.blob;
+      mediaName = downloadName(state.file.name,`censored_${presetChoice()}_${effectChoice()}`,"mp4");
+      description = `Censored MP4 · ${result.mode}`;
+      const video = document.createElement("video");
+      video.className = "preview"; video.controls = true; video.playsInline = true; video.preload = "metadata";
+      video.src = objectURL(mediaBlob);
+      E.resultPreview.appendChild(video);
+    } else {
+      const format = selectedOutputFormat();
+      mediaBlob = await encodeAudio(wav,format);
+      mediaName = downloadName(state.file.name,`censored_${presetChoice()}_${effectChoice()}`,AUDIO_OUT[format].ext);
+      description = `Censored ${format.toUpperCase()} audio`;
+      const audio = document.createElement("audio");
+      audio.className = "preview"; audio.controls = true; audio.preload = "metadata";
+      audio.src = objectURL(mediaBlob);
+      E.resultPreview.appendChild(audio);
+    }
+
+    saveBlobLink(mediaBlob,mediaName,description);
+    if (E.reportCheck.checked) {
+      const reportName = downloadName(state.file.name,"censor_report","json");
+      saveBlobLink(reportBlob(intervals),reportName,"Timestamp and selection report");
+    }
+
+    setProgress(100,"Finished. Use the player below before downloading.");
+    status("Finished",`${state.selected.size} words selected; ${intervals.length} merged censor intervals generated.`,"ok");
+    log(`Generated playback result with ${intervals.length} interval(s).`, "OK");
+    setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
+    E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
+  } catch (error) {
+    status("Generation failed",error.message || String(error),"error");
+    log(error.stack || error.message || String(error),"ERROR");
+    E.progressBox.classList.add("hidden");
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* -------------------------------------------------------------------------
+   FILE/RESET/UI EVENTS
+   ------------------------------------------------------------------------- */
+
+async function chooseFile(file) {
+  if (!file) return;
+  const previousSourceURL = state.sourceURL;
+  await reset(false);
+  if (previousSourceURL) URL.revokeObjectURL(previousSourceURL);
+  state.file = file;
+  state.sourceURL = URL.createObjectURL(file);
+  E.dropZone.classList.add("hidden"); E.fileCard.classList.remove("hidden");
+  E.fileName.textContent = file.name; E.fileIcon.textContent = isVideo(file) ? "▶" : "♪";
+  E.fileMeta.textContent = `${formatBytes(file.size)} · ${file.type || "media"}`;
+  E.sourcePreviewWrap.classList.remove("hidden");
+  E.sourceAudio.classList.toggle("hidden",isVideo(file));
+  E.sourceVideo.classList.toggle("hidden",!isVideo(file));
+  const preview = isVideo(file) ? E.sourceVideo : E.sourceAudio;
+  preview.src = state.sourceURL;
+  preview.onloadedmetadata = () => {
+    E.fileMeta.textContent = `${formatBytes(file.size)} · ${formatTime(preview.duration)} · ${file.type || "media"}`;
+  };
+  E.outputFormat.disabled = isVideo(file);
+  if (isVideo(file)) E.outputFormat.value = "same";
+  if (file.size > 350*1024*1024) log("This is a large file. Mobile browsers may run out of memory during WebAssembly processing.", "WARN");
+  status("Ready to transcribe",`${file.name} is selected.`);
+  log(`Selected ${file.name} (${formatBytes(file.size)}).`);
+  refreshButtons();
+}
+async function reset(clearFile=true) {
+  closeModal(); revokeResults();
+  E.resultPanel.classList.add("hidden"); E.wordPanel.classList.add("hidden"); E.stats.classList.add("hidden");
+  state.words=[]; state.flagged=new Set(); state.selected=new Set(); state.provider=null;
+  state.wavBytes=null; state.wav=null; state.durationMs=0;
+  await safeDelete(state.decodedFsName); await safeDelete(state.inputFsName);
+  state.decodedFsName=null; state.inputFsName=null;
+  if (clearFile) {
+    if (state.sourceURL) URL.revokeObjectURL(state.sourceURL);
+    state.sourceURL=null; state.file=null; E.sourceAudio.removeAttribute("src"); E.sourceVideo.removeAttribute("src");
+    E.dropZone.classList.remove("hidden"); E.fileCard.classList.add("hidden"); E.sourcePreviewWrap.classList.add("hidden");
+    status("Ready","Choose a media file to begin.");
+  }
+  renderWords(); updateSelection(); refreshButtons();
+}
+function providerUi() {
+  const p = providerChoice();
+  E.providerBadge.textContent = `Provider: ${p==="elevenlabs"?"ElevenLabs":p==="local"?"Local Whisper":"Auto"}`;
+  E.keyBlock.classList.toggle("hidden",p==="local");
+  E.providerHelp.textContent =
+    p==="elevenlabs" ? "Uses ElevenLabs Scribe v2 and requires the API key below."
+    : p==="local" ? "Downloads and runs Whisper Tiny English in this browser. No transcription API key is used."
+    : "Uses ElevenLabs when a key is entered; otherwise runs Whisper Tiny English in the browser.";
+}
+
+E.dropZone.addEventListener("click",()=>E.fileInput.click());
+E.changeBtn.addEventListener("click",()=>E.fileInput.click());
+E.fileInput.addEventListener("change",()=>chooseFile(E.fileInput.files?.[0]));
+for (const event of ["dragenter","dragover"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.add("drag")});
+for (const event of ["dragleave","drop"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.remove("drag")});
+E.dropZone.addEventListener("drop",e=>chooseFile(e.dataTransfer?.files?.[0]));
+
+$$('input[name="provider"]').forEach(el=>el.addEventListener("change",providerUi));
+$$('input[name="preset"]').forEach(el=>el.addEventListener("change",()=>E.customBox.classList.toggle("hidden",presetChoice()!=="custom")));
+$$('input[name="timing"]').forEach(el=>el.addEventListener("change",()=>E.timingBox.classList.toggle("hidden",$('input[name="timing"]:checked')?.value!=="custom")));
+$$('input[name="effect"]').forEach(el=>el.addEventListener("change",()=>E.volumeRow.classList.toggle("hidden",effectChoice()!=="beep")));
+E.coverage.addEventListener("input",()=>E.coverageOut.textContent=`${E.coverage.value}%`);
+E.beepVolume.addEventListener("input",()=>E.volumeOut.textContent=`${E.beepVolume.value}%`);
+
+E.showKeyBtn.addEventListener("click",()=>{
+  const show=E.apiKey.type==="password"; E.apiKey.type=show?"text":"password"; E.showKeyBtn.textContent=show?"Hide":"Show";
+});
+E.transcribeBtn.addEventListener("click",transcribe);
+E.generateBtn.addEventListener("click",generate);
+E.modalGenerateBtn.addEventListener("click",generate);
+E.mobileBtn.addEventListener("click",()=>state.words.length?generate():transcribe());
+E.autoBtn.addEventListener("click",autoSelect); E.modalAutoBtn.addEventListener("click",autoSelect);
+E.allBtn.addEventListener("click",selectAll); E.modalAllBtn.addEventListener("click",selectAll);
+E.clearBtn.addEventListener("click",clearSelection); E.modalClearBtn.addEventListener("click",clearSelection);
+E.wordSearch.addEventListener("input",renderWords); E.modalSearch.addEventListener("input",renderWords);
+E.fullPickerBtn.addEventListener("click",openModal); E.closeModalBtn.addEventListener("click",closeModal);
+E.pickerModal.addEventListener("click",e=>{if(e.target===E.pickerModal)closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+E.redoBtn.addEventListener("click",()=>{E.wordPanel.scrollIntoView({behavior:"smooth",block:"start"});openModal()});
+E.resetBtn.addEventListener("click",()=>reset(true));
+E.clearLogBtn.addEventListener("click",()=>E.log.textContent="");
+
+if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
+const remembered = localStorage.getItem("censorElevenLabsKey") || "";
+if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
+providerUi(); refreshButtons();
+log("Standalone HTML initialized. Media processing stays in this browser; ElevenLabs mode sends only the transcription request to ElevenLabs.", "OK");
+
+})();
+</script>
+</body>
+</html>
