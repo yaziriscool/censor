@@ -347,12 +347,11 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
 
 <header class="shell">
   <div>
-    <p class="eyebrow">Standalone browser edition</p>
     <h1>Audio Profanity Censor</h1>
-    <p class="subtitle">One HTML file. Upload, transcribe, tap any transcript word to select or spare it, generate, listen immediately, then adjust and redo without transcribing again.</p>
+    <p class="subtitle">Upload a file, transcribe it, select the words to censor, and listen before downloading.</p>
   </div>
   <div class="badges">
-    <span class="badge" id="runtimeBadge">Inline browser worker</span>
+    <span class="badge" id="runtimeBadge">Runs in browser</span>
     <span class="badge" id="providerBadge">Provider: Auto</span>
   </div>
 </header>
@@ -396,14 +395,14 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
   </article>
 
   <article class="panel">
-    <div class="panel-head"><div><p class="kicker">2 · Transcription</p><h2>Choose recognition mode</h2></div></div>
+    <div class="panel-head"><div><p class="kicker">2 · Transcription</p><h2>Choose transcription</h2></div></div>
 
     <div class="segmented provider" role="radiogroup">
       <label><input type="radio" name="provider" value="auto" checked><span>Auto</span></label>
       <label><input type="radio" name="provider" value="elevenlabs"><span>ElevenLabs Scribe v2</span></label>
       <label><input type="radio" name="provider" value="local"><span>Local Whisper</span></label>
     </div>
-    <p class="help" id="providerHelp">Auto uses ElevenLabs when a key is entered; otherwise it loads Whisper Tiny English in the browser.</p>
+    <p class="help" id="providerHelp">Auto uses ElevenLabs when a key is entered. Without a key, it uses local Whisper.</p>
 
     <div class="field" id="keyBlock">
       <div class="label-row">
@@ -414,15 +413,15 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
         placeholder="Leave blank for local in-browser Whisper">
       <div class="checks">
         <label class="check"><input id="rememberKey" type="checkbox"><span>Remember in this browser</span></label>
-        <label class="check"><input id="keyterms" type="checkbox"><span>Profanity keyterm boost <em>extra API cost</em></span></label>
+        <label class="check"><input id="keyterms" type="checkbox"><span>Improve profanity detection <em>extra API cost</em></span></label>
       </div>
-      <p class="note">A key you enter is sent directly from this browser to ElevenLabs. It is not sent to your static web host. “Remember” stores it in this browser’s localStorage.</p>
+      <p class="note">The key is sent directly to ElevenLabs for transcription. It is not sent to the site host. “Remember” saves it in this browser.</p>
     </div>
 
     <details>
-      <summary>Edit embedded base roots and aliases</summary>
+      <summary>Edit word list</summary>
       <div class="details-body">
-        <label class="label" for="roots">Base roots — one per line</label>
+        <label class="label" for="roots">Words to detect — one per line</label>
         <textarea id="roots" spellcheck="false">ass
 bastard
 bitch
@@ -442,7 +441,7 @@ twat
 wank
 whore</textarea>
 
-        <label class="label" for="aliases" style="margin-top:10px">Aliases — heard=base</label>
+        <label class="label" for="aliases" style="margin-top:10px">Alternate spellings — spelling=word</label>
         <textarea id="aliases" spellcheck="false" style="min-height:100px">fck=fuck
 fuk=fuck
 fuckking=fuck
@@ -451,7 +450,7 @@ biatch=bitch</textarea>
       </div>
     </details>
 
-    <button class="button primary large" id="transcribeBtn" type="button">1. Decode and transcribe</button>
+    <button class="button primary large" id="transcribeBtn" type="button">1. Transcribe file</button>
 
     <div class="progress-box hidden" id="progressBox">
       <div class="track"><div class="bar" id="progressBar"></div></div>
@@ -462,7 +461,7 @@ biatch=bitch</textarea>
   <article class="panel hidden" id="wordPanel">
     <div class="panel-head">
       <div><p class="kicker">3 · Word picker</p><h2>Tap every word that should be censored</h2></div>
-      <button class="button ghost small" id="fullPickerBtn" type="button">Word picker — select words</button>
+      <button class="button ghost small" id="fullPickerBtn" type="button">Open word picker</button>
     </div>
 
     <div class="toolbar">
@@ -479,12 +478,11 @@ biatch=bitch</textarea>
       <span id="transcriptText"></span>
     </div>
     <p class="help" style="margin-bottom:10px">
-      Click or tap any transcript chip to toggle it. Yellow chips are selected
-      for censorship. Automatically detected profanity starts selected. Tap any yellow word to spare it, or tap any unselected word to add it. Your exact selection is used when Generate is pressed.
+      Tap a word to select or unselect it. Yellow words will be censored. Detected profanity starts selected.
     </p>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin:0 0 10px;color:var(--dim);font-size:.72rem">
-      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--yellow);vertical-align:-1px;margin-right:5px"></b>Selected — will be censored</span>
-      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);vertical-align:-1px;margin-right:5px"></b>Not selected — left alone</span>
+      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--yellow);vertical-align:-1px;margin-right:5px"></b>Selected</span>
+      <span><b style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);vertical-align:-1px;margin-right:5px"></b>Not selected</span>
     </div>
     <div class="words" id="wordChips" role="list"></div>
   </article>
@@ -543,7 +541,7 @@ biatch=bitch</textarea>
   </article>
 
   <article class="panel">
-    <div class="panel-head"><div><p class="kicker">5 · Output</p><h2>Generate locally in this browser</h2></div></div>
+    <div class="panel-head"><div><p class="kicker">5 · Output</p><h2>Generate result</h2></div></div>
 
     <div class="output-grid">
       <label>
@@ -559,24 +557,24 @@ biatch=bitch</textarea>
         </select>
       </label>
       <div class="checks">
-        <label class="check"><input id="reportCheck" type="checkbox" checked><span>Create timestamp report</span></label>
-        <label class="check"><input id="strictWholeWord" type="checkbox" checked><span>Strict preset covers whole word</span></label>
+        <label class="check"><input id="reportCheck" type="checkbox" checked><span>Include report</span></label>
+        <label class="check"><input id="strictWholeWord" type="checkbox" checked><span>Full mode censors the whole word</span></label>
       </div>
     </div>
 
-    <p class="help">Video inputs export as MP4. Encoding happens in the browser with ffmpeg.wasm. Large or long videos can exceed a phone browser’s memory; desktop is safer for very large media.</p>
+    <p class="help">Video files export as MP4. Large videos may work better on a computer.</p>
     <button class="button primary large" id="generateBtn" type="button" disabled>2. Generate censored result</button>
   </article>
 
   <article class="panel result hidden" id="resultPanel">
     <div class="panel-head">
-      <div><p class="kicker">Finished</p><h2>Listen before downloading</h2></div>
-      <button class="button ghost small" id="redoBtn" type="button">Word picker / redo</button>
+      <div><p class="kicker">Finished</p><h2>Preview result</h2></div>
+      <button class="button ghost small" id="redoBtn" type="button">Edit and generate again</button>
     </div>
 
     <div id="resultPreview"></div>
     <div class="downloads" id="downloads"></div>
-    <p class="help">Playback uses the generated Blob directly. Change words or timing and press Generate again; the transcript and decoded audio stay loaded.</p>
+    <p class="help">Change the selected words or settings and generate again. No new transcription is needed.</p>
   </article>
 
 </section>
@@ -595,7 +593,7 @@ biatch=bitch</textarea>
       <div><span>Engine</span><strong id="statEngine">—</strong></div>
     </div>
 
-    <div class="log-head"><span>Activity log</span><button class="text-btn" id="clearLogBtn" type="button">Clear</button></div>
+    <div class="log-head"><span>Log</span><button class="text-btn" id="clearLogBtn" type="button">Clear</button></div>
     <pre class="log" id="log"></pre>
   </article>
 </aside>
@@ -729,9 +727,8 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function escapeHtml(v) {
   return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
-function log(message, kind="INFO") {
-  const t = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  E.log.textContent += `[${t}] ${kind}: ${message}\n`;
+function log(message) {
+  E.log.textContent += message + "\\n";
   E.log.scrollTop = E.log.scrollHeight;
 }
 function status(title, message, kind="") {
@@ -1061,15 +1058,7 @@ async function ensureFFmpeg() {
           E.runtimeBadge.textContent =
             "ffmpeg.wasm loaded";
 
-          log(
-            (
-              "Browser media engine loaded with a "
-              + "self-contained same-origin worker. "
-              + `Wrapper: ${wrapperURL}. `
-              + `Core: ${candidate.name}.`
-            ),
-            "OK"
-          );
+          log("Media tools loaded.");
 
           return state.ffmpeg;
         } catch (error) {
@@ -1081,13 +1070,7 @@ async function ensureFFmpeg() {
             `${candidate.name}: ${message}`
           );
 
-          log(
-            (
-              `${candidate.name} attempt failed: `
-              + message
-            ),
-            "WARN"
-          );
+          log("Media tools failed to load. Trying another source.");
         }
       }
 
@@ -1136,7 +1119,7 @@ async function decodeFile() {
   state.wav = parseWav(state.wavBytes);
   state.durationMs = Math.round(state.wav.frameCount * 1000 / state.wav.sampleRate);
   setProgress(47, `Decoded ${formatTime(state.durationMs / 1000)} of audio.`);
-  log(`Decoded PCM: ${state.wav.sampleRate} Hz, ${state.wav.channels} channels, ${formatTime(state.durationMs/1000)}.`, "OK");
+  log(`Audio decoded: ${formatTime(state.durationMs / 1000)}.`);
 }
 
 /* -------------------------------------------------------------------------
@@ -1464,7 +1447,7 @@ async function transcribeElevenLabs(key) {
   }
 
   if (response.status === 422 && E.keyterms.checked) {
-    log("ElevenLabs rejected keyterms; retrying once without keyterm bias.", "WARN");
+    log("Keyterm boost failed. Retrying without it.");
     const retry = new FormData();
     retry.append("file",state.file,state.file.name);
     retry.append("model_id","scribe_v2");
@@ -1545,10 +1528,7 @@ async function loadLocalTranscriber() {
     }
   );
 
-  log(
-    "Local Whisper loaded in single-thread WASM mode without proxy/blob workers.",
-    "OK"
-  );
+  log("Local transcription ready.");
 
   return state.localTranscriber;
 }
@@ -1608,7 +1588,7 @@ async function transcribe() {
 
     setProgress(100,"Transcription complete.");
     status("Transcript ready",`${state.words.length} words recognized; ${state.flagged.size} were pre-selected.`,"ok");
-    log(`Transcription finished with ${provider === "elevenlabs" ? "ElevenLabs Scribe v2" : "local Whisper"}.`, "OK");
+    log("Transcription complete.");
     setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
     openModal();
   } catch (error) {
@@ -1617,7 +1597,7 @@ async function transcribe() {
       ? " Check that the host allows scripts/workers from cdnjs.cloudflare.com and cdn.jsdelivr.net."
       : "";
     status("Transcription failed", message + extra, "error");
-    log(error.stack || error.message || String(error),"ERROR");
+    log(`Error: ${error.message || String(error)}`);
     E.progressBox.classList.add("hidden");
   } finally {
     setBusy(false);
@@ -1809,12 +1789,12 @@ async function generate() {
 
     setProgress(100,"Finished. Use the player below before downloading.");
     status("Finished",`${state.selected.size} words selected; ${intervals.length} merged censor intervals generated.`,"ok");
-    log(`Generated playback result with ${intervals.length} interval(s).`, "OK");
+    log("Result generated.");
     setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
     E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
   } catch (error) {
     status("Generation failed",error.message || String(error),"error");
-    log(error.stack || error.message || String(error),"ERROR");
+    log(`Error: ${error.message || String(error)}`);
     E.progressBox.classList.add("hidden");
   } finally {
     setBusy(false);
@@ -1845,9 +1825,9 @@ async function chooseFile(file) {
   };
   E.outputFormat.disabled = isVideo(file);
   if (isVideo(file)) E.outputFormat.value = "same";
-  if (file.size > 350*1024*1024) log("This is a large file. Mobile browsers may run out of memory during WebAssembly processing.", "WARN");
+  if (file.size > 350*1024*1024) log("Large file selected. A computer may work better.");
   status("Ready to transcribe",`${file.name} is selected.`);
-  log(`Selected ${file.name} (${formatBytes(file.size)}).`);
+  log(`File selected: ${file.name}.`);
   refreshButtons();
 }
 async function reset(clearFile=true) {
@@ -1870,9 +1850,9 @@ function providerUi() {
   E.providerBadge.textContent = `Provider: ${p==="elevenlabs"?"ElevenLabs":p==="local"?"Local Whisper":"Auto"}`;
   E.keyBlock.classList.toggle("hidden",p==="local");
   E.providerHelp.textContent =
-    p==="elevenlabs" ? "Uses ElevenLabs Scribe v2 and requires the API key below."
-    : p==="local" ? "Downloads and runs Whisper Tiny English in this browser. No transcription API key is used."
-    : "Uses ElevenLabs when a key is entered; otherwise runs Whisper Tiny English in the browser.";
+    p==="elevenlabs" ? "Uses ElevenLabs and requires the API key below."
+    : p==="local" ? "Uses local Whisper. No API key is needed."
+    : "Uses ElevenLabs with a key, or local Whisper without one.";
 }
 
 E.dropZone.addEventListener("click",()=>E.fileInput.click());
@@ -1911,7 +1891,7 @@ if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
 const remembered = localStorage.getItem("censorElevenLabsKey") || "";
 if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
 providerUi(); refreshButtons();
-log("Standalone HTML initialized. Media processing stays in this browser; ElevenLabs mode sends only the transcription request to ElevenLabs.", "OK");
+log("Ready.");
 
 })();
 </script>
