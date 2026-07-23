@@ -1536,11 +1536,20 @@ async function transcribeLocal() {
   const transcriber = await loadLocalTranscriber();
   setProgress(80,"Resampling audio to 16 kHz mono for local Whisper…");
   const audio = await mono16kFloat();
-  setProgress(84,"Running local Whisper. Keep this tab open…");
-  const result = await transcriber(audio, {
-    return_timestamps:"word", chunk_length_s:30, stride_length_s:5,
-    task:"transcribe"
-  });
+  setProgress(84,"Running local Whisper…");
+  /*
+    This is an English-only Whisper model. Do not pass `task` or `language`.
+    Transformers.js rejects those options for .en models because English
+    transcription is already built into the model configuration.
+  */
+  const result = await transcriber(
+    audio,
+    {
+      return_timestamps: "word",
+      chunk_length_s: 30,
+      stride_length_s: 5
+    }
+  );
   let words = [];
   if (Array.isArray(result?.chunks) && result.chunks.length) {
     for (const chunk of result.chunks) {
