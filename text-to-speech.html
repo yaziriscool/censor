@@ -354,7 +354,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
     </div>
     <p class="status-message" id="statusMessage">Choose a voice and enter text.</p>
     <div class="stats">
-      <div><span>Audio requests</span><strong id="segmentStat">0</strong></div>
+      <div><span>Audio files</span><strong id="segmentStat">0</strong></div>
       <div><span>Duration</span><strong id="durationStat">0:00</strong></div>
     </div>
     <div class="log-head"><span>Log</span><button class="button ghost small" id="clearLog" type="button">Clear</button></div>
@@ -404,7 +404,6 @@ const TTS_ENDPOINT =
     : "https://censor-slwi.vercel.app/api/voiceforge";
 
 const TARGET_SAMPLE_RATE = 44100;
-const MAX_PROVIDER_CHARS = 260;
 const REQUEST_TIMEOUT_MS = 120000;
 const PRESETS = Object.freeze({
   very_short: { coverage: .35, before: 0, after: 0, merge: 0 },
@@ -668,32 +667,6 @@ function updateSettingsUI() {
   E.volumeRow.classList.toggle("hidden", effectChoice() !== "beep");
 }
 
-function providerChunkLimit(voice) {
-  switch (voice?.source) {
-    case "voiceforge": return 480;
-    case "elevenlabs": return 1200;
-    case "pollyold": return 135;
-    case "pollyold2":
-    case "onecore": return 155;
-    default: return 260;
-  }
-}
-function splitLongText(text, limit = MAX_PROVIDER_CHARS) {
-  const output = [];
-  let remaining = text.trim();
-  while (remaining.length > limit) {
-    let cut = -1;
-    for (const token of [". ", "! ", "? ", "; ", ", ", " "]) {
-      const index = remaining.lastIndexOf(token, limit);
-      if (index > cut) cut = index + token.length;
-    }
-    if (cut < Math.floor(limit * .55)) cut = limit;
-    output.push(remaining.slice(0, cut).trim());
-    remaining = remaining.slice(cut).trim();
-  }
-  if (remaining) output.push(remaining);
-  return output;
-}
 async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -1398,34 +1371,17 @@ async function generate() {
   E.resultPanel.classList.add("hidden");
   setProgress(2, "Getting the text ready.");
   try {
-    const readAloudFamily = ["pollyold", "pollyold2", "onecore"].includes(voice.source);
-    const chunks = readAloudFamily
-      ? [parsed.plainText]
-      : splitLongText(parsed.plainText, providerChunkLimit(voice));
-
-    if (!chunks.length) throw new Error("The text does not contain any words to speak.");
-
-    E.segmentStat.textContent = String(chunks.length);
-
-    if (readAloudFamily) {
-      log("Creating one continuous ReadLoud audio file. Voice service: " + providerName(voice.source) + ".");
-      setProgress(8, "Creating one continuous ReadLoud audio file.");
-    } else {
-      log("Creating " + chunks.length + " audio part" + (chunks.length === 1 ? "." : "s.") + " Voice service: " + providerName(voice.source) + ".");
-    }
-
-    const parts = [];
-    for (let index = 0; index < chunks.length; index++) {
-      if (!readAloudFamily) {
-        setProgress(6 + index / chunks.length * 38, "Creating audio part " + (index + 1) + " of " + chunks.length + ".");
-      }
-      const samples = toMono44100(await decodeAudio(await synthesizeBlob(voice, chunks[index])));
-      parts.push(applyEdgeFade(samples.slice(), 4));
-    }
-
-    let processed = readAloudFamily
-      ? parts[0]
-      : crossfadeConcatenate(parts, 8);
+    // Send the complete text exactly once. There are no browser-side provider
+    // character caps and no automatic text chunking. If an external service has
+    // a real limitation, its own response is shown instead of inventing one here.
+    E.segmentStat.textContent = "1";
+    log("Creating one continuous audio file. Voice service: " + providerName(voice.source) + ".");
+    setProgress(8, "Creating one continuous audio file.");
+    const generatedBlob = await synthesizeBlob(voice, parsed.plainText);
+    let processed = applyEdgeFade(
+      toMono44100(await decodeAudio(generatedBlob)),
+      4
+    );
     setProgress(48, "Changing the speed.");
     processed = await applySpeedOffline(processed, Number(E.speed.value) / 100);
     setProgress(65, "Adding distortion.");
