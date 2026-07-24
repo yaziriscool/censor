@@ -164,12 +164,12 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 <header class="shell">
   <div>
     <p class="kicker">Text to speech</p>
-    <h1>Voice Generator</h1>
-    <p class="subtitle">Browse every supplied TTS service, save favorite voices, bake audio effects into the download, and censor bracketed words at their spoken timestamps.</p>
+    <h1>Text to Speech</h1>
+    <p class="subtitle">Choose a voice, enter your text, add effects, and download the finished audio.</p>
   </div>
   <div class="badges">
-    <span class="badge" id="voiceStatus">Loading all services…</span>
-    <span class="badge" id="runtimeBadge">Effects baked into download</span>
+    <span class="badge" id="voiceStatus">Loading voices…</span>
+    <span class="badge" id="runtimeBadge">Effects are included in downloads</span>
   </div>
 </header>
 
@@ -184,7 +184,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 
     <div class="voice-browser">
       <label>
-        <span class="label">Service section</span>
+        <span class="label">Voice service</span>
         <select id="providerFilter">
           <option value="all">All services</option>
           <option value="favorites">★ Favorites</option>
@@ -192,11 +192,11 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       </label>
       <label>
         <span class="label">Search voices</span>
-        <input class="text" id="voiceSearch" type="search" placeholder="Name, ID, country, language, or service">
+        <input class="text" id="voiceSearch" type="search" placeholder="Search by name, language, country, or service">
       </label>
       <label class="check voice-scope">
         <input id="searchAll" type="checkbox">
-        <span>Search all services instead of only the selected section</span>
+        <span>Search every voice service</span>
       </label>
     </div>
 
@@ -209,14 +209,13 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
     </div>
 
     <div class="voice-meta">
-      <span class="tag" id="voiceProvider">Provider: —</span>
+      <span class="tag" id="voiceProvider">Service: —</span>
       <span class="tag" id="voiceCount">0 voices</span>
       <span class="tag" id="favoriteCount">0 favorites</span>
     </div>
 
     <div class="censor-help" style="margin-top:13px">
-      Voices are organized by service. Use <b>All services</b> to browse every section,
-      or save voices with the Favorite button. Favorites stay saved in this browser.
+      Pick a service or choose <b>All services</b>. Use Favorite to save voices on this device.
     </div>
   </article>
 
@@ -226,38 +225,38 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       <button class="button ghost small" id="clearText" type="button">Clear</button>
     </div>
 
-    <textarea id="textInput" maxlength="6000" placeholder="Example: Hello there. This [word] will be censored naturally in place."></textarea>
+    <textarea id="textInput" maxlength="6000" placeholder="Type what you want the voice to say. Put [brackets] around words you want censored."></textarea>
     <div class="voice-meta">
       <span class="tag" id="charCount">0 / 6000</span>
-      <span class="tag" id="censorCount">0 bracketed parts</span>
+      <span class="tag" id="censorCount">0 censored parts</span>
     </div>
 
     <div class="setting">
       <div class="censor-help">
-        Put brackets around the exact words or phrases to censor. The full uncensored sentence is generated first, so speech does not pause around the censor: <code>Hello [fuck] you</code>
+        Put brackets around any word or phrase you want censored. Example: <code>Hello [word] you</code>
       </div>
       <label class="check">
         <input id="enableCensor" type="checkbox" checked>
-        <span>Censor bracketed text after speech generation and effects</span>
+        <span>Censor words inside brackets</span>
       </label>
 
       <div class="api-key-box" id="alignmentBox">
         <div class="label-row">
-          <label class="label" for="apiKey">ElevenLabs API key — used for ElevenLabs voices and word timestamps</label>
+          <label class="label" for="apiKey">ElevenLabs API key</label>
           <button class="text-btn" id="showKeyButton" type="button">Show</button>
         </div>
-        <input class="text" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Required for ElevenLabs voices or bracket censoring">
+        <input class="text" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Needed for ElevenLabs voices and censor timing">
         <div class="checks">
           <label class="check"><input id="rememberKey" type="checkbox"><span>Remember in this browser</span></label>
-          <label class="check"><input id="keyterms" type="checkbox"><span>Boost bracketed words <span style="color:var(--yellow-dim)">extra API cost</span></span></label>
+          <label class="check"><input id="keyterms" type="checkbox"><span>Improve censor matching <span style="color:var(--yellow-dim)">uses more API credits</span></span></label>
         </div>
-        <p class="note">For bracket censoring, the processed WAV is sent directly from your browser to ElevenLabs Scribe v2 for word timestamps. When an ElevenLabs voice is selected, the same key is sent through your private Vercel endpoint for speech generation.</p>
+        <p class="note">The key is used for ElevenLabs voices and to find the timing of censored words. For censoring, the audio is sent to ElevenLabs to find those words. The key stays saved only if you turn on Remember.</p>
       </div>
     </div>
   </article>
 
   <article class="panel">
-    <div class="panel-head"><div><p class="kicker">3 · Audio effects</p><h2>Bake effects into the result</h2></div></div>
+    <div class="panel-head"><div><p class="kicker">3 · Audio effects</p><h2>Change the sound</h2></div></div>
     <div class="effect-grid">
       <label class="range">
         <span>Distortion</span>
@@ -269,46 +268,46 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
         <input id="speed" type="range" min="25" max="300" step="5" value="100">
         <output id="speedValue">1.00×</output>
       </label>
-      <p class="note">These effects are processed before censor timing is measured and are permanently included in both preview and download. Speed uses pitch-preserving FFmpeg processing when available.</p>
-      <p class="warning">High distortion can be extremely loud. The final output is peak-limited, but start low.</p>
+      <p class="note">Speed and distortion are included in both the preview and the download.</p>
+      <p class="warning">High distortion can be very loud. Start low.</p>
     </div>
   </article>
 
   <article class="panel">
-    <div class="panel-head"><div><p class="kicker">4 · Censor style</p><h2>Length, timing, and effect</h2></div></div>
+    <div class="panel-head"><div><p class="kicker">4 · Censor style</p><h2>Choose how censoring sounds</h2></div></div>
 
     <div class="presets" role="radiogroup">
-      <label class="preset"><input type="radio" name="preset" value="very_short"><span class="name">Very Short</span><span class="desc">Middle 35%</span></label>
-      <label class="preset"><input type="radio" name="preset" value="short"><span class="name">Short</span><span class="desc">Middle 55%</span></label>
-      <label class="preset"><input type="radio" name="preset" value="standard" checked><span class="name">Standard</span><span class="desc">80% + light padding</span></label>
-      <label class="preset"><input type="radio" name="preset" value="full"><span class="name">Full / Strict</span><span class="desc">Entire word + padding</span></label>
-      <label class="preset wide"><input type="radio" name="preset" value="custom"><span class="name">Custom</span><span class="desc">Exact coverage and padding</span></label>
+      <label class="preset"><input type="radio" name="preset" value="very_short"><span class="name">Very Short</span><span class="desc">Censors a small part</span></label>
+      <label class="preset"><input type="radio" name="preset" value="short"><span class="name">Short</span><span class="desc">Censors about half</span></label>
+      <label class="preset"><input type="radio" name="preset" value="standard" checked><span class="name">Standard</span><span class="desc">Censors most of the word</span></label>
+      <label class="preset"><input type="radio" name="preset" value="full"><span class="name">Full Word</span><span class="desc">Censors the whole word</span></label>
+      <label class="preset wide"><input type="radio" name="preset" value="custom"><span class="name">Custom</span><span class="desc">Set the censor length yourself</span></label>
     </div>
 
     <div class="custom hidden" id="customBox">
       <label class="range">
-        <span>Coverage</span>
+        <span>Censor amount</span>
         <input id="coverage" type="range" min="10" max="150" step="5" value="80">
         <output id="coverageOut">80%</output>
       </label>
       <div class="two">
-        <label><span class="label">Padding before</span><span class="unit"><input id="padBefore" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
-        <label><span class="label">Padding after</span><span class="unit"><input id="padAfter" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
+        <label><span class="label">Extra time before</span><span class="unit"><input id="padBefore" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
+        <label><span class="label">Extra time after</span><span class="unit"><input id="padAfter" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
       </div>
     </div>
 
     <div class="divider"></div>
 
     <div class="inline-setting">
-      <strong>Timing</strong>
+      <strong>Censor timing</strong>
       <div class="segmented">
         <label><input type="radio" name="timing" value="-70"><span>Early</span></label>
-        <label><input type="radio" name="timing" value="0" checked><span>Centered</span></label>
+        <label><input type="radio" name="timing" value="0" checked><span>Normal</span></label>
         <label><input type="radio" name="timing" value="70"><span>Late</span></label>
         <label><input type="radio" name="timing" value="custom"><span>Custom</span></label>
       </div>
       <div class="setting-extra hidden" id="timingBox">
-        <label class="label" for="timingCustom">Custom shift</label>
+        <label class="label" for="timingCustom">Move timing</label>
         <span class="unit" style="max-width:180px"><input id="timingCustom" type="number" min="-500" max="500" step="5" value="0"><span>ms</span></span>
       </div>
     </div>
@@ -326,23 +325,23 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       </label>
     </div>
 
-    <button class="button primary large" id="generateButton" type="button">Generate processed voice</button>
+    <button class="button primary large" id="generateButton" type="button">Create audio</button>
 
     <div class="progress-box hidden" id="progressBox">
       <div class="track"><div class="bar" id="progressBar"></div></div>
-      <p id="progressText">Preparing…</p>
+      <p id="progressText">Getting ready…</p>
     </div>
   </article>
 
   <article class="panel hidden" id="resultPanel">
     <div class="panel-head">
-      <div><p class="kicker">5 · Player</p><h2>Preview processed result</h2></div>
-      <button class="button ghost small" id="generateAgain" type="button">Generate again</button>
+      <div><p class="kicker">5 · Result</p><h2>Listen and download</h2></div>
+      <button class="button ghost small" id="generateAgain" type="button">Change text</button>
     </div>
 
     <div class="player-wrap"><audio id="player" controls preload="metadata"></audio></div>
-    <div class="downloads"><a class="button secondary" id="downloadButton" download="tts.wav">Download processed WAV</a></div>
-    <p class="note">The downloaded WAV is exactly what the player previews: speed, distortion, and censoring are already baked in.</p>
+    <div class="downloads"><a class="button secondary" id="downloadButton" download="tts.wav">Download WAV</a></div>
+    <p class="note">The preview and download have the same speed, distortion, and censoring.</p>
   </article>
 
 </section>
@@ -355,7 +354,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
     </div>
     <p class="status-message" id="statusMessage">Choose a voice and enter text.</p>
     <div class="stats">
-      <div><span>Segments</span><strong id="segmentStat">0</strong></div>
+      <div><span>Audio parts</span><strong id="segmentStat">0</strong></div>
       <div><span>Duration</span><strong id="durationStat">0:00</strong></div>
     </div>
     <div class="log-head"><span>Log</span><button class="button ghost small" id="clearLog" type="button">Clear</button></div>
@@ -366,8 +365,8 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 </main>
 
 <div class="mobile">
-  <span id="mobileText">Enter text to begin</span>
-  <button class="button primary" id="mobileButton" type="button">Generate</button>
+  <span id="mobileText">Type text to begin</span>
+  <button class="button primary" id="mobileButton" type="button">Create</button>
 </div>
 
 <script>
@@ -443,7 +442,7 @@ function setBusy(busy, message = "") {
   ]) {
     if (element) element.disabled = busy;
   }
-  if (busy) setStatus("Working", message, "busy");
+  if (busy) setStatus("Creating audio", message, "busy");
   else updateFavoriteUI();
 }
 function formatDuration(seconds) {
@@ -478,7 +477,7 @@ function updateFavoriteUI() {
 }
 function updateVoiceMeta() {
   const voice = selectedVoice();
-  E.voiceProvider.textContent = voice ? "Provider: " + providerName(voice.source) : "Provider: —";
+  E.voiceProvider.textContent = voice ? "Service: " + providerName(voice.source) : "Service: —";
   updateFavoriteUI();
   updateTextInfo();
 }
@@ -505,17 +504,17 @@ function populateProviderFilter() {
 }
 async function loadVoices() {
   const previous = selectedVoice()?.id || "David";
-  E.voiceStatus.textContent = "Loading all services…";
+  E.voiceStatus.textContent = "Loading voices…";
   E.reloadVoices.disabled = true;
   try {
     const response = await fetchWithTimeout(TTS_ENDPOINT + "?action=voices", {
       method: "GET",
       headers: {Accept: "application/json"},
     }, 60000);
-    if (!response.ok) throw new Error("Voice list failed with HTTP " + response.status + ": " + (await response.text()).slice(0, 1000));
+    if (!response.ok) throw new Error("Could not load the voice list. Error " + response.status + ": " + (await response.text()).slice(0, 1000));
     const payload = await response.json();
     if (!Array.isArray(payload.voices) || !payload.voices.length) {
-      throw new Error("The API returned no voices.");
+      throw new Error("No voices were found.");
     }
     state.voices = payload.voices.map(voice => ({...voice}));
     state.providers = Array.isArray(payload.providers) ? payload.providers.map(provider => ({...provider})) : [];
@@ -526,12 +525,12 @@ async function loadVoices() {
     saveFavorites();
     populateProviderFilter();
     filterVoices(previous);
-    E.voiceStatus.textContent = state.voices.length + " voices across " + state.providers.length + " services";
+    E.voiceStatus.textContent = state.voices.length + " voices from " + state.providers.length + " services";
     log(state.voices.length + " voices loaded from " + state.providers.length + " services.");
   } catch (error) {
     const message = error?.message || String(error);
-    E.voiceStatus.textContent = "Voice list unavailable";
-    setStatus("Voice list failed", message, "error");
+    E.voiceStatus.textContent = "Voices unavailable";
+    setStatus("Could not load voices", message, "error");
     log("Voice list error: " + message);
   } finally {
     E.reloadVoices.disabled = state.busy;
@@ -589,7 +588,7 @@ function filterVoices(preferredId = selectedVoice()?.id) {
   if (!state.visibleVoices.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = section === "favorites" ? "No favorite voices match" : "No voices match";
+    option.textContent = section === "favorites" ? "No saved voices found" : "No voices found";
     E.voiceSelect.appendChild(option);
   } else {
     const selectedId = state.visibleVoices.some(voice => voice.id === preferredId)
@@ -648,8 +647,8 @@ function parseAnnotatedText(rawText) {
 function updateTextInfo() {
   const parsed = parseAnnotatedText(E.textInput.value);
   E.charCount.textContent = E.textInput.value.length + " / 6000";
-  E.censorCount.textContent = parsed.bracketCount + " bracketed part" + (parsed.bracketCount === 1 ? "" : "s");
-  E.mobileText.textContent = E.textInput.value.trim() ? E.textInput.value.trim().slice(0, 42) : "Enter text to begin";
+  E.censorCount.textContent = parsed.bracketCount + " censored part" + (parsed.bracketCount === 1 ? "" : "s");
+  E.mobileText.textContent = E.textInput.value.trim() ? E.textInput.value.trim().slice(0, 42) : "Type text to begin";
   const needsKeyBox = selectedVoice()?.source === "elevenlabs" || (E.enableCensor.checked && parsed.bracketCount > 0);
   E.alignmentBox.classList.toggle("hidden", !needsKeyBox);
 }
@@ -704,7 +703,7 @@ async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT_MS) {
 async function audioBlobFromResponse(response) {
   if (!response.ok) {
     const text = (await response.text()).slice(0, 1600);
-    throw new Error("TTS request failed: HTTP " + response.status + " " + text);
+    throw new Error("The voice service returned an error. Code " + response.status + ": " + text);
   }
   const type = response.headers.get("content-type") || "";
   if (/^audio\//i.test(type) || /octet-stream/i.test(type)) return await response.blob();
@@ -719,7 +718,7 @@ async function audioBlobFromResponse(response) {
       return new Blob([bytes], {type: data.mime_type || "audio/mpeg"});
     }
   }
-  throw new Error("The TTS API returned an unsupported response type: " + (type || "unknown"));
+  throw new Error("The voice service returned an audio file this browser cannot use.");
 }
 async function requestServerAudio(voice, text) {
   const payload = {voice: voice.id, text};
@@ -740,7 +739,7 @@ async function synthesizeBlob(voice, text) {
   catch (error) {
     state.cache.delete(key);
     if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      throw new Error("Could not reach the TTS API at " + TTS_ENDPOINT + " from " + location.origin + ".");
+      throw new Error("Could not connect to the voice service. Check your internet connection and try again.");
     }
     throw error;
   }
@@ -748,7 +747,7 @@ async function synthesizeBlob(voice, text) {
 function ensureAudioContext() {
   if (!state.audioContext) {
     const Context = window.AudioContext || window.webkitAudioContext;
-    if (!Context) throw new Error("Web Audio is not supported in this browser.");
+    if (!Context) throw new Error("This browser cannot process audio. Try a current version of Chrome, Edge, Firefox, or Safari.");
     state.audioContext = new Context();
   }
   return state.audioContext;
@@ -1063,8 +1062,8 @@ async function ensureFFmpeg() {
       setProgress(
         3,
         (
-          "Loading the browser media engine "
-          + "(~32 MB once, then browser-cached)…"
+          "Loading audio tools. "
+          + "This may take longer the first time…"
         )
       );
 
@@ -1103,7 +1102,7 @@ async function ensureFFmpeg() {
           setProgress(
             5,
             (
-              "Starting the inline browser worker "
+              "Starting audio tools "
               + `with ${candidate.name}…`
             )
           );
@@ -1124,9 +1123,9 @@ async function ensureFFmpeg() {
             true;
 
           E.runtimeBadge.textContent =
-            "ffmpeg.wasm loaded";
+            "Audio tools ready";
 
-          log("Media tools loaded.");
+          log("Audio tools loaded.");
 
           return state.ffmpeg;
         } catch (error) {
@@ -1138,7 +1137,7 @@ async function ensureFFmpeg() {
             `${candidate.name}: ${message}`
           );
 
-          log("Media tools failed to load. Trying another source.");
+          log("Audio tools could not start. Trying another option.");
         }
       }
 
@@ -1172,15 +1171,15 @@ async function applySpeedOffline(samples, speed) {
     const input = "tts_speed_" + nonce + ".wav";
     const output = "tts_speed_" + nonce + "_out.wav";
     await ffmpeg.writeFile(input, new Uint8Array(await floatToWav(samples).arrayBuffer()));
-    setProgress(55, "Baking pitch-preserving speed into the WAV…");
+    setProgress(55, "Changing the audio speed…");
     const result = await ffmpeg.exec(["-i", input, "-af", makeAtempoFilter(speed), "-ar", String(TARGET_SAMPLE_RATE), "-ac", "1", "-c:a", "pcm_s16le", output]);
     if (result !== 0) throw new Error("FFmpeg returned code " + result + ".");
     const data = await ffmpeg.readFile(output);
     await safeDelete(input); await safeDelete(output);
     return toMono44100(await decodeAudio(new Blob([data], {type: "audio/wav"})));
   } catch (error) {
-    log("Pitch-preserving speed failed; using the built-in fallback. " + (error?.message || error));
-    E.runtimeBadge.textContent = "Speed fallback active";
+    log("The main speed tool could not start, so basic speed mode is being used. " + (error?.message || error));
+    E.runtimeBadge.textContent = "Basic speed mode";
     return fallbackSpeedResample(samples, speed);
   }
 }
@@ -1188,7 +1187,7 @@ async function applySpeedOffline(samples, speed) {
 function parseElevenLabs(payload) {
   let raw = payload.words;
   if (!raw && Array.isArray(payload.transcripts)) raw = payload.transcripts.flatMap(item => item.words || []);
-  if (!Array.isArray(raw)) throw new Error("ElevenLabs returned no timestamped words.");
+  if (!Array.isArray(raw)) throw new Error("ElevenLabs could not find the word timing.");
   const words = [];
   for (const item of raw) {
     if (item?.type !== "word" || item.start == null || item.end == null) continue;
@@ -1197,14 +1196,14 @@ function parseElevenLabs(payload) {
     if (normalized) words.push({text, normalized, start: Number(item.start), end: Number(item.end)});
   }
   words.sort((a, b) => a.start - b.start || a.end - b.end);
-  if (!words.length) throw new Error("ElevenLabs returned no usable word timestamps.");
+  if (!words.length) throw new Error("ElevenLabs could not find usable word timing.");
   return words;
 }
 function bracketKeyterms(sourceWords) {
   return [...new Set(sourceWords.filter(word => word.censored).map(word => word.normalized).filter(word => word.length < 50))].slice(0, 1000);
 }
 async function transcribeProcessedAudio(wav, key, sourceWords) {
-  setProgress(72, "Sending the processed WAV directly to ElevenLabs Scribe v2 for word timing…");
+  setProgress(72, "Finding the censored words…");
   const form = new FormData();
   form.append("file", wav, "processed-tts.wav");
   form.append("model_id", "scribe_v2");
@@ -1220,10 +1219,10 @@ async function transcribeProcessedAudio(wav, key, sourceWords) {
   try {
     response = await fetchWithTimeout("https://api.elevenlabs.io/v1/speech-to-text", {method: "POST", headers: {"xi-api-key": key}, body: form}, 180000);
   } catch (error) {
-    throw new Error("The browser could not reach ElevenLabs for censor timing. " + (error?.message || error));
+    throw new Error("Could not connect to ElevenLabs for censor timing. " + (error?.message || error));
   }
   if (response.status === 422 && E.keyterms.checked) {
-    log("Bracket-word boost was rejected. Retrying without keyterms.");
+    log("Extra censor matching was not accepted. Trying again normally.");
     const retry = new FormData();
     retry.append("file", wav, "processed-tts.wav");
     retry.append("model_id", "scribe_v2"); retry.append("language_code", "en");
@@ -1233,9 +1232,9 @@ async function transcribeProcessedAudio(wav, key, sourceWords) {
   if (!response.ok) {
     let detail = await response.text();
     try { detail = JSON.stringify(JSON.parse(detail), null, 2); } catch {}
-    throw new Error("ElevenLabs failed with HTTP " + response.status + ": " + detail.slice(0, 1800));
+    throw new Error("ElevenLabs returned an error. Code " + response.status + ": " + detail.slice(0, 1800));
   }
-  setProgress(84, "Matching bracketed words to spoken timestamps…");
+  setProgress(84, "Matching the censored words…");
   return parseElevenLabs(await response.json());
 }
 function levenshtein(first, second) {
@@ -1385,34 +1384,34 @@ function applyCensor(samples, intervals) {
 async function generate() {
   if (state.busy) return;
   const rawText = E.textInput.value.trim(), voice = selectedVoice();
-  if (!voice) return setStatus("No voice selected", "Choose a voice first.", "error");
-  if (!rawText) return setStatus("No text", "Enter text first.", "error");
+  if (!voice) return setStatus("Choose a voice", "Select a voice first.", "error");
+  if (!rawText) return setStatus("Enter some text", "Type what you want the voice to say.", "error");
   const parsed = parseAnnotatedText(rawText);
-  if (!parsed.plainText.trim()) return setStatus("No text", "The text contains nothing to speak.", "error");
+  if (!parsed.plainText.trim()) return setStatus("Enter some text", "The text does not contain any words to speak.", "error");
   const needsCensor = E.enableCensor.checked && parsed.sourceWords.some(word => word.censored);
   const key = E.apiKey.value.trim();
-  if ((needsCensor || voice.source === "elevenlabs") && !key) return setStatus("ElevenLabs key required", voice.source === "elevenlabs" ? "Enter an ElevenLabs API key to generate this voice." : "Enter an ElevenLabs API key so bracketed words can be timed inside the finished audio.", "error");
+  if ((needsCensor || voice.source === "elevenlabs") && !key) return setStatus("ElevenLabs key needed", voice.source === "elevenlabs" ? "Enter your ElevenLabs API key to use this voice." : "Enter your ElevenLabs API key to censor words inside brackets.", "error");
   if (E.rememberKey.checked && key) localStorage.setItem("censorElevenLabsKey", key);
   else if (!E.rememberKey.checked) localStorage.removeItem("censorElevenLabsKey");
 
-  setBusy(true, "Generating with " + providerName(voice.source) + ".");
+  setBusy(true, "Using " + providerName(voice.source) + ".");
   E.resultPanel.classList.add("hidden");
-  setProgress(2, "Preparing the complete uncensored sentence.");
+  setProgress(2, "Getting the text ready.");
   try {
     const chunks = splitLongText(parsed.plainText, providerChunkLimit(voice));
-    if (!chunks.length) throw new Error("The text contains nothing to speak.");
+    if (!chunks.length) throw new Error("The text does not contain any words to speak.");
     E.segmentStat.textContent = String(chunks.length);
-    log("Generating " + chunks.length + " continuous TTS chunk" + (chunks.length === 1 ? "." : "s.") + " Provider: " + providerName(voice.source) + ".");
+    log("Creating " + chunks.length + " audio part" + (chunks.length === 1 ? "." : "s.") + " Voice service: " + providerName(voice.source) + ".");
     const parts = [];
     for (let index = 0; index < chunks.length; index++) {
-      setProgress(6 + index / chunks.length * 38, "Generating TTS chunk " + (index + 1) + " of " + chunks.length + ".");
+      setProgress(6 + index / chunks.length * 38, "Creating audio part " + (index + 1) + " of " + chunks.length + ".");
       const samples = toMono44100(await decodeAudio(await synthesizeBlob(voice, chunks[index])));
       parts.push(applyEdgeFade(samples.slice(), 4));
     }
     let processed = crossfadeConcatenate(parts, 8);
-    setProgress(48, "Baking speed into the generated speech.");
+    setProgress(48, "Changing the speed.");
     processed = await applySpeedOffline(processed, Number(E.speed.value) / 100);
-    setProgress(65, "Baking distortion into the generated speech.");
+    setProgress(65, "Adding distortion.");
     processed = applyDistortionOffline(processed, Number(E.distortion.value));
     processed = applyEdgeFade(peakLimit(processed), 6);
 
@@ -1421,15 +1420,15 @@ async function generate() {
       const transcriptWords = await transcribeProcessedAudio(processedWav, key, parsed.sourceWords);
       const ranges = mappedCensorRanges(parsed.sourceWords, transcriptWords);
       const requested = parsed.sourceWords.filter(word => word.censored).length;
-      if (!ranges.length) throw new Error("ElevenLabs returned timestamps, but none of the bracketed words could be matched. Try enabling bracket-word boost or use Full / Strict timing.");
-      log("Matched " + ranges.length + " of " + requested + " bracketed word" + (requested === 1 ? "." : "s."));
+      if (!ranges.length) throw new Error("The censored words could not be found in the audio. Turn on Improve censor matching or choose Full Word.");
+      log("Found " + ranges.length + " of " + requested + " censored word" + (requested === 1 ? "." : "s."));
       const intervals = censorIntervals(ranges, processed.length / TARGET_SAMPLE_RATE * 1000);
-      if (!intervals.length) throw new Error("No usable censor intervals were produced.");
-      setProgress(92, "Replacing the spoken words in place with the selected censor effect.");
+      if (!intervals.length) throw new Error("The censor timing could not be created.");
+      setProgress(92, "Adding the censor effect.");
       processed = applyCensor(processed, intervals);
-      log(intervals.length + " merged censor interval" + (intervals.length === 1 ? " applied." : "s applied."));
+      log(intervals.length + " censor section" + (intervals.length === 1 ? " added." : "s added."));
     } else {
-      log("No bracket censoring requested.");
+      log("No censored words were used.");
     }
 
     const wav = floatToWav(processed);
@@ -1441,14 +1440,14 @@ async function generate() {
     E.downloadButton.download = "tts-" + voice.id.replace(/[^a-z0-9_-]+/gi, "_") + "-processed.wav";
     E.durationStat.textContent = formatDuration(processed.length / TARGET_SAMPLE_RATE);
     E.resultPanel.classList.remove("hidden");
-    setProgress(100, "Finished.");
-    setStatus("Finished", "The preview and downloaded WAV both contain the baked effects" + (needsCensor ? " and timestamped censoring." : "."), "ok");
-    log("Processed voice generated.");
+    setProgress(100, "Done.");
+    setStatus("Done", "Your audio is ready to play or download.", "ok");
+    log("Audio ready.");
     setTimeout(() => E.progressBox.classList.add("hidden"), 900);
     E.resultPanel.scrollIntoView({behavior: "smooth", block: "start"});
   } catch (error) {
-    const message = error?.name === "AbortError" ? "The request timed out." : error?.message || String(error);
-    setStatus("Generation failed", message, "error");
+    const message = error?.name === "AbortError" ? "The request took too long. Try again." : error?.message || String(error);
+    setStatus("Could not create audio", message, "error");
     log("Error: " + message);
     E.progressBox.classList.add("hidden");
   } finally { setBusy(false); }
