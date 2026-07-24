@@ -144,6 +144,17 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 .setting-extra{grid-column:2;margin-top:8px}
 .api-key-box{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.1)}
 @media(max-width:680px){.presets{grid-template-columns:1fr}.preset.wide{grid-column:auto}.segmented{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.inline-setting{grid-template-columns:1fr}.setting-extra{grid-column:1}}
+
+.voice-browser{display:grid;grid-template-columns:minmax(170px,.55fr) minmax(220px,1fr);gap:10px;align-items:end}
+.voice-pick-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:10px}
+.favorite-button{min-width:132px;white-space:nowrap}
+.favorite-button.active{border-color:var(--yellow);background:rgba(250,226,157,.14);color:var(--yellow2)}
+.voice-scope{grid-column:1/-1;margin-top:0}
+@media(max-width:680px){
+  .voice-browser,.voice-pick-row{grid-template-columns:1fr}
+  .favorite-button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -154,10 +165,10 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
   <div>
     <p class="kicker">Text to speech</p>
     <h1>Voice Generator</h1>
-    <p class="subtitle">Choose a voice, enter text, bake speed and distortion into the audio, then censor bracketed words at their real spoken timestamps.</p>
+    <p class="subtitle">Browse every supplied TTS service, save favorite voices, bake audio effects into the download, and censor bracketed words at their spoken timestamps.</p>
   </div>
   <div class="badges">
-    <span class="badge" id="voiceStatus">Loading voices…</span>
+    <span class="badge" id="voiceStatus">Loading all services…</span>
     <span class="badge" id="runtimeBadge">Effects baked into download</span>
   </div>
 </header>
@@ -171,24 +182,41 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       <button class="button ghost small" id="reloadVoices" type="button">Reload</button>
     </div>
 
-    <div class="voice-row">
+    <div class="voice-browser">
+      <label>
+        <span class="label">Service section</span>
+        <select id="providerFilter">
+          <option value="all">All services</option>
+          <option value="favorites">★ Favorites</option>
+        </select>
+      </label>
+      <label>
+        <span class="label">Search voices</span>
+        <input class="text" id="voiceSearch" type="search" placeholder="Name, ID, country, language, or service">
+      </label>
+      <label class="check voice-scope">
+        <input id="searchAll" type="checkbox">
+        <span>Search all services instead of only the selected section</span>
+      </label>
+    </div>
+
+    <div class="voice-pick-row">
       <label>
         <span class="label">Voice</span>
         <select id="voiceSelect"></select>
       </label>
-      <label>
-        <span class="label">Search</span>
-        <input class="text" id="voiceSearch" type="search" placeholder="Search voices">
-      </label>
+      <button class="button ghost favorite-button" id="favoriteButton" type="button">☆ Favorite</button>
     </div>
 
     <div class="voice-meta">
       <span class="tag" id="voiceProvider">Provider: —</span>
       <span class="tag" id="voiceCount">0 voices</span>
+      <span class="tag" id="favoriteCount">0 favorites</span>
     </div>
 
     <div class="censor-help" style="margin-top:13px">
-      The existing 45 VoiceForge legacy voices and 40 ReadLoud voices are unchanged. Voice generation still runs through the private Vercel API.
+      Voices are organized by service. Use <b>All services</b> to browse every section,
+      or save voices with the Favorite button. Favorites stay saved in this browser.
     </div>
   </article>
 
@@ -215,15 +243,15 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 
       <div class="api-key-box" id="alignmentBox">
         <div class="label-row">
-          <label class="label" for="apiKey">ElevenLabs API key — used only for word timestamps</label>
+          <label class="label" for="apiKey">ElevenLabs API key — used for ElevenLabs voices and word timestamps</label>
           <button class="text-btn" id="showKeyButton" type="button">Show</button>
         </div>
-        <input class="text" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Required only when bracket censoring is used">
+        <input class="text" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Required for ElevenLabs voices or bracket censoring">
         <div class="checks">
           <label class="check"><input id="rememberKey" type="checkbox"><span>Remember in this browser</span></label>
           <label class="check"><input id="keyterms" type="checkbox"><span>Boost bracketed words <span style="color:var(--yellow-dim)">extra API cost</span></span></label>
         </div>
-        <p class="note">The processed WAV is sent directly from your browser to ElevenLabs Scribe v2 to obtain word timestamps. The key is not sent to the site host.</p>
+        <p class="note">For bracket censoring, the processed WAV is sent directly from your browser to ElevenLabs Scribe v2 for word timestamps. When an ElevenLabs voice is selected, the same key is sent through your private Vercel endpoint for speech generation.</p>
       </div>
     </div>
   </article>
@@ -352,7 +380,9 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 
 const E = {
   voiceSelect: $("#voiceSelect"), voiceSearch: $("#voiceSearch"), reloadVoices: $("#reloadVoices"),
-  voiceStatus: $("#voiceStatus"), voiceProvider: $("#voiceProvider"), voiceCount: $("#voiceCount"),
+  providerFilter: $("#providerFilter"), searchAll: $("#searchAll"), favoriteButton: $("#favoriteButton"),
+  favoriteCount: $("#favoriteCount"), voiceStatus: $("#voiceStatus"),
+  voiceProvider: $("#voiceProvider"), voiceCount: $("#voiceCount"),
   runtimeBadge: $("#runtimeBadge"), textInput: $("#textInput"), clearText: $("#clearText"),
   charCount: $("#charCount"), censorCount: $("#censorCount"), enableCensor: $("#enableCensor"),
   apiKey: $("#apiKey"), rememberKey: $("#rememberKey"), keyterms: $("#keyterms"),
@@ -384,691 +414,11 @@ const PRESETS = Object.freeze({
   full: { coverage: 1, before: 50, after: 65, merge: 25 },
 });
 
-const ALL_VOICES = Object.freeze([
-  {
-    "id": "Amy",
-    "label": "Amy",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Belle",
-    "label": "Belle",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Callie",
-    "label": "Callie",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "CallieQ",
-    "label": "CallieQ",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Charlie",
-    "label": "Charlie",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Conrad",
-    "label": "Conrad",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Dallas",
-    "label": "Dallas",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Damien",
-    "label": "Damien",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "David",
-    "label": "David",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Designer",
-    "label": "Designer",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Diane",
-    "label": "Diane",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Diesel",
-    "label": "Diesel",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Dog",
-    "label": "Dog",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Duchess",
-    "label": "Duchess",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Duncan",
-    "label": "Duncan",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Emily",
-    "label": "Emily",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "EvilGenius",
-    "label": "EvilGenius",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Frank",
-    "label": "Frank",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "French-fry",
-    "label": "French-fry",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Gregory",
-    "label": "Gregory",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Jerkface",
-    "label": "Jerkface",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "JerseyGirl",
-    "label": "JerseyGirl",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Kayla",
-    "label": "Kayla",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Kevin",
-    "label": "Kevin",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Kidaroo",
-    "label": "Kidaroo",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Lawrence",
-    "label": "Lawrence",
-    "source": "voiceforge",
-    "country": "GB",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Linda",
-    "label": "Linda",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Millie",
-    "label": "Millie",
-    "source": "voiceforge",
-    "country": "GB",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Obama",
-    "label": "Obama",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Princess",
-    "label": "Princess",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "RansomNote",
-    "label": "RansomNote",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Robin",
-    "label": "Robin",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Shouty",
-    "label": "Shouty",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Shygirl",
-    "label": "Shygirl",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Susan",
-    "label": "Susan",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Tamika",
-    "label": "Tamika",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "TopHat",
-    "label": "TopHat",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Vixen",
-    "label": "Vixen",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "Vlad",
-    "label": "Vlad",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Walter",
-    "label": "Walter",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Warren",
-    "label": "Warren",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Whispery",
-    "label": "Whispery",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "William",
-    "label": "William",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Wiseguy",
-    "label": "Wiseguy",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "Zach",
-    "label": "Zach",
-    "source": "voiceforge",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "russell-GoNuTTS",
-    "label": "Russell (GoNuTTS)",
-    "source": "readloud",
-    "country": "AU",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "nicole-GoNuTTS",
-    "label": "Nicole (GoNuTTS)",
-    "source": "readloud",
-    "country": "AU",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "ricardo-GoNuTTS",
-    "label": "Ricardo (GoNuTTS)",
-    "source": "readloud",
-    "country": "BR",
-    "language": "pt",
-    "gender": "M"
-  },
-  {
-    "id": "amy-GoNuTTS",
-    "label": "Amy (GoNuTTS)",
-    "source": "readloud",
-    "country": "GB",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "emma-GoNuTTS",
-    "label": "Emma (GoNuTTS)",
-    "source": "readloud",
-    "country": "GB",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "brian-GoNuTTS",
-    "label": "Brian (GoNuTTS)",
-    "source": "readloud",
-    "country": "GB",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "chantal-GoNuTTS",
-    "label": "Chantal (GoNuTTS)",
-    "source": "readloud",
-    "country": "CA",
-    "language": "fr",
-    "gender": "F"
-  },
-  {
-    "id": "enrique-GoNuTTS",
-    "label": "Enrique (GoNuTTS)",
-    "source": "readloud",
-    "country": "ES",
-    "language": "es",
-    "gender": "M"
-  },
-  {
-    "id": "conchita-GoNuTTS",
-    "label": "Conchita (GoNuTTS)",
-    "source": "readloud",
-    "country": "ES",
-    "language": "es",
-    "gender": "F"
-  },
-  {
-    "id": "mads-GoNuTTS",
-    "label": "Mads (GoNuTTS)",
-    "source": "readloud",
-    "country": "DK",
-    "language": "da",
-    "gender": "M"
-  },
-  {
-    "id": "naja-GoNuTTS",
-    "label": "Naja (GoNuTTS)",
-    "source": "readloud",
-    "country": "DK",
-    "language": "da",
-    "gender": "F"
-  },
-  {
-    "id": "lotte-GoNuTTS",
-    "label": "Lotte (GoNuTTS)",
-    "source": "readloud",
-    "country": "NL",
-    "language": "nl",
-    "gender": "F"
-  },
-  {
-    "id": "ruben-GoNuTTS",
-    "label": "Ruben (GoNuTTS)",
-    "source": "readloud",
-    "country": "NL",
-    "language": "nl",
-    "gender": "M"
-  },
-  {
-    "id": "mathieu-GoNuTTS",
-    "label": "Mathieu (GoNuTTS)",
-    "source": "readloud",
-    "country": "FR",
-    "language": "fr",
-    "gender": "M"
-  },
-  {
-    "id": "hans-GoNuTTS",
-    "label": "Hans (GoNuTTS)",
-    "source": "readloud",
-    "country": "DE",
-    "language": "de",
-    "gender": "M"
-  },
-  {
-    "id": "marlene-GoNuTTS",
-    "label": "Marlene (GoNuTTS)",
-    "source": "readloud",
-    "country": "DE",
-    "language": "de",
-    "gender": "F"
-  },
-  {
-    "id": "karl-GoNuTTS",
-    "label": "Karl (GoNuTTS)",
-    "source": "readloud",
-    "country": "IS",
-    "language": "is",
-    "gender": "M"
-  },
-  {
-    "id": "giorgio-GoNuTTS",
-    "label": "Giorgio (GoNuTTS)",
-    "source": "readloud",
-    "country": "IT",
-    "language": "it",
-    "gender": "M"
-  },
-  {
-    "id": "carla-GoNuTTS",
-    "label": "Carla (GoNuTTS)",
-    "source": "readloud",
-    "country": "IT",
-    "language": "it",
-    "gender": "F"
-  },
-  {
-    "id": "liv-GoNuTTS",
-    "label": "Liv (GoNuTTS)",
-    "source": "readloud",
-    "country": "no",
-    "language": "no",
-    "gender": "F"
-  },
-  {
-    "id": "jacek-GoNuTTS",
-    "label": "Jacek (GoNuTTS)",
-    "source": "readloud",
-    "country": "PL",
-    "language": "pl",
-    "gender": "M"
-  },
-  {
-    "id": "jan-GoNuTTS",
-    "label": "Jan (GoNuTTS)",
-    "source": "readloud",
-    "country": "PL",
-    "language": "pl",
-    "gender": "M"
-  },
-  {
-    "id": "maja-GoNuTTS",
-    "label": "Maja (GoNuTTS)",
-    "source": "readloud",
-    "country": "PL",
-    "language": "pl",
-    "gender": "F"
-  },
-  {
-    "id": "ewa-GoNuTTS",
-    "label": "Ewa (GoNuTTS)",
-    "source": "readloud",
-    "country": "PL",
-    "language": "pl",
-    "gender": "F"
-  },
-  {
-    "id": "cristiano-GoNuTTS",
-    "label": "Cristiano (GoNuTTS)",
-    "source": "readloud",
-    "country": "PT",
-    "language": "pt",
-    "gender": "M"
-  },
-  {
-    "id": "tatyana-GoNuTTS",
-    "label": "Tatyana (GoNuTTS)",
-    "source": "readloud",
-    "country": "RU",
-    "language": "ru",
-    "gender": "F"
-  },
-  {
-    "id": "astrid-GoNuTTS",
-    "label": "Astrid (GoNuTTS)",
-    "source": "readloud",
-    "country": "SE",
-    "language": "sv",
-    "gender": "F"
-  },
-  {
-    "id": "filiz-GoNuTTS",
-    "label": "Filiz (GoNuTTS)",
-    "source": "readloud",
-    "country": "TR",
-    "language": "tr",
-    "gender": "F"
-  },
-  {
-    "id": "justin-GoNuTTS",
-    "label": "Justin (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "kendra-GoNuTTS",
-    "label": "Kendra (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "ivy-GoNuTTS",
-    "label": "Ivy (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "joey-GoNuTTS",
-    "label": "Joey (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "salli-GoNuTTS",
-    "label": "Salli (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "kimberly-GoNuTTS",
-    "label": "Kimberly (GoNuTTS)",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "geraint-GoNuTTS",
-    "label": "Geraint (GoNuTTS)",
-    "source": "readloud",
-    "country": "GB",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "eric",
-    "label": "Eric",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "jennifer",
-    "label": "Jennifer",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "skippy",
-    "label": "Chipmunk",
-    "source": "readloud",
-    "country": "US",
-    "language": "en",
-    "gender": "M"
-  },
-  {
-    "id": "gwynethenglish",
-    "label": "Gwyneth",
-    "source": "readloud",
-    "country": "GB",
-    "language": "en",
-    "gender": "F"
-  },
-  {
-    "id": "agnieszka",
-    "label": "Agnieszka",
-    "source": "readloud",
-    "country": "PL",
-    "language": "pl",
-    "gender": "F"
-  }
-]);
+const FAVORITES_KEY = "ttsFavoriteVoicesV2";
 
 const state = {
-  voices: [], visibleVoices: [], busy: false, audioContext: null,
+  voices: [], visibleVoices: [], voiceById: new Map(), providers: [],
+  favorites: new Set(), busy: false, audioContext: null,
   resultURL: null, resultBlob: null, cache: new Map(),
   ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null, ffmpegClassWorkerURL: null,
 };
@@ -1087,45 +437,180 @@ function setProgress(percent, message) {
 }
 function setBusy(busy, message = "") {
   state.busy = busy;
-  for (const element of [E.generateButton, E.mobileButton, E.reloadVoices, E.voiceSelect, E.textInput]) {
-    element.disabled = busy;
+  for (const element of [
+    E.generateButton, E.mobileButton, E.reloadVoices, E.voiceSelect, E.textInput,
+    E.providerFilter, E.voiceSearch, E.searchAll, E.favoriteButton
+  ]) {
+    if (element) element.disabled = busy;
   }
   if (busy) setStatus("Working", message, "busy");
+  else updateFavoriteUI();
 }
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";
   const total = Math.max(0, Math.round(seconds));
   return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
 }
-function providerName(source) { return source === "voiceforge" ? "VoiceForge" : "ReadLoud"; }
-function selectedVoice() { return state.visibleVoices[Number(E.voiceSelect.value)] || null; }
+function providerName(source) {
+  return state.providers.find(provider => provider.id === source)?.label || source || "Unknown";
+}
+function selectedVoice() {
+  return state.voiceById.get(E.voiceSelect.value) || null;
+}
+function loadSavedFavorites() {
+  try {
+    const value = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+    state.favorites = new Set(Array.isArray(value) ? value.filter(item => typeof item === "string") : []);
+  } catch {
+    state.favorites = new Set();
+  }
+}
+function saveFavorites() {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...state.favorites]));
+}
+function updateFavoriteUI() {
+  const voice = selectedVoice();
+  const active = !!voice && state.favorites.has(voice.id);
+  E.favoriteButton.disabled = state.busy || !voice;
+  E.favoriteButton.classList.toggle("active", active);
+  E.favoriteButton.textContent = active ? "★ Favorited" : "☆ Favorite";
+  E.favoriteCount.textContent = state.favorites.size + " favorite" + (state.favorites.size === 1 ? "" : "s");
+}
 function updateVoiceMeta() {
   const voice = selectedVoice();
   E.voiceProvider.textContent = voice ? "Provider: " + providerName(voice.source) : "Provider: —";
+  updateFavoriteUI();
+  updateTextInfo();
 }
-function loadVoices() {
+function populateProviderFilter() {
+  const previous = E.providerFilter.value || "all";
+  E.providerFilter.textContent = "";
+  const all = document.createElement("option");
+  all.value = "all";
+  all.textContent = "All services (" + state.voices.length + ")";
+  E.providerFilter.appendChild(all);
+  const favorites = document.createElement("option");
+  favorites.value = "favorites";
+  favorites.textContent = "★ Favorites (" + state.favorites.size + ")";
+  E.providerFilter.appendChild(favorites);
+  for (const provider of state.providers) {
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = provider.label + " (" + provider.count + ")";
+    E.providerFilter.appendChild(option);
+  }
+  E.providerFilter.value = [...E.providerFilter.options].some(option => option.value === previous)
+    ? previous
+    : "all";
+}
+async function loadVoices() {
   const previous = selectedVoice()?.id || "David";
-  state.voices = ALL_VOICES.map(voice => ({...voice}));
-  filterVoices(previous);
-  E.voiceStatus.textContent = state.voices.length + " voices ready";
-  log(state.voices.length + " voices loaded.");
+  E.voiceStatus.textContent = "Loading all services…";
+  E.reloadVoices.disabled = true;
+  try {
+    const response = await fetchWithTimeout(TTS_ENDPOINT + "?action=voices", {
+      method: "GET",
+      headers: {Accept: "application/json"},
+    }, 60000);
+    if (!response.ok) throw new Error("Voice list failed with HTTP " + response.status + ": " + (await response.text()).slice(0, 1000));
+    const payload = await response.json();
+    if (!Array.isArray(payload.voices) || !payload.voices.length) {
+      throw new Error("The API returned no voices.");
+    }
+    state.voices = payload.voices.map(voice => ({...voice}));
+    state.providers = Array.isArray(payload.providers) ? payload.providers.map(provider => ({...provider})) : [];
+    state.voiceById = new Map(state.voices.map(voice => [voice.id, voice]));
+    for (const favorite of [...state.favorites]) {
+      if (!state.voiceById.has(favorite)) state.favorites.delete(favorite);
+    }
+    saveFavorites();
+    populateProviderFilter();
+    filterVoices(previous);
+    E.voiceStatus.textContent = state.voices.length + " voices across " + state.providers.length + " services";
+    log(state.voices.length + " voices loaded from " + state.providers.length + " services.");
+  } catch (error) {
+    const message = error?.message || String(error);
+    E.voiceStatus.textContent = "Voice list unavailable";
+    setStatus("Voice list failed", message, "error");
+    log("Voice list error: " + message);
+  } finally {
+    E.reloadVoices.disabled = state.busy;
+  }
 }
 function filterVoices(preferredId = selectedVoice()?.id) {
   const query = E.voiceSearch.value.trim().toLowerCase();
-  state.visibleVoices = state.voices.filter(voice => !query ||
-    voice.label.toLowerCase().includes(query) || voice.id.toLowerCase().includes(query) ||
-    voice.source.toLowerCase().includes(query) || String(voice.country || "").toLowerCase().includes(query));
-  E.voiceSelect.textContent = "";
-  state.visibleVoices.forEach((voice, index) => {
-    const option = document.createElement("option");
-    option.value = String(index);
-    option.textContent = voice.label + " — " + providerName(voice.source);
-    E.voiceSelect.appendChild(option);
+  const section = E.providerFilter.value || "all";
+  const searchEverywhere = !!query && E.searchAll.checked;
+  let pool = state.voices;
+
+  if (!searchEverywhere) {
+    if (section === "favorites") pool = pool.filter(voice => state.favorites.has(voice.id));
+    else if (section !== "all") pool = pool.filter(voice => voice.source === section);
+  }
+
+  state.visibleVoices = pool.filter(voice => {
+    if (!query) return true;
+    return [
+      voice.label, voice.id, voice.source, providerName(voice.source),
+      voice.country, voice.language, voice.gender
+    ].some(value => String(value || "").toLowerCase().includes(query));
   });
-  const index = state.visibleVoices.findIndex(voice => voice.id === preferredId);
-  if (index >= 0) E.voiceSelect.value = String(index);
-  E.voiceCount.textContent = state.visibleVoices.length + " voices";
+
+  state.visibleVoices.sort((first, second) => {
+    const providerDifference =
+      state.providers.findIndex(provider => provider.id === first.source) -
+      state.providers.findIndex(provider => provider.id === second.source);
+    if (providerDifference) return providerDifference;
+    return first.label.localeCompare(second.label, undefined, {sensitivity: "base"});
+  });
+
+  E.voiceSelect.textContent = "";
+  const groups = new Map();
+  for (const voice of state.visibleVoices) {
+    if (!groups.has(voice.source)) groups.set(voice.source, []);
+    groups.get(voice.source).push(voice);
+  }
+
+  for (const provider of state.providers) {
+    const groupVoices = groups.get(provider.id);
+    if (!groupVoices?.length) continue;
+    const group = document.createElement("optgroup");
+    group.label = provider.label + " — " + groupVoices.length + " voice" + (groupVoices.length === 1 ? "" : "s");
+    for (const voice of groupVoices) {
+      const option = document.createElement("option");
+      option.value = voice.id;
+      option.textContent = (state.favorites.has(voice.id) ? "★ " : "") +
+        voice.label + (voice.country ? " · " + voice.country : "");
+      group.appendChild(option);
+    }
+    E.voiceSelect.appendChild(group);
+  }
+
+  if (!state.visibleVoices.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = section === "favorites" ? "No favorite voices match" : "No voices match";
+    E.voiceSelect.appendChild(option);
+  } else {
+    const selectedId = state.visibleVoices.some(voice => voice.id === preferredId)
+      ? preferredId
+      : state.visibleVoices[0].id;
+    E.voiceSelect.value = selectedId;
+  }
+
+  E.voiceCount.textContent = state.visibleVoices.length + " of " + state.voices.length + " voices";
+  populateProviderFilter();
   updateVoiceMeta();
+}
+function toggleFavorite() {
+  const voice = selectedVoice();
+  if (!voice) return;
+  if (state.favorites.has(voice.id)) state.favorites.delete(voice.id);
+  else state.favorites.add(voice.id);
+  saveFavorites();
+  const preferred = voice.id;
+  populateProviderFilter();
+  filterVoices(preferred);
 }
 
 function normalizeWord(value) {
@@ -1165,7 +650,8 @@ function updateTextInfo() {
   E.charCount.textContent = E.textInput.value.length + " / 6000";
   E.censorCount.textContent = parsed.bracketCount + " bracketed part" + (parsed.bracketCount === 1 ? "" : "s");
   E.mobileText.textContent = E.textInput.value.trim() ? E.textInput.value.trim().slice(0, 42) : "Enter text to begin";
-  E.alignmentBox.classList.toggle("hidden", !E.enableCensor.checked || parsed.bracketCount === 0);
+  const needsKeyBox = selectedVoice()?.source === "elevenlabs" || (E.enableCensor.checked && parsed.bracketCount > 0);
+  E.alignmentBox.classList.toggle("hidden", !needsKeyBox);
 }
 function presetChoice() { return $('input[name="preset"]:checked')?.value || "standard"; }
 function effectChoice() { return $('input[name="effect"]:checked')?.value || "beep"; }
@@ -1183,6 +669,16 @@ function updateSettingsUI() {
   E.volumeRow.classList.toggle("hidden", effectChoice() !== "beep");
 }
 
+function providerChunkLimit(voice) {
+  switch (voice?.source) {
+    case "voiceforge": return 480;
+    case "elevenlabs": return 1200;
+    case "pollyold": return 135;
+    case "pollyold2":
+    case "onecore": return 155;
+    default: return 260;
+  }
+}
 function splitLongText(text, limit = MAX_PROVIDER_CHARS) {
   const output = [];
   let remaining = text.trim();
@@ -1226,11 +722,13 @@ async function audioBlobFromResponse(response) {
   throw new Error("The TTS API returned an unsupported response type: " + (type || "unknown"));
 }
 async function requestServerAudio(voice, text) {
+  const payload = {voice: voice.id, text};
+  if (voice.source === "elevenlabs") payload.providerKey = E.apiKey.value.trim();
   const response = await fetchWithTimeout(TTS_ENDPOINT, {
     method: "POST",
-    headers: {Accept: "audio/wav, audio/mpeg, application/json", "Content-Type": "application/json"},
-    body: JSON.stringify({provider: voice.source, voice: voice.id, text}),
-  });
+    headers: {Accept: "audio/wav, audio/mpeg, audio/ogg, audio/mp4, application/json", "Content-Type": "application/json"},
+    body: JSON.stringify(payload),
+  }, voice.source === "elevenlabs" ? 180000 : REQUEST_TIMEOUT_MS);
   return await audioBlobFromResponse(response);
 }
 async function synthesizeBlob(voice, text) {
@@ -1893,7 +1391,7 @@ async function generate() {
   if (!parsed.plainText.trim()) return setStatus("No text", "The text contains nothing to speak.", "error");
   const needsCensor = E.enableCensor.checked && parsed.sourceWords.some(word => word.censored);
   const key = E.apiKey.value.trim();
-  if (needsCensor && !key) return setStatus("ElevenLabs key required", "Enter an ElevenLabs API key so bracketed words can be timed inside the finished audio.", "error");
+  if ((needsCensor || voice.source === "elevenlabs") && !key) return setStatus("ElevenLabs key required", voice.source === "elevenlabs" ? "Enter an ElevenLabs API key to generate this voice." : "Enter an ElevenLabs API key so bracketed words can be timed inside the finished audio.", "error");
   if (E.rememberKey.checked && key) localStorage.setItem("censorElevenLabsKey", key);
   else if (!E.rememberKey.checked) localStorage.removeItem("censorElevenLabsKey");
 
@@ -1901,7 +1399,7 @@ async function generate() {
   E.resultPanel.classList.add("hidden");
   setProgress(2, "Preparing the complete uncensored sentence.");
   try {
-    const chunks = splitLongText(parsed.plainText);
+    const chunks = splitLongText(parsed.plainText, providerChunkLimit(voice));
     if (!chunks.length) throw new Error("The text contains nothing to speak.");
     E.segmentStat.textContent = String(chunks.length);
     log("Generating " + chunks.length + " continuous TTS chunk" + (chunks.length === 1 ? "." : "s.") + " Provider: " + providerName(voice.source) + ".");
@@ -1960,7 +1458,10 @@ E.textInput.addEventListener("input", updateTextInfo);
 E.clearText.addEventListener("click", () => { E.textInput.value = ""; updateTextInfo(); E.textInput.focus(); });
 E.enableCensor.addEventListener("change", updateTextInfo);
 E.voiceSearch.addEventListener("input", () => filterVoices());
+E.providerFilter.addEventListener("change", () => filterVoices());
+E.searchAll.addEventListener("change", () => filterVoices());
 E.voiceSelect.addEventListener("change", updateVoiceMeta);
+E.favoriteButton.addEventListener("click", toggleFavorite);
 E.reloadVoices.addEventListener("click", loadVoices);
 E.generateButton.addEventListener("click", generate);
 E.mobileButton.addEventListener("click", generate);
@@ -1980,6 +1481,7 @@ window.addEventListener("beforeunload", () => {
 
 const rememberedKey = localStorage.getItem("censorElevenLabsKey") || "";
 if (rememberedKey) { E.apiKey.value = rememberedKey; E.rememberKey.checked = true; }
+loadSavedFavorites();
 updateTextInfo(); updateSettingsUI(); loadVoices();
 
 })();
