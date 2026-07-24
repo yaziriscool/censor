@@ -97,6 +97,46 @@ const READLOUD_VOICES = Object.freeze({
   "agnieszka": "/polish/9-kobiecy-glos-agnieszka.html"
 });
 
+
+const READLOUD_TTSTOOL_VOICES = Object.freeze({
+  "russell-GoNuTTS": { voiceId: "Amazon Australian English (Russell)", lang: "en-AU" },
+  "nicole-GoNuTTS": { voiceId: "Amazon Australian English (Nicole)", lang: "en-AU" },
+  "ricardo-GoNuTTS": { voiceId: "Amazon Brazilian Portuguese (Ricardo)", lang: "pt-BR" },
+  "amy-GoNuTTS": { voiceId: "Amazon British English (Amy)", lang: "en-GB" },
+  "emma-GoNuTTS": { voiceId: "Amazon British English (Emma)", lang: "en-GB" },
+  "brian-GoNuTTS": { voiceId: "Amazon British English (Brian)", lang: "en-GB" },
+  "chantal-GoNuTTS": { voiceId: "Amazon Canadian French (Chantal)", lang: "fr-CA" },
+  "enrique-GoNuTTS": { voiceId: "Amazon Castilian Spanish (Enrique)", lang: "es-ES" },
+  "conchita-GoNuTTS": { voiceId: "Amazon Castilian Spanish (Conchita)", lang: "es-ES" },
+  "mads-GoNuTTS": { voiceId: "Amazon Danish (Mads)", lang: "da-DK" },
+  "naja-GoNuTTS": { voiceId: "Amazon Danish (Naja)", lang: "da-DK" },
+  "lotte-GoNuTTS": { voiceId: "Amazon Dutch (Lotte)", lang: "nl-NL" },
+  "ruben-GoNuTTS": { voiceId: "Amazon Dutch (Ruben)", lang: "nl-NL" },
+  "mathieu-GoNuTTS": { voiceId: "Amazon French (Mathieu)", lang: "fr-FR" },
+  "hans-GoNuTTS": { voiceId: "Amazon German (Hans)", lang: "de-DE" },
+  "marlene-GoNuTTS": { voiceId: "Amazon German (Marlene)", lang: "de-DE" },
+  "karl-GoNuTTS": { voiceId: "Amazon Icelandic (Karl)", lang: "is-IS" },
+  "giorgio-GoNuTTS": { voiceId: "Amazon Italian (Giorgio)", lang: "it-IT" },
+  "carla-GoNuTTS": { voiceId: "Amazon Italian (Carla)", lang: "it-IT" },
+  "liv-GoNuTTS": { voiceId: "Amazon Norwegian (Liv)", lang: "nb-NO" },
+  "jacek-GoNuTTS": { voiceId: "Amazon Polish (Jacek)", lang: "pl-PL" },
+  "jan-GoNuTTS": { voiceId: "Amazon Polish (Jan)", lang: "pl-PL" },
+  "maja-GoNuTTS": { voiceId: "Amazon Polish (Maja)", lang: "pl-PL" },
+  "ewa-GoNuTTS": { voiceId: "Amazon Polish (Ewa)", lang: "pl-PL" },
+  "cristiano-GoNuTTS": { voiceId: "Amazon Portuguese (Cristiano)", lang: "pt-PT" },
+  "tatyana-GoNuTTS": { voiceId: "Amazon Russian (Tatyana)", lang: "ru-RU" },
+  "astrid-GoNuTTS": { voiceId: "Amazon Swedish (Astrid)", lang: "sv-SE" },
+  "filiz-GoNuTTS": { voiceId: "Amazon Turkish (Filiz)", lang: "tr-TR" },
+  "justin-GoNuTTS": { voiceId: "Amazon US English (Justin)", lang: "en-US" },
+  "kendra-GoNuTTS": { voiceId: "Amazon US English (Kendra)", lang: "en-US" },
+  "ivy-GoNuTTS": { voiceId: "Amazon US English (Ivy)", lang: "en-US" },
+  "joey-GoNuTTS": { voiceId: "Amazon US English (Joey)", lang: "en-US" },
+  "salli-GoNuTTS": { voiceId: "Amazon US English (Salli)", lang: "en-US" },
+  "kimberly-GoNuTTS": { voiceId: "Amazon US English (Kimberly)", lang: "en-US" },
+  "geraint-GoNuTTS": { voiceId: "Amazon Welsh (Geraint)", lang: "cy-GB" },
+  "gwynethenglish": { voiceId: "Amazon Welsh (Gwyneth)", lang: "cy-GB" }
+});
+
 let cachedSession = null;
 let refreshPromise = null;
 let activeRefreshToken = null;
@@ -112,14 +152,52 @@ function json(data, status = 200, headers = {}) {
   });
 }
 
-function getCorsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
+function getAllowedOrigins(request) {
+  const ownOrigin = new URL(request.url).origin;
+
+  const configuredOrigins =
+    String(process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map(origin => origin.trim())
+      .filter(Boolean);
+
+  return new Set([ownOrigin, ...configuredOrigins]);
+}
+
+function getCorsHeaders(request) {
+  const origin = request.headers.get("Origin");
+
+  const headers = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, X-TTS-Client",
     "Access-Control-Max-Age": "86400",
-    "Cache-Control": "no-store",
+    Vary: "Origin",
   };
+
+  if (
+    origin &&
+    getAllowedOrigins(request).has(origin)
+  ) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+
+  return headers;
+}
+
+function assertAllowedOrigin(request) {
+  const origin = request.headers.get("Origin");
+
+  if (
+    origin &&
+    !getAllowedOrigins(request).has(origin)
+  ) {
+    throw Object.assign(
+      new Error(
+        "This website is not allowed to call the API."
+      ),
+      { statusCode: 403 }
+    );
+  }
 }
 
 function decodeJwtPayload(token) {
@@ -426,204 +504,244 @@ async function requestVoiceForgeWav(
 function readLoudCookieHeader(headers) {
   let values = [];
 
-  if (
-    typeof headers.getSetCookie === "function"
-  ) {
+  if (typeof headers.getSetCookie === "function") {
     values = headers.getSetCookie();
   } else {
-    const value =
-      headers.get("set-cookie");
-
+    const value = headers.get("set-cookie");
     if (value) values = [value];
   }
 
   return values
-    .map(value =>
-      String(value).split(";", 1)[0]
-    )
+    .map(value => String(value).split(";", 1)[0])
     .filter(Boolean)
     .join("; ");
 }
 
-function findReadLoudMp3Url(
-  htmlText,
-  pageUrl
-) {
-  const decoded =
-    String(htmlText)
-      .replace(/&amp;/gi, "&")
-      .replace(/&#0*39;/gi, "'")
-      .replace(/&quot;/gi, '"');
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function decodeReadLoudMarkup(value) {
+  return String(value)
+    .replace(/&amp;/gi, "&")
+    .replace(/&#0*39;/gi, "'")
+    .replace(/&quot;/gi, '\"')
+    .replace(/\\u002f/gi, "/")
+    .replace(/\\u003a/gi, ":")
+    .replace(/\\\//g, "/");
+}
+
+function findReadLoudMp3Url(htmlText, pageUrl) {
+  const decoded = decodeReadLoudMarkup(htmlText);
 
   const patterns = [
-    /(?:src|href)\s*=\s*["']([^"'<>]*\/tmp\/[^"'<>]+?\.mp3(?:\?[^"'<>]*)?)["']/gi,
-    /(?:src|href)\s*=\s*["']([^"'<>]+?\.mp3(?:\?[^"'<>]*)?)["']/gi,
+    /(?:src|href|data-src|data-url|url)\s*[=:]\s*["']([^"'<>]+?\.mp3(?:\?[^"'<>]*)?)["']/gi,
+    /(https?:\/\/[^"'<>\s]+?\.mp3(?:\?[^"'<>\s]*)?)/gi,
+    /(\/\/[^"'<>\s]+?\.mp3(?:\?[^"'<>\s]*)?)/gi,
     /(\/tmp\/[^"'<>\s]+?\.mp3(?:\?[^"'<>\s]*)?)/gi,
   ];
 
   for (const pattern of patterns) {
     let match;
-
-    while (
-      (match = pattern.exec(decoded)) !== null
-    ) {
+    while ((match = pattern.exec(decoded)) !== null) {
       try {
-        const url =
-          new URL(match[1], pageUrl);
-
-        if (
-          url.hostname === "readloud.net" &&
-          /\.mp3(?:$|[?#])/i.test(url.href)
-        ) {
+        const url = new URL(match[1], pageUrl);
+        if (url.protocol === "https:" && /\.mp3(?:$|[?#])/i.test(url.href)) {
           return url;
         }
       } catch {}
     }
   }
 
-  throw new Error(
-    "ReadLoud returned HTML, but no generated MP3 URL was found."
+  try {
+    const data = JSON.parse(decoded);
+    const queue = [data];
+    while (queue.length) {
+      const item = queue.shift();
+      if (typeof item === "string") {
+        try {
+          const url = new URL(item, pageUrl);
+          if (url.protocol === "https:" && /\.mp3(?:$|[?#])/i.test(url.href)) {
+            return url;
+          }
+        } catch {}
+      } else if (Array.isArray(item)) {
+        queue.push(...item);
+      } else if (item && typeof item === "object") {
+        queue.push(...Object.values(item));
+      }
+    }
+  } catch {}
+
+  throw new Error("ReadLoud returned HTML, but no generated MP3 URL was found.");
+}
+
+async function downloadReadLoudMp3(url, headers = {}) {
+  const response = await fetchWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "audio/mpeg,audio/*;q=0.9,*/*;q=0.8",
+      ...headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("ReadLoud MP3 download failed: " + await readError(response));
+  }
+
+  const mp3 = Buffer.from(await response.arrayBuffer());
+  if (!isMp3Buffer(mp3, response.headers.get("content-type") || "")) {
+    throw new Error("ReadLoud did not return MP3 audio.");
+  }
+
+  return mp3;
+}
+
+async function requestReadLoudToolMp3(voice, text) {
+  const config = READLOUD_TTSTOOL_VOICES[voice];
+  if (!config) return null;
+
+  const createResponse = await fetchWithTimeout(
+    "https://support.readaloud.app/ttstool/createParts",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json,text/plain,*/*",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
+      },
+      body: JSON.stringify([
+        {
+          voiceId: config.voiceId,
+          ssml: `<speak version="1.0" xml:lang="${config.lang}">${escapeXml(text)}</speak>`,
+        },
+      ]),
+    }
+  );
+
+  if (!createResponse.ok) {
+    throw new Error("ReadLoud TTSTool creation failed: " + await readError(createResponse));
+  }
+
+  const responseText = (await createResponse.text()).trim();
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    throw new Error(`ReadLoud TTSTool returned invalid JSON: ${responseText.slice(0, 500)}`);
+  }
+
+  const first = Array.isArray(result) ? result[0] : result;
+  const partId = typeof first === "string"
+    ? first
+    : first?.id || first?.key || first?.q || first?.partId;
+
+  if (!partId) {
+    throw new Error("ReadLoud TTSTool did not return an audio part ID.");
+  }
+
+  return downloadReadLoudMp3(
+    `https://support.readaloud.app/ttstool/getParts?q=${encodeURIComponent(String(partId))}`,
+    { Referer: "https://support.readaloud.app/" }
   );
 }
 
-async function requestReadLoudMp3(
-  voice,
-  text
-) {
-  const pagePath =
-    READLOUD_VOICES[voice];
+async function requestReadLoudSiteMp3(voice, text) {
+  const pagePath = READLOUD_VOICES[voice];
+  const pageUrl = new URL(pagePath, READLOUD_ORIGIN);
 
-  if (!pagePath) {
+  const commonHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "identity",
+    Connection: "keep-alive",
+  };
+
+  const pageResponse = await fetchWithTimeout(pageUrl, {
+    method: "GET",
+    headers: {
+      ...commonHeaders,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+
+  if (!pageResponse.ok) {
+    throw new Error("ReadLoud page request failed: " + await readError(pageResponse));
+  }
+
+  const cookie = readLoudCookieHeader(pageResponse.headers);
+  const body = new URLSearchParams({
+    but1: text,
+    butS: "0",
+    butP: "0",
+    butPauses: "0",
+    butt0: "Submit",
+  });
+
+  const speechResponse = await fetchWithTimeout(pageUrl, {
+    method: "POST",
+    headers: {
+      ...commonHeaders,
+      Accept: "audio/mpeg,text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      Origin: READLOUD_ORIGIN,
+      Referer: pageUrl.href,
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
+    body,
+  });
+
+  if (!speechResponse.ok) {
+    throw new Error("ReadLoud generation failed: " + await readError(speechResponse));
+  }
+
+  const contentType = speechResponse.headers.get("content-type") || "";
+  const responseBytes = Buffer.from(await speechResponse.arrayBuffer());
+
+  if (isMp3Buffer(responseBytes, contentType)) {
+    return responseBytes;
+  }
+
+  const htmlText = responseBytes.toString("utf8");
+  const mp3Url = findReadLoudMp3Url(htmlText, pageUrl);
+
+  return downloadReadLoudMp3(mp3Url, {
+    ...commonHeaders,
+    Referer: pageUrl.href,
+    ...(cookie ? { Cookie: cookie } : {}),
+  });
+}
+
+async function requestReadLoudMp3(voice, text) {
+  if (!READLOUD_VOICES[voice]) {
     throw Object.assign(
-      new Error(
-        "The requested ReadLoud voice is unavailable."
-      ),
+      new Error("The requested ReadLoud voice is unavailable."),
       { statusCode: 400 }
     );
   }
 
-  const pageUrl =
-    new URL(pagePath, READLOUD_ORIGIN);
+  const errors = [];
 
-  const commonHeaders = {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-    "Accept-Language":
-      "en-US,en;q=0.9",
-    "Accept-Encoding":
-      "identity",
-  };
-
-  const pageResponse =
-    await fetchWithTimeout(
-      pageUrl,
-      {
-        method: "GET",
-        headers: {
-          ...commonHeaders,
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-      }
-    );
-
-  if (!pageResponse.ok) {
-    throw new Error(
-      "ReadLoud page request failed: " +
-      await readError(pageResponse)
-    );
+  if (READLOUD_TTSTOOL_VOICES[voice]) {
+    try {
+      return await requestReadLoudToolMp3(voice, text);
+    } catch (error) {
+      errors.push(`TTSTool: ${error?.message || error}`);
+    }
   }
 
-  const cookie =
-    readLoudCookieHeader(
-      pageResponse.headers
-    );
-
-  const body =
-    new URLSearchParams({
-      but1: text,
-      butS: "0",
-      butP: "0",
-      butPauses: "0",
-      butt0: "Submit",
-    });
-
-  const speechResponse =
-    await fetchWithTimeout(
-      pageUrl,
-      {
-        method: "POST",
-        headers: {
-          ...commonHeaders,
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Content-Type":
-            "application/x-www-form-urlencoded;charset=UTF-8",
-          Origin: READLOUD_ORIGIN,
-          Referer: pageUrl.href,
-          ...(cookie ? { Cookie: cookie } : {}),
-        },
-        body,
-      }
-    );
-
-  if (!speechResponse.ok) {
-    throw new Error(
-      "ReadLoud generation failed: " +
-      await readError(speechResponse)
-    );
+  try {
+    return await requestReadLoudSiteMp3(voice, text);
+  } catch (error) {
+    errors.push(`ReadLoud site: ${error?.message || error}`);
   }
 
-  const htmlText =
-    await speechResponse.text();
-
-  const mp3Url =
-    findReadLoudMp3Url(
-      htmlText,
-      pageUrl
-    );
-
-  const audioResponse =
-    await fetchWithTimeout(
-      mp3Url,
-      {
-        method: "GET",
-        headers: {
-          ...commonHeaders,
-          Accept:
-            "audio/mpeg,audio/*;q=0.9,*/*;q=0.8",
-          Referer: pageUrl.href,
-          ...(cookie ? { Cookie: cookie } : {}),
-        },
-      }
-    );
-
-  if (!audioResponse.ok) {
-    throw new Error(
-      "ReadLoud MP3 download failed: " +
-      await readError(audioResponse)
-    );
-  }
-
-  const mp3 =
-    Buffer.from(
-      await audioResponse.arrayBuffer()
-    );
-
-  if (
-    !isMp3Buffer(
-      mp3,
-      audioResponse.headers.get(
-        "content-type"
-      ) || ""
-    )
-  ) {
-    throw new Error(
-      "ReadLoud did not return MP3 audio."
-    );
-  }
-
-  return mp3;
+  throw new Error(`ReadLoud generation failed. ${errors.join(" | ")}`);
 }
 
 function validateInput(value) {
@@ -717,13 +835,23 @@ function validateInput(value) {
 export default {
   async fetch(request) {
     const corsHeaders =
-      getCorsHeaders();
+      getCorsHeaders(request);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders,
-      });
+      try {
+        assertAllowedOrigin(request);
+
+        return new Response(null, {
+          status: 204,
+          headers: corsHeaders,
+        });
+      } catch (error) {
+        return json(
+          { error: error.message },
+          error.statusCode || 403,
+          corsHeaders
+        );
+      }
     }
 
     if (request.method !== "POST") {
@@ -738,6 +866,8 @@ export default {
     }
 
     try {
+      assertAllowedOrigin(request);
+
       const input =
         validateInput(
           await request.json()
