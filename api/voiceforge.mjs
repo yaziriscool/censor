@@ -129,23 +129,6 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;");
 }
 
-function splitText(text, limit) {
-  const parts = [];
-  let remaining = String(text).trim();
-  while (remaining.length > limit) {
-    let cut = -1;
-    for (const token of [". ", "! ", "? ", "; ", ", ", " "]) {
-      const index = remaining.lastIndexOf(token, limit);
-      if (index > cut) cut = index + token.length;
-    }
-    if (cut < Math.floor(limit * 0.5)) cut = limit;
-    parts.push(remaining.slice(0, cut).trim());
-    remaining = remaining.slice(cut).trim();
-  }
-  if (remaining) parts.push(remaining);
-  return parts;
-}
-
 function concatenateAudio(results) {
   if (results.length === 1) return results[0];
   const first = results[0];
@@ -796,13 +779,8 @@ function validateRequest(value) {
   }
   if (!text) throw Object.assign(new Error("Enter some text first."), { statusCode: 400 });
   const voice = VOICE_CATALOG[voiceId];
-  const maximumLength = voice.source === "voiceforge" ? 500 :
-    voice.source === "elevenlabs" ? 5000 : 300;
-  if (text.length > maximumLength) {
-    throw Object.assign(new Error(
-      `Text must be ${maximumLength} characters or fewer for ${PROVIDER_NAMES[voice.source] || voice.source}.`
-    ), { statusCode: 400 });
-  }
+  // Do not invent or enforce provider character limits here. The full text is
+  // forwarded unchanged and the external service decides what it accepts.
   return {
     voiceId,
     voice,
@@ -847,8 +825,7 @@ export default {
       let result;
 
       // Always send the complete text to the selected provider in one request.
-      // In particular, ReadLoud/TTSTool/OneCore are no longer split into
-      // 150-character chunks.
+      // No arbitrary character limit or automatic text chunking is applied.
       result = await generateProviderAudio(
         input.voiceId, input.voice, input.text, input.providerKey
       );
