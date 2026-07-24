@@ -318,8 +318,8 @@ function findAudioUrl(text, baseUrl) {
 async function pollReadAloudPart(partId, referer = "https://support.readaloud.app/") {
   const url = `https://support.readaloud.app/ttstool/getParts?q=${encodeURIComponent(String(partId))}`;
   let lastMessage = "";
-  for (let attempt = 0; attempt < 14; attempt++) {
-    if (attempt) await sleep(Math.min(350 + attempt * 250, 2200));
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (attempt) await sleep(Math.min(500 + attempt * 300, 3000));
     try {
       const response = await fetchWithTimeout(url, {
         method: "GET",
@@ -355,7 +355,7 @@ async function pollReadAloudPart(partId, referer = "https://support.readaloud.ap
 
 async function generateReadAloudTool(config, text) {
   let lastError;
-  for (let creationAttempt = 0; creationAttempt < 3; creationAttempt++) {
+  for (let creationAttempt = 0; creationAttempt < 4; creationAttempt++) {
     if (creationAttempt) await sleep(700 * creationAttempt);
     try {
       const response = await fetchWithTimeout(
@@ -407,12 +407,12 @@ async function generateReadLoudSite(voice, text) {
   const pageResponse = await fetchWithTimeout(pageUrl, {
     method: "GET",
     headers: { ...commonHeaders, Accept: "text/html,application/xhtml+xml,*/*;q=0.8" },
-  }, 35_000);
+  }, 60_000);
   if (!pageResponse.ok) throw new Error("ReadLoud page request failed: " + await responseError(pageResponse));
   const cookie = readCookieHeader(pageResponse.headers);
   let lastMessage = "";
 
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
     if (attempt) await sleep(700 + attempt * 600);
     const body = new URLSearchParams({
       but1: text,
@@ -433,7 +433,7 @@ async function generateReadLoudSite(voice, text) {
           ...(cookie ? { Cookie: cookie } : {}),
         },
         body,
-      }, 45_000);
+      }, 75_000);
       if (!response.ok) {
         lastMessage = await responseError(response);
         continue;
@@ -449,7 +449,7 @@ async function generateReadLoudSite(voice, text) {
             ...commonHeaders,
             Referer: pageUrl.href,
             ...(cookie ? { Cookie: cookie } : {}),
-          }, "ReadLoud generated audio", 35_000);
+          }, "ReadLoud generated audio", 60_000);
         } catch (error) {
           lastMessage = error?.message || String(error);
         }
@@ -466,13 +466,27 @@ async function generateReadLoudSite(voice, text) {
 
 async function generateGoNuTTS(voiceId, voice, text) {
   const errors = [];
+
+  // Use the original ReadLoud page flow first so the entire submitted text is
+  // synthesized as one continuous result instead of being created as several
+  // separate TTSTool parts.
+  try {
+    return await generateReadLoudSite(voice, text);
+  } catch (error) {
+    errors.push("ReadLoud site: " + (error?.message || error));
+  }
+
+  // Keep TTSTool only as a full-text fallback. We never split the text before
+  // sending it here.
   const fallback = READLOUD_TOOL_FALLBACKS[voiceId];
   if (fallback) {
-    try { return await generateReadAloudTool(fallback, text); }
-    catch (error) { errors.push("TTSTool fallback: " + (error?.message || error)); }
+    try {
+      return await generateReadAloudTool(fallback, text);
+    } catch (error) {
+      errors.push("TTSTool fallback: " + (error?.message || error));
+    }
   }
-  try { return await generateReadLoudSite(voice, text); }
-  catch (error) { errors.push("ReadLoud site: " + (error?.message || error)); }
+
   throw new Error(errors.join(" | "));
 }
 
@@ -832,21 +846,12 @@ export default {
       const input = validateRequest(await request.json());
       let result;
 
-      if (["pollyold", "pollyold2", "onecore"].includes(input.voice.source) &&
-          input.text.length > 160) {
-        const chunks = splitText(input.text, 150);
-        const generated = [];
-        for (const chunk of chunks) {
-          generated.push(await generateProviderAudio(
-            input.voiceId, input.voice, chunk, input.providerKey
-          ));
-        }
-        result = concatenateAudio(generated);
-      } else {
-        result = await generateProviderAudio(
-          input.voiceId, input.voice, input.text, input.providerKey
-        );
-      }
+      // Always send the complete text to the selected provider in one request.
+      // In particular, ReadLoud/TTSTool/OneCore are no longer split into
+      // 150-character chunks.
+      result = await generateProviderAudio(
+        input.voiceId, input.voice, input.text, input.providerKey
+      );
 
       return new Response(result.buffer, {
         status: 200,
