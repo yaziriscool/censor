@@ -112,20 +112,53 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
   .mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}
   .mobile .button{min-width:130px;flex:0 0 auto}
 }
+
+
+.label-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.label-row .label{margin:0}
+.text-btn{padding:3px;background:transparent;color:var(--yellow-dim);cursor:pointer;font-size:.72rem;font-weight:850}
+.text-btn:hover{color:var(--yellow)}
+.checks{display:flex;flex-wrap:wrap;gap:11px 18px;margin-top:9px}
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.segmented label{min-width:0;cursor:pointer}
+.segmented input{position:absolute;opacity:0;pointer-events:none}
+.segmented span{min-height:41px;display:grid;place-items:center;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--dim);font-size:.76rem;font-weight:850;text-align:center}
+.segmented input:checked + span{border-color:var(--yellow);background:var(--yellow);color:var(--ink)}
+.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.preset{position:relative;min-width:0;cursor:pointer}
+.preset.wide{grid-column:1/-1}
+.preset input{position:absolute;opacity:0;pointer-events:none}
+.preset span{display:block;border-inline:1px solid var(--border);background:var(--panel2)}
+.preset .name{padding:10px 10px 3px;border-top:1px solid var(--border);border-radius:9px 9px 0 0;font-size:.8rem;font-weight:850}
+.preset .desc{min-height:36px;padding:3px 10px 10px;border-bottom:1px solid var(--border);border-radius:0 0 9px 9px;color:var(--dim);font-size:.68rem}
+.preset input:checked ~ span{border-color:var(--yellow-dim);background:rgba(250,226,157,.09)}
+.preset input:checked + .name{color:var(--yellow)}
+.custom{margin-top:11px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+.unit{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
+.unit input{min-width:0;padding:8px 9px;border:0;background:transparent;color:var(--text)}
+.unit span{padding-right:8px;color:var(--faint);font-size:.68rem}
+.divider{height:1px;margin:15px 0;background:var(--border)}
+.effect-grid{display:grid;gap:15px;padding:13px;border:1px solid var(--border);border-radius:11px;background:var(--panel2)}
+.inline-setting{display:grid;grid-template-columns:85px minmax(0,1fr);align-items:center;gap:11px;margin-top:11px}
+.inline-setting>strong{color:var(--dim);font-size:.72rem}
+.setting-extra{grid-column:2;margin-top:8px}
+.api-key-box{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.1)}
+@media(max-width:680px){.presets{grid-template-columns:1fr}.preset.wide{grid-column:auto}.segmented{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.inline-setting{grid-template-columns:1fr}.setting-extra{grid-column:1}}
 </style>
 </head>
 <body>
+
 <div class="topline"></div>
 
 <header class="shell">
   <div>
     <p class="kicker">Text to speech</p>
     <h1>Voice Generator</h1>
-    <p class="subtitle">Choose a voice, enter text, censor words with brackets, and adjust playback speed or distortion in real time.</p>
+    <p class="subtitle">Choose a voice, enter text, bake speed and distortion into the audio, then censor bracketed words at their real spoken timestamps.</p>
   </div>
   <div class="badges">
     <span class="badge" id="voiceStatus">Loading voices…</span>
-    <span class="badge">Effects run in real time</span>
+    <span class="badge" id="runtimeBadge">Effects baked into download</span>
   </div>
 </header>
 
@@ -155,9 +188,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
     </div>
 
     <div class="censor-help" style="margin-top:13px">
-      45 VoiceForge legacy voices and 40 ReadLoud voices are built into this
-      page. Voice generation runs through the private Vercel API, so no
-      VoiceForge credentials are included in the HTML.
+      The existing 45 VoiceForge legacy voices and 40 ReadLoud voices are unchanged. Voice generation still runs through the private Vercel API.
     </div>
   </article>
 
@@ -167,7 +198,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       <button class="button ghost small" id="clearText" type="button">Clear</button>
     </div>
 
-    <textarea id="textInput" maxlength="6000" placeholder="Example: Hello there. This [word] will be censored."></textarea>
+    <textarea id="textInput" maxlength="6000" placeholder="Example: Hello there. This [word] will be censored naturally in place."></textarea>
     <div class="voice-meta">
       <span class="tag" id="charCount">0 / 6000</span>
       <span class="tag" id="censorCount">0 bracketed parts</span>
@@ -175,26 +206,99 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 
     <div class="setting">
       <div class="censor-help">
-        Put brackets around text that should be censored:
-        <code>Hello [fuck] you</code>
+        Put brackets around the exact words or phrases to censor. The full uncensored sentence is generated first, so speech does not pause around the censor: <code>Hello [fuck] you</code>
       </div>
+      <label class="check">
+        <input id="enableCensor" type="checkbox" checked>
+        <span>Censor bracketed text after speech generation and effects</span>
+      </label>
 
+      <div class="api-key-box" id="alignmentBox">
+        <div class="label-row">
+          <label class="label" for="apiKey">ElevenLabs API key — used only for word timestamps</label>
+          <button class="text-btn" id="showKeyButton" type="button">Show</button>
+        </div>
+        <input class="text" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Required only when bracket censoring is used">
+        <div class="checks">
+          <label class="check"><input id="rememberKey" type="checkbox"><span>Remember in this browser</span></label>
+          <label class="check"><input id="keyterms" type="checkbox"><span>Boost bracketed words <span style="color:var(--yellow-dim)">extra API cost</span></span></label>
+        </div>
+        <p class="note">The processed WAV is sent directly from your browser to ElevenLabs Scribe v2 to obtain word timestamps. The key is not sent to the site host.</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><p class="kicker">3 · Audio effects</p><h2>Bake effects into the result</h2></div></div>
+    <div class="effect-grid">
+      <label class="range">
+        <span>Distortion</span>
+        <input id="distortion" type="range" min="0" max="100" step="1" value="0">
+        <output id="distortionValue">Off</output>
+      </label>
+      <label class="range">
+        <span>Speed</span>
+        <input id="speed" type="range" min="25" max="300" step="5" value="100">
+        <output id="speedValue">1.00×</output>
+      </label>
+      <p class="note">These effects are processed before censor timing is measured and are permanently included in both preview and download. Speed uses pitch-preserving FFmpeg processing when available.</p>
+      <p class="warning">High distortion can be extremely loud. The final output is peak-limited, but start low.</p>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><p class="kicker">4 · Censor style</p><h2>Length, timing, and effect</h2></div></div>
+
+    <div class="presets" role="radiogroup">
+      <label class="preset"><input type="radio" name="preset" value="very_short"><span class="name">Very Short</span><span class="desc">Middle 35%</span></label>
+      <label class="preset"><input type="radio" name="preset" value="short"><span class="name">Short</span><span class="desc">Middle 55%</span></label>
+      <label class="preset"><input type="radio" name="preset" value="standard" checked><span class="name">Standard</span><span class="desc">80% + light padding</span></label>
+      <label class="preset"><input type="radio" name="preset" value="full"><span class="name">Full / Strict</span><span class="desc">Entire word + padding</span></label>
+      <label class="preset wide"><input type="radio" name="preset" value="custom"><span class="name">Custom</span><span class="desc">Exact coverage and padding</span></label>
+    </div>
+
+    <div class="custom hidden" id="customBox">
+      <label class="range">
+        <span>Coverage</span>
+        <input id="coverage" type="range" min="10" max="150" step="5" value="80">
+        <output id="coverageOut">80%</output>
+      </label>
       <div class="two">
-        <label class="check">
-          <input id="enableCensor" type="checkbox" checked>
-          <span>Censor bracketed text</span>
-        </label>
-        <label>
-          <span class="label">Censor sound</span>
-          <select id="censorMode">
-            <option value="beep" selected>Beep</option>
-            <option value="silence">Silence</option>
-          </select>
-        </label>
+        <label><span class="label">Padding before</span><span class="unit"><input id="padBefore" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
+        <label><span class="label">Padding after</span><span class="unit"><input id="padAfter" type="number" min="0" max="500" step="5" value="0"><span>ms</span></span></label>
       </div>
     </div>
 
-    <button class="button primary large" id="generateButton" type="button">Generate voice</button>
+    <div class="divider"></div>
+
+    <div class="inline-setting">
+      <strong>Timing</strong>
+      <div class="segmented">
+        <label><input type="radio" name="timing" value="-70"><span>Early</span></label>
+        <label><input type="radio" name="timing" value="0" checked><span>Centered</span></label>
+        <label><input type="radio" name="timing" value="70"><span>Late</span></label>
+        <label><input type="radio" name="timing" value="custom"><span>Custom</span></label>
+      </div>
+      <div class="setting-extra hidden" id="timingBox">
+        <label class="label" for="timingCustom">Custom shift</label>
+        <span class="unit" style="max-width:180px"><input id="timingCustom" type="number" min="-500" max="500" step="5" value="0"><span>ms</span></span>
+      </div>
+    </div>
+
+    <div class="inline-setting">
+      <strong>Effect</strong>
+      <div class="segmented">
+        <label><input type="radio" name="effect" value="beep" checked><span>Beep</span></label>
+        <label><input type="radio" name="effect" value="mute"><span>Silence</span></label>
+      </div>
+      <label class="range setting-extra" id="volumeRow">
+        <span>Beep volume</span>
+        <input id="beepVolume" type="range" min="0" max="100" step="1" value="42">
+        <output id="volumeOut">42%</output>
+      </label>
+    </div>
+
+    <button class="button primary large" id="generateButton" type="button">Generate processed voice</button>
 
     <div class="progress-box hidden" id="progressBox">
       <div class="track"><div class="bar" id="progressBar"></div></div>
@@ -204,35 +308,13 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 
   <article class="panel hidden" id="resultPanel">
     <div class="panel-head">
-      <div><p class="kicker">3 · Player</p><h2>Preview result</h2></div>
+      <div><p class="kicker">5 · Player</p><h2>Preview processed result</h2></div>
       <button class="button ghost small" id="generateAgain" type="button">Generate again</button>
     </div>
 
-    <div class="player-wrap">
-      <audio id="player" controls preload="metadata"></audio>
-    </div>
-
-    <div class="effects">
-      <label class="range">
-        <span>Distortion</span>
-        <input id="distortion" type="range" min="0" max="100" step="1" value="0">
-        <output id="distortionValue">Off</output>
-      </label>
-
-      <label class="range">
-        <span>Speed</span>
-        <input id="speed" type="range" min="25" max="300" step="5" value="100">
-        <output id="speedValue">1.00×</output>
-      </label>
-
-      <p class="note">Speed keeps the original pitch. Distortion and speed change during playback without regenerating the voice.</p>
-      <p class="warning">High distortion can be extremely loud. Start low.</p>
-    </div>
-
-    <div class="downloads">
-      <a class="button secondary" id="downloadButton" download="tts.wav">Download generated WAV</a>
-    </div>
-    <p class="note">The download includes the generated voice and bracket censoring. Distortion and speed are live player controls.</p>
+    <div class="player-wrap"><audio id="player" controls preload="metadata"></audio></div>
+    <div class="downloads"><a class="button secondary" id="downloadButton" download="tts.wav">Download processed WAV</a></div>
+    <p class="note">The downloaded WAV is exactly what the player previews: speed, distortion, and censoring are already baked in.</p>
   </article>
 
 </section>
@@ -244,16 +326,11 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
       <span class="status-dot" id="statusDot"></span>
     </div>
     <p class="status-message" id="statusMessage">Choose a voice and enter text.</p>
-
     <div class="stats">
       <div><span>Segments</span><strong id="segmentStat">0</strong></div>
       <div><span>Duration</span><strong id="durationStat">0:00</strong></div>
     </div>
-
-    <div class="log-head">
-      <span>Log</span>
-      <button class="button ghost small" id="clearLog" type="button">Clear</button>
-    </div>
+    <div class="log-head"><span>Log</span><button class="button ghost small" id="clearLog" type="button">Clear</button></div>
     <pre class="log" id="log">Ready.
 </pre>
   </article>
@@ -266,56 +343,46 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
 </div>
 
 <script>
+
 (() => {
 "use strict";
 
 const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
 
 const E = {
-  voiceSelect: $("#voiceSelect"),
-  voiceSearch: $("#voiceSearch"),
-  reloadVoices: $("#reloadVoices"),
-  voiceStatus: $("#voiceStatus"),
-  voiceProvider: $("#voiceProvider"),
-  voiceCount: $("#voiceCount"),
-  textInput: $("#textInput"),
-  clearText: $("#clearText"),
-  charCount: $("#charCount"),
-  censorCount: $("#censorCount"),
-  enableCensor: $("#enableCensor"),
-  censorMode: $("#censorMode"),
-  generateButton: $("#generateButton"),
-  progressBox: $("#progressBox"),
-  progressBar: $("#progressBar"),
-  progressText: $("#progressText"),
-  resultPanel: $("#resultPanel"),
-  player: $("#player"),
-  distortion: $("#distortion"),
-  distortionValue: $("#distortionValue"),
-  speed: $("#speed"),
-  speedValue: $("#speedValue"),
-  downloadButton: $("#downloadButton"),
-  generateAgain: $("#generateAgain"),
-  statusTitle: $("#statusTitle"),
-  statusMessage: $("#statusMessage"),
-  statusDot: $("#statusDot"),
-  segmentStat: $("#segmentStat"),
-  durationStat: $("#durationStat"),
-  clearLog: $("#clearLog"),
-  log: $("#log"),
-  mobileText: $("#mobileText"),
-  mobileButton: $("#mobileButton"),
+  voiceSelect: $("#voiceSelect"), voiceSearch: $("#voiceSearch"), reloadVoices: $("#reloadVoices"),
+  voiceStatus: $("#voiceStatus"), voiceProvider: $("#voiceProvider"), voiceCount: $("#voiceCount"),
+  runtimeBadge: $("#runtimeBadge"), textInput: $("#textInput"), clearText: $("#clearText"),
+  charCount: $("#charCount"), censorCount: $("#censorCount"), enableCensor: $("#enableCensor"),
+  apiKey: $("#apiKey"), rememberKey: $("#rememberKey"), keyterms: $("#keyterms"),
+  showKeyButton: $("#showKeyButton"), alignmentBox: $("#alignmentBox"), distortion: $("#distortion"),
+  distortionValue: $("#distortionValue"), speed: $("#speed"), speedValue: $("#speedValue"),
+  customBox: $("#customBox"), coverage: $("#coverage"), coverageOut: $("#coverageOut"),
+  padBefore: $("#padBefore"), padAfter: $("#padAfter"), timingBox: $("#timingBox"),
+  timingCustom: $("#timingCustom"), volumeRow: $("#volumeRow"), beepVolume: $("#beepVolume"),
+  volumeOut: $("#volumeOut"), generateButton: $("#generateButton"), progressBox: $("#progressBox"),
+  progressBar: $("#progressBar"), progressText: $("#progressText"), resultPanel: $("#resultPanel"),
+  player: $("#player"), downloadButton: $("#downloadButton"), generateAgain: $("#generateAgain"),
+  statusTitle: $("#statusTitle"), statusMessage: $("#statusMessage"), statusDot: $("#statusDot"),
+  segmentStat: $("#segmentStat"), durationStat: $("#durationStat"), clearLog: $("#clearLog"),
+  log: $("#log"), mobileText: $("#mobileText"), mobileButton: $("#mobileButton"),
 };
 
 const TTS_ENDPOINT =
-  location.hostname === "censor-slwi.vercel.app" ||
-  location.hostname.startsWith("censor-slwi-")
+  location.hostname === "censor-slwi.vercel.app" || location.hostname.startsWith("censor-slwi-")
     ? "/api/voiceforge"
     : "https://censor-slwi.vercel.app/api/voiceforge";
 
 const TARGET_SAMPLE_RATE = 44100;
 const MAX_PROVIDER_CHARS = 260;
 const REQUEST_TIMEOUT_MS = 120000;
+const PRESETS = Object.freeze({
+  very_short: { coverage: .35, before: 0, after: 0, merge: 0 },
+  short: { coverage: .55, before: 0, after: 0, merge: 0 },
+  standard: { coverage: .80, before: 10, after: 15, merge: 10 },
+  full: { coverage: 1, before: 50, after: 65, merge: 25 },
+});
 
 const ALL_VOICES = Object.freeze([
   {
@@ -1001,829 +1068,908 @@ const ALL_VOICES = Object.freeze([
 ]);
 
 const state = {
-  voices: [],
-  visibleVoices: [],
-  busy: false,
-  audioContext: null,
-  playerSource: null,
-  preGain: null,
-  shaper: null,
-  outputGain: null,
-  resultURL: null,
-  resultBlob: null,
-  cache: new Map(),
+  voices: [], visibleVoices: [], busy: false, audioContext: null,
+  resultURL: null, resultBlob: null, cache: new Map(),
+  ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null, ffmpegClassWorkerURL: null,
 };
 
-function log(message) {
-  E.log.textContent += message + "\n";
-  E.log.scrollTop = E.log.scrollHeight;
-}
-
+function clamp(value, minimum, maximum) { return Math.max(minimum, Math.min(maximum, value)); }
+function log(message) { E.log.textContent += message + "\n"; E.log.scrollTop = E.log.scrollHeight; }
 function setStatus(title, message, type = "") {
   E.statusTitle.textContent = title;
   E.statusMessage.textContent = message;
   E.statusDot.className = "status-dot" + (type ? " " + type : "");
 }
-
 function setProgress(percent, message) {
   E.progressBox.classList.remove("hidden");
-  E.progressBar.style.width = Math.max(0, Math.min(100, percent)) + "%";
+  E.progressBar.style.width = clamp(percent, 0, 100) + "%";
   E.progressText.textContent = message;
 }
-
 function setBusy(busy, message = "") {
   state.busy = busy;
-  E.generateButton.disabled = busy;
-  E.mobileButton.disabled = busy;
-  E.reloadVoices.disabled = busy;
-  E.voiceSelect.disabled = busy;
-  E.voiceSearch.disabled = busy;
-  E.textInput.disabled = busy;
+  for (const element of [E.generateButton, E.mobileButton, E.reloadVoices, E.voiceSelect, E.textInput]) {
+    element.disabled = busy;
+  }
   if (busy) setStatus("Working", message, "busy");
 }
-
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";
   const total = Math.max(0, Math.round(seconds));
-  const minutes = Math.floor(total / 60);
-  const secs = total % 60;
-  return minutes + ":" + String(secs).padStart(2, "0");
+  return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
 }
-
-function updateTextInfo() {
-  const text = E.textInput.value;
-  const count = (text.match(/\[[^\[\]]+\]/g) || []).length;
-  E.charCount.textContent = text.length + " / 6000";
-  E.censorCount.textContent =
-    count + " bracketed part" + (count === 1 ? "" : "s");
-  E.mobileText.textContent =
-    text.trim() ? text.slice(0, 42) : "Enter text to begin";
-}
-
-function selectedVoice() {
-  const index = Number(E.voiceSelect.value);
-  return Number.isInteger(index) ? state.visibleVoices[index] || null : null;
-}
-
-function providerName(source) {
-  return source === "voiceforge" ? "VoiceForge" : "ReadLoud";
-}
-
+function providerName(source) { return source === "voiceforge" ? "VoiceForge" : "ReadLoud"; }
+function selectedVoice() { return state.visibleVoices[Number(E.voiceSelect.value)] || null; }
 function updateVoiceMeta() {
   const voice = selectedVoice();
-  E.voiceProvider.textContent =
-    voice ? "Provider: " + providerName(voice.source) : "Provider: —";
+  E.voiceProvider.textContent = voice ? "Provider: " + providerName(voice.source) : "Provider: —";
 }
-
 function loadVoices() {
-  const previousId = selectedVoice()?.id;
-
-  E.voiceStatus.textContent = "Loading voices…";
-  state.voices = ALL_VOICES
-    .map(voice => ({ ...voice }))
-    .sort((first, second) =>
-      first.label.localeCompare(second.label, undefined, {
-        sensitivity: "base",
-      })
-    );
-
-  filterVoices(previousId || "David");
-
+  const previous = selectedVoice()?.id || "David";
+  state.voices = ALL_VOICES.map(voice => ({...voice}));
+  filterVoices(previous);
   E.voiceStatus.textContent = state.voices.length + " voices ready";
-  setStatus(
-    "Ready",
-    "Choose a VoiceForge or ReadLoud voice and enter text.",
-    ""
-  );
   log(state.voices.length + " voices loaded.");
 }
-
 function filterVoices(preferredId = selectedVoice()?.id) {
   const query = E.voiceSearch.value.trim().toLowerCase();
-
-  state.visibleVoices = state.voices.filter(voice => {
-    if (!query) return true;
-
-    return [
-      voice.label,
-      voice.id,
-      voice.source,
-      voice.country,
-      voice.language,
-      voice.gender,
-      providerName(voice.source),
-    ].some(value => String(value || "").toLowerCase().includes(query));
-  });
-
+  state.visibleVoices = state.voices.filter(voice => !query ||
+    voice.label.toLowerCase().includes(query) || voice.id.toLowerCase().includes(query) ||
+    voice.source.toLowerCase().includes(query) || String(voice.country || "").toLowerCase().includes(query));
   E.voiceSelect.textContent = "";
-
   state.visibleVoices.forEach((voice, index) => {
     const option = document.createElement("option");
     option.value = String(index);
-    option.textContent =
-      voice.label + " — " + providerName(voice.source);
+    option.textContent = voice.label + " — " + providerName(voice.source);
     E.voiceSelect.appendChild(option);
   });
-
-  let selectedIndex = state.visibleVoices.findIndex(
-    voice => voice.id === preferredId
-  );
-
-  if (selectedIndex < 0 && !query) {
-    selectedIndex = state.visibleVoices.findIndex(
-      voice => voice.source === "voiceforge" && voice.id === "David"
-    );
-  }
-
-  if (selectedIndex < 0 && state.visibleVoices.length) selectedIndex = 0;
-  if (selectedIndex >= 0) E.voiceSelect.value = String(selectedIndex);
-
-  E.voiceCount.textContent =
-    state.visibleVoices.length + " voice" +
-    (state.visibleVoices.length === 1 ? "" : "s");
-
+  const index = state.visibleVoices.findIndex(voice => voice.id === preferredId);
+  if (index >= 0) E.voiceSelect.value = String(index);
+  E.voiceCount.textContent = state.visibleVoices.length + " voices";
   updateVoiceMeta();
 }
 
-function parseBracketText(rawText, censorEnabled) {
-  if (!censorEnabled) {
-    return [{
-      text: rawText.replace(/\[([^\[\]]+)\]/g, "$1"),
-      censored: false,
-    }];
+function normalizeWord(value) {
+  return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function tokenizeWords(text, censored = false) {
+  const words = [];
+  const expression = /[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu;
+  let match;
+  while ((match = expression.exec(text)) !== null) {
+    const normalized = normalizeWord(match[0]);
+    if (normalized) words.push({ text: match[0], normalized, censored });
   }
-
-  const segments = [];
-  const pattern = /\[([^\[\]]+)\]/g;
+  return words;
+}
+function parseAnnotatedText(rawText) {
+  const sections = [];
+  const expression = /\[([^\[\]]+)\]/g;
   let cursor = 0;
   let match;
-
-  while ((match = pattern.exec(rawText)) !== null) {
-    if (match.index > cursor) {
-      segments.push({
-        text: rawText.slice(cursor, match.index),
-        censored: false,
-      });
-    }
-
-    segments.push({
-      text: match[1],
-      censored: true,
-    });
-
+  while ((match = expression.exec(rawText)) !== null) {
+    if (match.index > cursor) sections.push({ text: rawText.slice(cursor, match.index), censored: false });
+    sections.push({ text: match[1], censored: true });
     cursor = match.index + match[0].length;
   }
-
-  if (cursor < rawText.length) {
-    segments.push({
-      text: rawText.slice(cursor),
-      censored: false,
-    });
-  }
-
-  return segments.filter(segment => segment.text.trim());
+  if (cursor < rawText.length) sections.push({ text: rawText.slice(cursor), censored: false });
+  if (!sections.length) sections.push({ text: rawText, censored: false });
+  return {
+    plainText: sections.map(section => section.text).join(""),
+    sourceWords: sections.flatMap(section => tokenizeWords(section.text, section.censored)),
+    bracketCount: sections.filter(section => section.censored).length,
+  };
+}
+function updateTextInfo() {
+  const parsed = parseAnnotatedText(E.textInput.value);
+  E.charCount.textContent = E.textInput.value.length + " / 6000";
+  E.censorCount.textContent = parsed.bracketCount + " bracketed part" + (parsed.bracketCount === 1 ? "" : "s");
+  E.mobileText.textContent = E.textInput.value.trim() ? E.textInput.value.trim().slice(0, 42) : "Enter text to begin";
+  E.alignmentBox.classList.toggle("hidden", !E.enableCensor.checked || parsed.bracketCount === 0);
+}
+function presetChoice() { return $('input[name="preset"]:checked')?.value || "standard"; }
+function effectChoice() { return $('input[name="effect"]:checked')?.value || "beep"; }
+function timingShift() {
+  const value = $('input[name="timing"]:checked')?.value || "0";
+  return value === "custom" ? clamp(Number(E.timingCustom.value) || 0, -500, 500) : Number(value);
+}
+function updateSettingsUI() {
+  E.distortionValue.textContent = Number(E.distortion.value) === 0 ? "Off" : E.distortion.value + "%";
+  E.speedValue.textContent = (Number(E.speed.value) / 100).toFixed(2) + "×";
+  E.coverageOut.textContent = E.coverage.value + "%";
+  E.volumeOut.textContent = E.beepVolume.value + "%";
+  E.customBox.classList.toggle("hidden", presetChoice() !== "custom");
+  E.timingBox.classList.toggle("hidden", $('input[name="timing"]:checked')?.value !== "custom");
+  E.volumeRow.classList.toggle("hidden", effectChoice() !== "beep");
 }
 
 function splitLongText(text, limit = MAX_PROVIDER_CHARS) {
   const output = [];
   let remaining = text.trim();
-
   while (remaining.length > limit) {
     let cut = -1;
-
     for (const token of [". ", "! ", "? ", "; ", ", ", " "]) {
       const index = remaining.lastIndexOf(token, limit);
       if (index > cut) cut = index + token.length;
     }
-
-    if (cut < Math.floor(limit * 0.55)) cut = limit;
-
+    if (cut < Math.floor(limit * .55)) cut = limit;
     output.push(remaining.slice(0, cut).trim());
     remaining = remaining.slice(cut).trim();
   }
-
   if (remaining) output.push(remaining);
   return output;
 }
-
-function expandSegments(segments) {
-  const output = [];
-
-  for (const segment of segments) {
-    for (const chunk of splitLongText(segment.text)) {
-      output.push({
-        text: chunk,
-        censored: segment.censored,
-      });
-    }
-  }
-
-  return output;
-}
-
-async function fetchWithTimeout(
-  url,
-  options,
-  timeout = REQUEST_TIMEOUT_MS
-) {
+async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  try { return await fetch(url, {...options, signal: controller.signal}); }
+  finally { clearTimeout(timer); }
 }
-
-async function readResponseError(response) {
-  const contentType = response.headers.get("content-type") || "";
-
-  if (/json/i.test(contentType)) {
-    const data = await response.json().catch(() => ({}));
-    return String(data.error || data.message || "Unknown server error");
-  }
-
-  return (await response.text()).slice(0, 1200);
-}
-
 async function audioBlobFromResponse(response) {
   if (!response.ok) {
-    const message = await readResponseError(response);
-    throw new Error(
-      "TTS request failed: HTTP " + response.status +
-      (message ? " " + message : "")
-    );
+    const text = (await response.text()).slice(0, 1600);
+    throw new Error("TTS request failed: HTTP " + response.status + " " + text);
   }
-
-  const contentType = response.headers.get("content-type") || "";
-
-  if (/^audio\//i.test(contentType) || /octet-stream/i.test(contentType)) {
-    return await response.blob();
-  }
-
-  throw new Error(
-    "The TTS server returned " +
-    (contentType || "an unknown format") +
-    " instead of audio."
-  );
-}
-
-async function requestServerAudio(voice, text) {
-  const response = await fetchWithTimeout(
-    TTS_ENDPOINT,
-    {
-      method: "POST",
-      headers: {
-        Accept: "audio/wav, audio/mpeg, application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: voice.source,
-        voice: voice.id,
-        text,
-      }),
+  const type = response.headers.get("content-type") || "";
+  if (/^audio\//i.test(type) || /octet-stream/i.test(type)) return await response.blob();
+  if (/json/i.test(type)) {
+    const data = await response.json();
+    const base64 = data.audio_base64 || data.audioBase64 || data.audio || data.data;
+    if (typeof base64 === "string" && !/^https?:/i.test(base64)) {
+      const cleaned = base64.replace(/^data:audio\/[^;]+;base64,/, "");
+      const binary = atob(cleaned);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+      return new Blob([bytes], {type: data.mime_type || "audio/mpeg"});
     }
-  );
-
+  }
+  throw new Error("The TTS API returned an unsupported response type: " + (type || "unknown"));
+}
+async function requestServerAudio(voice, text) {
+  const response = await fetchWithTimeout(TTS_ENDPOINT, {
+    method: "POST",
+    headers: {Accept: "audio/wav, audio/mpeg, application/json", "Content-Type": "application/json"},
+    body: JSON.stringify({provider: voice.source, voice: voice.id, text}),
+  });
   return await audioBlobFromResponse(response);
 }
-
 async function synthesizeBlob(voice, text) {
-  const cacheKey =
-    voice.source + "\u0000" + voice.id + "\u0000" + text;
-
-  if (state.cache.has(cacheKey)) {
-    return state.cache.get(cacheKey);
-  }
-
+  const key = voice.source + "\u0000" + voice.id + "\u0000" + text;
+  if (state.cache.has(key)) return state.cache.get(key);
   const promise = requestServerAudio(voice, text);
-  state.cache.set(cacheKey, promise);
-
-  try {
-    return await promise;
-  } catch (error) {
-    state.cache.delete(cacheKey);
-
+  state.cache.set(key, promise);
+  try { return await promise; }
+  catch (error) {
+    state.cache.delete(key);
     if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      throw new Error(
-        "Could not reach the TTS API at " + TTS_ENDPOINT +
-        " from " + location.origin + ". The API deployment or CORS response is unavailable."
-      );
+      throw new Error("Could not reach the TTS API at " + TTS_ENDPOINT + " from " + location.origin + ".");
     }
-
     throw error;
   }
 }
-
 function ensureAudioContext() {
   if (!state.audioContext) {
     const Context = window.AudioContext || window.webkitAudioContext;
-
-    if (!Context) {
-      throw new Error("Web Audio is not supported in this browser.");
-    }
-
+    if (!Context) throw new Error("Web Audio is not supported in this browser.");
     state.audioContext = new Context();
   }
-
   return state.audioContext;
 }
-
 async function decodeAudio(blob) {
   const context = ensureAudioContext();
-  const arrayBuffer = await blob.arrayBuffer();
-  return await context.decodeAudioData(arrayBuffer.slice(0));
+  const bytes = await blob.arrayBuffer();
+  return await context.decodeAudioData(bytes.slice(0));
 }
-
 function toMono44100(buffer) {
-  const sourceLength = buffer.length;
-  const sourceRate = buffer.sampleRate;
-  const mono = new Float32Array(sourceLength);
-
-  for (
-    let channel = 0;
-    channel < buffer.numberOfChannels;
-    channel++
-  ) {
+  const mono = new Float32Array(buffer.length);
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
     const data = buffer.getChannelData(channel);
-
-    for (let index = 0; index < sourceLength; index++) {
-      mono[index] += data[index] / buffer.numberOfChannels;
-    }
+    for (let index = 0; index < buffer.length; index++) mono[index] += data[index] / buffer.numberOfChannels;
   }
-
-  if (sourceRate === TARGET_SAMPLE_RATE) return mono;
-
-  const targetLength = Math.max(
-    1,
-    Math.round(sourceLength * TARGET_SAMPLE_RATE / sourceRate)
-  );
-
-  const output = new Float32Array(targetLength);
-  const ratio = sourceRate / TARGET_SAMPLE_RATE;
-
-  for (let index = 0; index < targetLength; index++) {
-    const position = index * ratio;
-    const left = Math.floor(position);
-    const right = Math.min(sourceLength - 1, left + 1);
-    const amount = position - left;
-
-    output[index] =
-      mono[left] * (1 - amount) +
-      mono[right] * amount;
+  if (buffer.sampleRate === TARGET_SAMPLE_RATE) return mono;
+  const length = Math.max(1, Math.round(mono.length * TARGET_SAMPLE_RATE / buffer.sampleRate));
+  const output = new Float32Array(length);
+  const ratio = buffer.sampleRate / TARGET_SAMPLE_RATE;
+  for (let index = 0; index < length; index++) {
+    const position = index * ratio, left = Math.floor(position), right = Math.min(mono.length - 1, left + 1), amount = position - left;
+    output[index] = mono[left] * (1 - amount) + mono[right] * amount;
   }
-
   return output;
 }
-
 function applyEdgeFade(samples, milliseconds = 6) {
-  const fade = Math.min(
-    Math.round(TARGET_SAMPLE_RATE * milliseconds / 1000),
-    Math.floor(samples.length / 2)
-  );
-
+  const fade = Math.min(Math.round(TARGET_SAMPLE_RATE * milliseconds / 1000), Math.floor(samples.length / 2));
   for (let index = 0; index < fade; index++) {
     const amount = index / Math.max(1, fade);
     samples[index] *= amount;
     samples[samples.length - 1 - index] *= amount;
   }
-
   return samples;
 }
-
-function makeCensorAudio(length, mode) {
-  const output = new Float32Array(length);
-
-  if (mode === "silence") return output;
-
-  const frequency = 1000;
-  const amplitude = 0.42;
-
-  for (let index = 0; index < length; index++) {
-    output[index] =
-      Math.sin(
-        2 * Math.PI * frequency * index / TARGET_SAMPLE_RATE
-      ) * amplitude;
+function crossfadeConcatenate(parts, milliseconds = 8) {
+  if (!parts.length) return new Float32Array();
+  let output = parts[0].slice();
+  const requested = Math.round(TARGET_SAMPLE_RATE * milliseconds / 1000);
+  for (let partIndex = 1; partIndex < parts.length; partIndex++) {
+    const part = parts[partIndex];
+    const overlap = Math.min(requested, output.length, part.length);
+    const next = new Float32Array(output.length + part.length - overlap);
+    next.set(output.subarray(0, output.length - overlap), 0);
+    const base = output.length - overlap;
+    for (let index = 0; index < overlap; index++) {
+      const amount = index / Math.max(1, overlap - 1);
+      next[base + index] = output[base + index] * (1 - amount) + part[index] * amount;
+    }
+    next.set(part.subarray(overlap), output.length);
+    output = next;
   }
-
-  return applyEdgeFade(output, 8);
-}
-
-function concatenate(parts) {
-  const length = parts.reduce(
-    (sum, part) => sum + part.length,
-    0
-  );
-
-  const output = new Float32Array(length);
-  let offset = 0;
-
-  for (const part of parts) {
-    output.set(part, offset);
-    offset += part.length;
-  }
-
   return output;
 }
-
 function floatToWav(samples) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
-
-  function writeString(offset, value) {
-    for (let index = 0; index < value.length; index++) {
-      view.setUint8(offset + index, value.charCodeAt(index));
-    }
-  }
-
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + samples.length * 2, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, TARGET_SAMPLE_RATE, true);
-  view.setUint32(28, TARGET_SAMPLE_RATE * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, "data");
-  view.setUint32(40, samples.length * 2, true);
-
+  const write = (offset, value) => { for (let index = 0; index < value.length; index++) view.setUint8(offset + index, value.charCodeAt(index)); };
+  write(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); write(8, "WAVE"); write(12, "fmt ");
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, TARGET_SAMPLE_RATE, true); view.setUint32(28, TARGET_SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true); write(36, "data"); view.setUint32(40, samples.length * 2, true);
   let offset = 44;
-
-  for (let index = 0; index < samples.length; index++) {
-    const sample = Math.max(-1, Math.min(1, samples[index]));
-
-    view.setInt16(
-      offset,
-      sample < 0 ? sample * 32768 : sample * 32767,
-      true
-    );
-
+  for (const value of samples) {
+    const sample = clamp(value, -1, 1);
+    view.setInt16(offset, sample < 0 ? sample * 32768 : sample * 32767, true);
     offset += 2;
   }
-
-  return new Blob([buffer], { type: "audio/wav" });
+  return new Blob([buffer], {type: "audio/wav"});
+}
+function peakLimit(samples, ceiling = .98) {
+  let peak = 0;
+  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+  if (peak <= ceiling || peak === 0) return samples;
+  const gain = ceiling / peak;
+  for (let index = 0; index < samples.length; index++) samples[index] *= gain;
+  return samples;
+}
+function applyDistortionOffline(samples, percent) {
+  const amount = clamp(Number(percent) / 100, 0, 1);
+  if (amount === 0) return samples.slice();
+  const output = new Float32Array(samples.length);
+  const drive = 1 + 36 * amount * amount;
+  const normalizer = Math.tanh(drive);
+  const wet = .15 + .85 * amount;
+  for (let index = 0; index < samples.length; index++) {
+    const dry = samples[index];
+    const crushed = Math.tanh(dry * drive) / normalizer;
+    output[index] = dry * (1 - wet) + crushed * wet;
+  }
+  return peakLimit(output);
+}
+function fallbackSpeedResample(samples, speed) {
+  const length = Math.max(1, Math.round(samples.length / speed));
+  const output = new Float32Array(length);
+  for (let index = 0; index < length; index++) {
+    const position = index * speed, left = Math.floor(position), right = Math.min(samples.length - 1, left + 1), amount = position - left;
+    output[index] = samples[left] * (1 - amount) + samples[right] * amount;
+  }
+  return output;
+}
+function makeAtempoFilter(speed) {
+  const factors = [];
+  let remaining = speed;
+  while (remaining < .5) { factors.push(.5); remaining /= .5; }
+  while (remaining > 2) { factors.push(2); remaining /= 2; }
+  factors.push(remaining);
+  return factors.map(value => "atempo=" + value.toFixed(6)).join(",");
 }
 
-function makeDistortionCurve(amount) {
-  const samples = 44100;
-  const curve = new Float32Array(samples);
+const INLINE_FFMPEG_CLASS_WORKER_SOURCE =
+  "const FFMessageType = Object.freeze({\n  LOAD: \"LOAD\",\n  EXEC: \"EXEC\",\n  FFPROBE: \"FFPROBE\",\n  WRITE_FILE: \"WRITE_FILE\",\n  READ_FILE: \"READ_FILE\",\n  DELETE_FILE: \"DELETE_FILE\",\n  RENAME: \"RENAME\",\n  CREATE_DIR: \"CREATE_DIR\",\n  LIST_DIR: \"LIST_DIR\",\n  DELETE_DIR: \"DELETE_DIR\",\n  ERROR: \"ERROR\",\n  DOWNLOAD: \"DOWNLOAD\",\n  PROGRESS: \"PROGRESS\",\n  LOG: \"LOG\",\n  MOUNT: \"MOUNT\",\n  UNMOUNT: \"UNMOUNT\"\n});\n\nconst ERROR_UNKNOWN_MESSAGE_TYPE =\n  new Error(\"unknown message type\");\n\nconst ERROR_NOT_LOADED =\n  new Error(\n    \"ffmpeg is not loaded, call `await ffmpeg.load()` first\"\n  );\n\nconst ERROR_IMPORT_FAILURE =\n  new Error(\"failed to import ffmpeg-core.js\");\n\nlet ffmpeg;\n\nconst load = async ({\n  coreURL: requestedCoreURL,\n  wasmURL: requestedWasmURL,\n  workerURL: requestedWorkerURL\n}) => {\n  const first = !ffmpeg;\n  let coreURL = requestedCoreURL;\n\n  if (!coreURL) {\n    throw new Error(\n      \"The inline FFmpeg worker requires an explicit coreURL.\"\n    );\n  }\n\n  try {\n    importScripts(coreURL);\n  } catch {\n    const imported =\n      await import(coreURL);\n\n    self.createFFmpegCore =\n      imported.default;\n\n    if (!self.createFFmpegCore) {\n      throw ERROR_IMPORT_FAILURE;\n    }\n  }\n\n  const wasmURL =\n    requestedWasmURL\n    || coreURL.replace(/\\.js$/g, \".wasm\");\n\n  const workerURL =\n    requestedWorkerURL\n    || coreURL.replace(/\\.js$/g, \".worker.js\");\n\n  ffmpeg =\n    await self.createFFmpegCore({\n      mainScriptUrlOrBlob:\n        coreURL\n        + \"#\"\n        + btoa(\n            JSON.stringify({\n              wasmURL,\n              workerURL\n            })\n          )\n    });\n\n  ffmpeg.setLogger(\n    data => self.postMessage({\n      type: FFMessageType.LOG,\n      data\n    })\n  );\n\n  ffmpeg.setProgress(\n    data => self.postMessage({\n      type: FFMessageType.PROGRESS,\n      data\n    })\n  );\n\n  return first;\n};\n\nconst exec = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.exec(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst ffprobe = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.ffprobe(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst writeFile = ({\n  path,\n  data\n}) => {\n  ffmpeg.FS.writeFile(\n    path,\n    data\n  );\n\n  return true;\n};\n\nconst readFile = ({\n  path,\n  encoding\n}) =>\n  ffmpeg.FS.readFile(\n    path,\n    {\n      encoding\n    }\n  );\n\nconst deleteFile = ({\n  path\n}) => {\n  ffmpeg.FS.unlink(path);\n  return true;\n};\n\nconst rename = ({\n  oldPath,\n  newPath\n}) => {\n  ffmpeg.FS.rename(\n    oldPath,\n    newPath\n  );\n\n  return true;\n};\n\nconst createDir = ({\n  path\n}) => {\n  ffmpeg.FS.mkdir(path);\n  return true;\n};\n\nconst listDir = ({\n  path\n}) => {\n  const names =\n    ffmpeg.FS.readdir(path);\n\n  const nodes = [];\n\n  for (\n    const name\n    of names\n  ) {\n    const stat =\n      ffmpeg.FS.stat(\n        `${path}/${name}`\n      );\n\n    nodes.push({\n      name,\n      isDir:\n        ffmpeg.FS.isDir(\n          stat.mode\n        )\n    });\n  }\n\n  return nodes;\n};\n\nconst deleteDir = ({\n  path\n}) => {\n  ffmpeg.FS.rmdir(path);\n  return true;\n};\n\nconst mount = ({\n  fsType,\n  options,\n  mountPoint\n}) => {\n  const fileSystem =\n    ffmpeg.FS.filesystems[\n      String(fsType)\n    ];\n\n  if (!fileSystem) {\n    return false;\n  }\n\n  ffmpeg.FS.mount(\n    fileSystem,\n    options,\n    mountPoint\n  );\n\n  return true;\n};\n\nconst unmount = ({\n  mountPoint\n}) => {\n  ffmpeg.FS.unmount(\n    mountPoint\n  );\n\n  return true;\n};\n\nself.onmessage = async ({\n  data: {\n    id,\n    type,\n    data: requestData\n  }\n}) => {\n  const transfer = [];\n  let responseData;\n\n  try {\n    if (\n      type !== FFMessageType.LOAD\n      && !ffmpeg\n    ) {\n      throw ERROR_NOT_LOADED;\n    }\n\n    switch (type) {\n      case FFMessageType.LOAD:\n        responseData =\n          await load(\n            requestData\n          );\n        break;\n\n      case FFMessageType.EXEC:\n        responseData =\n          exec(requestData);\n        break;\n\n      case FFMessageType.FFPROBE:\n        responseData =\n          ffprobe(requestData);\n        break;\n\n      case FFMessageType.WRITE_FILE:\n        responseData =\n          writeFile(requestData);\n        break;\n\n      case FFMessageType.READ_FILE:\n        responseData =\n          readFile(requestData);\n        break;\n\n      case FFMessageType.DELETE_FILE:\n        responseData =\n          deleteFile(requestData);\n        break;\n\n      case FFMessageType.RENAME:\n        responseData =\n          rename(requestData);\n        break;\n\n      case FFMessageType.CREATE_DIR:\n        responseData =\n          createDir(requestData);\n        break;\n\n      case FFMessageType.LIST_DIR:\n        responseData =\n          listDir(requestData);\n        break;\n\n      case FFMessageType.DELETE_DIR:\n        responseData =\n          deleteDir(requestData);\n        break;\n\n      case FFMessageType.MOUNT:\n        responseData =\n          mount(requestData);\n        break;\n\n      case FFMessageType.UNMOUNT:\n        responseData =\n          unmount(requestData);\n        break;\n\n      default:\n        throw ERROR_UNKNOWN_MESSAGE_TYPE;\n    }\n  } catch (error) {\n    self.postMessage({\n      id,\n      type: FFMessageType.ERROR,\n      data:\n        error?.stack\n        || error?.toString?.()\n        || String(error)\n    });\n\n    return;\n  }\n\n  if (\n    responseData\n    instanceof Uint8Array\n  ) {\n    transfer.push(\n      responseData.buffer\n    );\n  }\n\n  self.postMessage(\n    {\n      id,\n      type,\n      data: responseData\n    },\n    transfer\n  );\n};\n";
 
-  if (amount <= 0) {
-    for (let index = 0; index < samples; index++) {
-      curve[index] = index * 2 / samples - 1;
+function makeInlineFFmpegClassWorker() {
+  /*
+    The worker is fully self-contained. It does not import worker.js,
+    ./const.js, ./errors.js, or any other worker-side JavaScript module.
+
+    That removes both failures seen on the hosted site:
+      - SecurityError from constructing a Worker with a cross-origin URL.
+      - Cannot find module blob:https://... from relative imports inside a
+        copied blob worker.
+  */
+  return URL.createObjectURL(
+    new Blob(
+      [
+        INLINE_FFMPEG_CLASS_WORKER_SOURCE
+      ],
+      {
+        type: "text/javascript"
+      }
+    )
+  );
+}
+
+async function importFFmpegWrapper() {
+  const wrapperCandidates = [
+    (
+      "https://cdn.jsdelivr.net/npm/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    ),
+    (
+      "https://cdnjs.cloudflare.com/ajax/libs/"
+      + "ffmpeg/0.12.15/esm/index.js"
+    ),
+    (
+      "https://unpkg.com/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    )
+  ];
+
+  const failures = [];
+
+  for (
+    const wrapperURL
+    of wrapperCandidates
+  ) {
+    try {
+      const module =
+        await import(
+          wrapperURL
+        );
+
+      if (
+        module?.FFmpeg
+      ) {
+        return {
+          module,
+          wrapperURL
+        };
+      }
+
+      failures.push(
+        `${wrapperURL}: missing FFmpeg export`
+      );
+    } catch (error) {
+      failures.push(
+        (
+          `${wrapperURL}: `
+          + (
+              error?.message
+              || error
+            )
+        )
+      );
+    }
+  }
+
+  throw new Error(
+    (
+      "Could not load the FFmpeg wrapper from any CDN.\n"
+      + failures.join("\n")
+    )
+  );
+}
+
+function attachFFmpegLogging(
+  ffmpeg
+) {
+  ffmpeg.on(
+    "log",
+    ({message}) => {
+      if (
+        /error|invalid|failed/i.test(
+          message
+        )
+      ) {
+        log(
+          message,
+          "FFMPEG"
+        );
+      }
+    }
+  );
+
+  ffmpeg.on(
+    "progress",
+    ({progress}) => {
+      if (
+        Number.isFinite(
+          progress
+        )
+      ) {
+        const percent =
+          8
+          + clamp(
+              progress,
+              0,
+              1
+            )
+            * 45;
+
+        E.progressBar.style.width =
+          `${percent}%`;
+      }
+    }
+  );
+}
+
+async function loadFFmpegCoreCandidate(
+  FFmpegClass,
+  candidate
+) {
+  const classWorkerURL =
+    makeInlineFFmpegClassWorker();
+
+  const ffmpeg =
+    new FFmpegClass();
+
+  attachFFmpegLogging(
+    ffmpeg
+  );
+
+  try {
+    await ffmpeg.load(
+      {
+        classWorkerURL,
+        coreURL:
+          `${candidate.coreBase}/ffmpeg-core.js`,
+        wasmURL:
+          `${candidate.coreBase}/ffmpeg-core.wasm`
+      }
+    );
+
+    return {
+      ffmpeg,
+      classWorkerURL
+    };
+  } catch (error) {
+    try {
+      ffmpeg.terminate();
+    } catch {
+      // Worker construction may have failed before termination was possible.
     }
 
-    return curve;
-  }
-
-  const k = amount * 10;
-  const degrees = Math.PI / 180;
-
-  for (let index = 0; index < samples; index++) {
-    const x = index * 2 / samples - 1;
-
-    const value =
-      ((3 + k) * x * 20 * degrees) /
-      (Math.PI + k * Math.abs(x));
-
-    curve[index] = Math.max(-1, Math.min(1, value));
-  }
-
-  return curve;
-}
-
-function setupPlayerGraph() {
-  const context = ensureAudioContext();
-
-  if (!state.playerSource) {
-    state.playerSource =
-      context.createMediaElementSource(E.player);
-
-    state.preGain = context.createGain();
-    state.shaper = context.createWaveShaper();
-    state.outputGain = context.createGain();
-    state.shaper.oversample = "4x";
-
-    state.playerSource
-      .connect(state.preGain)
-      .connect(state.shaper)
-      .connect(state.outputGain)
-      .connect(context.destination);
-  }
-
-  if (context.state === "suspended") {
-    context.resume();
-  }
-
-  updateEffects();
-}
-
-function updateEffects() {
-  const distortion = Number(E.distortion.value) / 100;
-  const speed = Number(E.speed.value) / 100;
-
-  E.player.preservesPitch = true;
-  E.player.mozPreservesPitch = true;
-  E.player.webkitPreservesPitch = true;
-  E.player.playbackRate = speed;
-  E.speedValue.textContent = speed.toFixed(2) + "×";
-
-  if (state.shaper) {
-    const inputGain = Math.pow(60, distortion);
-    const outputGain = Math.pow(12, distortion);
-
-    state.preGain.gain.setTargetAtTime(
-      inputGain,
-      state.audioContext.currentTime,
-      0.01
+    URL.revokeObjectURL(
+      classWorkerURL
     );
 
-    state.outputGain.gain.setTargetAtTime(
-      outputGain,
-      state.audioContext.currentTime,
-      0.01
-    );
+    throw error;
+  }
+}
 
-    state.shaper.curve =
-      makeDistortionCurve(distortion * 100);
+async function ensureFFmpeg() {
+  if (
+    state.ffmpegLoaded
+  ) {
+    return state.ffmpeg;
   }
 
-  E.distortionValue.textContent =
-    distortion === 0
-      ? "Off"
-      : Math.round(Math.pow(60, distortion)) + "×";
+  if (
+    state.ffmpegLoading
+  ) {
+    return state.ffmpegLoading;
+  }
+
+  state.ffmpegLoading = (
+    async () => {
+      setProgress(
+        3,
+        (
+          "Loading the browser media engine "
+          + "(~32 MB once, then browser-cached)…"
+        )
+      );
+
+      const {
+        module: ffmpegModule,
+        wrapperURL
+      } =
+        await importFFmpegWrapper();
+
+      const coreCandidates = [
+        {
+          name: "jsDelivr core",
+          coreBase:
+            (
+              "https://cdn.jsdelivr.net/npm/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        },
+        {
+          name: "UNPKG core",
+          coreBase:
+            (
+              "https://unpkg.com/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        }
+      ];
+
+      const failures = [];
+
+      for (
+        const candidate
+        of coreCandidates
+      ) {
+        try {
+          setProgress(
+            5,
+            (
+              "Starting the inline browser worker "
+              + `with ${candidate.name}…`
+            )
+          );
+
+          const loaded =
+            await loadFFmpegCoreCandidate(
+              ffmpegModule.FFmpeg,
+              candidate
+            );
+
+          state.ffmpeg =
+            loaded.ffmpeg;
+
+          state.ffmpegClassWorkerURL =
+            loaded.classWorkerURL;
+
+          state.ffmpegLoaded =
+            true;
+
+          E.runtimeBadge.textContent =
+            "ffmpeg.wasm loaded";
+
+          log("Media tools loaded.");
+
+          return state.ffmpeg;
+        } catch (error) {
+          const message =
+            error?.message
+            || String(error);
+
+          failures.push(
+            `${candidate.name}: ${message}`
+          );
+
+          log("Media tools failed to load. Trying another source.");
+        }
+      }
+
+      throw new Error(
+        (
+          "All FFmpeg core CDN attempts failed.\n"
+          + failures.join("\n")
+          + "\n\nThe host must allow worker-src blob: "
+          + "and connect-src/script-src access to jsdelivr or unpkg."
+        )
+      );
+    }
+  )();
+
+  try {
+    return await state.ffmpegLoading;
+  } finally {
+    state.ffmpegLoading = null;
+  }
+}
+async function safeDelete(name) {
+  if (!state.ffmpeg || !name) return;
+  try { await state.ffmpeg.deleteFile(name); } catch {}
+}
+
+async function applySpeedOffline(samples, speed) {
+  if (Math.abs(speed - 1) < .0001) return samples.slice();
+  try {
+    const ffmpeg = await ensureFFmpeg();
+    const nonce = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const input = "tts_speed_" + nonce + ".wav";
+    const output = "tts_speed_" + nonce + "_out.wav";
+    await ffmpeg.writeFile(input, new Uint8Array(await floatToWav(samples).arrayBuffer()));
+    setProgress(55, "Baking pitch-preserving speed into the WAV…");
+    const result = await ffmpeg.exec(["-i", input, "-af", makeAtempoFilter(speed), "-ar", String(TARGET_SAMPLE_RATE), "-ac", "1", "-c:a", "pcm_s16le", output]);
+    if (result !== 0) throw new Error("FFmpeg returned code " + result + ".");
+    const data = await ffmpeg.readFile(output);
+    await safeDelete(input); await safeDelete(output);
+    return toMono44100(await decodeAudio(new Blob([data], {type: "audio/wav"})));
+  } catch (error) {
+    log("Pitch-preserving speed failed; using the built-in fallback. " + (error?.message || error));
+    E.runtimeBadge.textContent = "Speed fallback active";
+    return fallbackSpeedResample(samples, speed);
+  }
+}
+
+function parseElevenLabs(payload) {
+  let raw = payload.words;
+  if (!raw && Array.isArray(payload.transcripts)) raw = payload.transcripts.flatMap(item => item.words || []);
+  if (!Array.isArray(raw)) throw new Error("ElevenLabs returned no timestamped words.");
+  const words = [];
+  for (const item of raw) {
+    if (item?.type !== "word" || item.start == null || item.end == null) continue;
+    const text = String(item.text || "").trim();
+    const normalized = normalizeWord(text);
+    if (normalized) words.push({text, normalized, start: Number(item.start), end: Number(item.end)});
+  }
+  words.sort((a, b) => a.start - b.start || a.end - b.end);
+  if (!words.length) throw new Error("ElevenLabs returned no usable word timestamps.");
+  return words;
+}
+function bracketKeyterms(sourceWords) {
+  return [...new Set(sourceWords.filter(word => word.censored).map(word => word.normalized).filter(word => word.length < 50))].slice(0, 1000);
+}
+async function transcribeProcessedAudio(wav, key, sourceWords) {
+  setProgress(72, "Sending the processed WAV directly to ElevenLabs Scribe v2 for word timing…");
+  const form = new FormData();
+  form.append("file", wav, "processed-tts.wav");
+  form.append("model_id", "scribe_v2");
+  form.append("language_code", "en");
+  form.append("tag_audio_events", "false");
+  form.append("timestamps_granularity", "word");
+  form.append("diarize", "false");
+  form.append("no_verbatim", "false");
+  form.append("temperature", "0");
+  form.append("seed", "42");
+  if (E.keyterms.checked) for (const term of bracketKeyterms(sourceWords)) form.append("keyterms", term);
+  let response;
+  try {
+    response = await fetchWithTimeout("https://api.elevenlabs.io/v1/speech-to-text", {method: "POST", headers: {"xi-api-key": key}, body: form}, 180000);
+  } catch (error) {
+    throw new Error("The browser could not reach ElevenLabs for censor timing. " + (error?.message || error));
+  }
+  if (response.status === 422 && E.keyterms.checked) {
+    log("Bracket-word boost was rejected. Retrying without keyterms.");
+    const retry = new FormData();
+    retry.append("file", wav, "processed-tts.wav");
+    retry.append("model_id", "scribe_v2"); retry.append("language_code", "en");
+    retry.append("tag_audio_events", "false"); retry.append("timestamps_granularity", "word"); retry.append("diarize", "false");
+    response = await fetchWithTimeout("https://api.elevenlabs.io/v1/speech-to-text", {method: "POST", headers: {"xi-api-key": key}, body: retry}, 180000);
+  }
+  if (!response.ok) {
+    let detail = await response.text();
+    try { detail = JSON.stringify(JSON.parse(detail), null, 2); } catch {}
+    throw new Error("ElevenLabs failed with HTTP " + response.status + ": " + detail.slice(0, 1800));
+  }
+  setProgress(84, "Matching bracketed words to spoken timestamps…");
+  return parseElevenLabs(await response.json());
+}
+function levenshtein(first, second) {
+  if (first === second) return 0;
+  if (!first.length) return second.length;
+  if (!second.length) return first.length;
+  let previous = new Uint16Array(second.length + 1);
+  let current = new Uint16Array(second.length + 1);
+  for (let index = 0; index <= second.length; index++) previous[index] = index;
+  for (let row = 1; row <= first.length; row++) {
+    current[0] = row;
+    for (let column = 1; column <= second.length; column++) {
+      const substitution = previous[column - 1] + (first[row - 1] === second[column - 1] ? 0 : 1);
+      current[column] = Math.min(previous[column] + 1, current[column - 1] + 1, substitution);
+    }
+    [previous, current] = [current, previous];
+  }
+  return previous[second.length];
+}
+function wordMatchCost(first, second) {
+  if (first === second) return 0;
+  if (!first || !second) return 1.4;
+  if (Math.min(first.length, second.length) >= 4 && (first.includes(second) || second.includes(first))) return .25;
+  const ratio = levenshtein(first, second) / Math.max(first.length, second.length);
+  if (ratio <= .2) return .25;
+  if (ratio <= .4) return .65;
+  return 1.25;
+}
+function greedyAlignment(sourceWords, transcriptWords) {
+  const mapping = new Array(sourceWords.length).fill(-1);
+  let cursor = 0;
+  for (let index = 0; index < sourceWords.length; index++) {
+    let best = -1, bestCost = Infinity;
+    const expected = Math.round(index / Math.max(1, sourceWords.length - 1) * Math.max(0, transcriptWords.length - 1));
+    const start = Math.max(cursor, expected - 8), end = Math.min(transcriptWords.length, Math.max(cursor + 18, expected + 9));
+    for (let candidate = start; candidate < end; candidate++) {
+      const cost = wordMatchCost(sourceWords[index].normalized, transcriptWords[candidate].normalized) + Math.abs(candidate - expected) * .015;
+      if (cost < bestCost) { bestCost = cost; best = candidate; }
+    }
+    if (best >= 0 && bestCost <= .78) { mapping[index] = best; cursor = best + 1; }
+  }
+  return mapping;
+}
+function alignWords(sourceWords, transcriptWords) {
+  const n = sourceWords.length, m = transcriptWords.length;
+  if (!n || !m) return new Array(n).fill(-1);
+  if (n * m > 2000000) return greedyAlignment(sourceWords, transcriptWords);
+  const columns = m + 1, gap = .85;
+  let previous = new Float32Array(columns), current = new Float32Array(columns);
+  const direction = new Uint8Array((n + 1) * columns);
+  for (let column = 0; column <= m; column++) { previous[column] = column * gap; direction[column] = 2; }
+  for (let row = 1; row <= n; row++) {
+    current[0] = row * gap; direction[row * columns] = 1;
+    for (let column = 1; column <= m; column++) {
+      const diagonal = previous[column - 1] + wordMatchCost(sourceWords[row - 1].normalized, transcriptWords[column - 1].normalized);
+      const deletion = previous[column] + gap;
+      const insertion = current[column - 1] + gap;
+      let value = diagonal, move = 0;
+      if (deletion < value) { value = deletion; move = 1; }
+      if (insertion < value) { value = insertion; move = 2; }
+      current[column] = value; direction[row * columns + column] = move;
+    }
+    [previous, current] = [current, previous];
+  }
+  const mapping = new Array(n).fill(-1);
+  let row = n, column = m;
+  while (row > 0 || column > 0) {
+    const move = direction[row * columns + column];
+    if (row > 0 && column > 0 && move === 0) {
+      if (wordMatchCost(sourceWords[row - 1].normalized, transcriptWords[column - 1].normalized) <= .78) mapping[row - 1] = column - 1;
+      row--; column--;
+    } else if (row > 0 && (column === 0 || move === 1)) row--;
+    else if (column > 0) column--;
+    else break;
+  }
+  return mapping;
+}
+function mappedCensorRanges(sourceWords, transcriptWords) {
+  const mapping = alignWords(sourceWords, transcriptWords);
+  const used = new Set();
+  const indexes = [];
+  for (let sourceIndex = 0; sourceIndex < sourceWords.length; sourceIndex++) {
+    if (!sourceWords[sourceIndex].censored) continue;
+    let transcriptIndex = mapping[sourceIndex];
+    if (transcriptIndex < 0) {
+      const expected = Math.round(sourceIndex / Math.max(1, sourceWords.length - 1) * Math.max(0, transcriptWords.length - 1));
+      let best = -1, bestScore = Infinity;
+      for (let candidate = 0; candidate < transcriptWords.length; candidate++) {
+        if (used.has(candidate)) continue;
+        const match = wordMatchCost(sourceWords[sourceIndex].normalized, transcriptWords[candidate].normalized);
+        const score = match + Math.abs(candidate - expected) * .02;
+        if (score < bestScore) { bestScore = score; best = candidate; }
+      }
+      if (best >= 0 && bestScore <= .9) transcriptIndex = best;
+    }
+    if (transcriptIndex >= 0 && !used.has(transcriptIndex)) { used.add(transcriptIndex); indexes.push(transcriptIndex); }
+  }
+  indexes.sort((a, b) => a - b);
+  return indexes.map(index => ({start: transcriptWords[index].start, end: transcriptWords[index].end, word: transcriptWords[index].text}));
+}
+function censorIntervals(ranges, durationMs) {
+  const presetName = presetChoice();
+  const base = presetName === "custom"
+    ? {coverage: clamp((Number(E.coverage.value) || 80) / 100, .1, 1.5), before: clamp(Number(E.padBefore.value) || 0, 0, 500), after: clamp(Number(E.padAfter.value) || 0, 0, 500), merge: 10}
+    : PRESETS[presetName];
+  const shift = timingShift(), raw = [];
+  for (const range of ranges) {
+    const startWord = Math.round(range.start * 1000), endWord = Math.round(range.end * 1000);
+    if (endWord <= startWord) continue;
+    const length = Math.max(1, Math.round((endWord - startWord) * base.coverage));
+    const center = (startWord + endWord) / 2 + shift;
+    const start = Math.max(0, Math.round(center - length / 2) - base.before);
+    const end = Math.min(durationMs, Math.round(center + length / 2) + base.after);
+    if (end > start) raw.push([start, end]);
+  }
+  raw.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const merged = [];
+  for (const interval of raw) {
+    if (merged.length && interval[0] <= merged.at(-1)[1] + base.merge) merged.at(-1)[1] = Math.max(merged.at(-1)[1], interval[1]);
+    else merged.push([...interval]);
+  }
+  return merged;
+}
+function applyCensor(samples, intervals) {
+  const output = samples.slice();
+  const effect = effectChoice(), volume = clamp((Number(E.beepVolume.value) || 0) / 100, 0, 1);
+  const amplitude = .98 * volume, fadeFrames = Math.max(1, Math.round(TARGET_SAMPLE_RATE * .008));
+  for (const [startMs, endMs] of intervals) {
+    const start = clamp(Math.floor(startMs * TARGET_SAMPLE_RATE / 1000), 0, output.length);
+    const end = clamp(Math.ceil(endMs * TARGET_SAMPLE_RATE / 1000), 0, output.length);
+    const length = end - start;
+    if (length <= 0) continue;
+    for (let frame = 0; frame < length; frame++) {
+      const original = output[start + frame];
+      const edgeIn = clamp(frame / fadeFrames, 0, 1);
+      const edgeOut = clamp((length - 1 - frame) / fadeFrames, 0, 1);
+      const mix = Math.min(edgeIn, edgeOut);
+      const replacement = effect === "beep"
+        ? Math.sin(2 * Math.PI * 1000 * (start + frame) / TARGET_SAMPLE_RATE) * amplitude
+        : 0;
+      output[start + frame] = original * (1 - mix) + replacement * mix;
+    }
+  }
+  return peakLimit(output);
 }
 
 async function generate() {
   if (state.busy) return;
+  const rawText = E.textInput.value.trim(), voice = selectedVoice();
+  if (!voice) return setStatus("No voice selected", "Choose a voice first.", "error");
+  if (!rawText) return setStatus("No text", "Enter text first.", "error");
+  const parsed = parseAnnotatedText(rawText);
+  if (!parsed.plainText.trim()) return setStatus("No text", "The text contains nothing to speak.", "error");
+  const needsCensor = E.enableCensor.checked && parsed.sourceWords.some(word => word.censored);
+  const key = E.apiKey.value.trim();
+  if (needsCensor && !key) return setStatus("ElevenLabs key required", "Enter an ElevenLabs API key so bracketed words can be timed inside the finished audio.", "error");
+  if (E.rememberKey.checked && key) localStorage.setItem("censorElevenLabsKey", key);
+  else if (!E.rememberKey.checked) localStorage.removeItem("censorElevenLabsKey");
 
-  const rawText = E.textInput.value.trim();
-  const voice = selectedVoice();
-
-  if (!voice) {
-    setStatus(
-      "No voice selected",
-      "Choose a voice first.",
-      "error"
-    );
-    return;
-  }
-
-  if (!rawText) {
-    setStatus(
-      "No text",
-      "Enter text first.",
-      "error"
-    );
-    return;
-  }
-
-  setBusy(
-    true,
-    "Generating with " + providerName(voice.source) + "."
-  );
-
+  setBusy(true, "Generating with " + providerName(voice.source) + ".");
   E.resultPanel.classList.add("hidden");
-  setProgress(2, "Preparing text.");
-
+  setProgress(2, "Preparing the complete uncensored sentence.");
   try {
-    const parsed =
-      parseBracketText(
-        rawText,
-        E.enableCensor.checked
-      );
-
-    const segments = expandSegments(parsed);
-
-    if (!segments.length) {
-      throw new Error(
-        "The text contains nothing to speak."
-      );
-    }
-
-    E.segmentStat.textContent = String(segments.length);
-
-    log(
-      "Generating " +
-      segments.length +
-      " segment" +
-      (segments.length === 1 ? "." : "s.") +
-      " Provider: " +
-      providerName(voice.source) +
-      "."
-    );
-
+    const chunks = splitLongText(parsed.plainText);
+    if (!chunks.length) throw new Error("The text contains nothing to speak.");
+    E.segmentStat.textContent = String(chunks.length);
+    log("Generating " + chunks.length + " continuous TTS chunk" + (chunks.length === 1 ? "." : "s.") + " Provider: " + providerName(voice.source) + ".");
     const parts = [];
+    for (let index = 0; index < chunks.length; index++) {
+      setProgress(6 + index / chunks.length * 38, "Generating TTS chunk " + (index + 1) + " of " + chunks.length + ".");
+      const samples = toMono44100(await decodeAudio(await synthesizeBlob(voice, chunks[index])));
+      parts.push(applyEdgeFade(samples.slice(), 4));
+    }
+    let processed = crossfadeConcatenate(parts, 8);
+    setProgress(48, "Baking speed into the generated speech.");
+    processed = await applySpeedOffline(processed, Number(E.speed.value) / 100);
+    setProgress(65, "Baking distortion into the generated speech.");
+    processed = applyDistortionOffline(processed, Number(E.distortion.value));
+    processed = applyEdgeFade(peakLimit(processed), 6);
 
-    for (
-      let index = 0;
-      index < segments.length;
-      index++
-    ) {
-      const segment = segments[index];
-      const percent =
-        8 + (index / segments.length) * 72;
-
-      setProgress(
-        percent,
-        "Generating segment " +
-        (index + 1) +
-        " of " +
-        segments.length +
-        "."
-      );
-
-      const blob =
-        await synthesizeBlob(
-          voice,
-          segment.text
-        );
-
-      const buffer = await decodeAudio(blob);
-      let samples = toMono44100(buffer);
-
-      if (
-        segment.censored &&
-        E.enableCensor.checked
-      ) {
-        samples = makeCensorAudio(
-          samples.length,
-          E.censorMode.value
-        );
-      } else {
-        samples =
-          applyEdgeFade(
-            samples.slice(),
-            5
-          );
-      }
-
-      parts.push(samples);
+    if (needsCensor) {
+      const processedWav = floatToWav(processed);
+      const transcriptWords = await transcribeProcessedAudio(processedWav, key, parsed.sourceWords);
+      const ranges = mappedCensorRanges(parsed.sourceWords, transcriptWords);
+      const requested = parsed.sourceWords.filter(word => word.censored).length;
+      if (!ranges.length) throw new Error("ElevenLabs returned timestamps, but none of the bracketed words could be matched. Try enabling bracket-word boost or use Full / Strict timing.");
+      log("Matched " + ranges.length + " of " + requested + " bracketed word" + (requested === 1 ? "." : "s."));
+      const intervals = censorIntervals(ranges, processed.length / TARGET_SAMPLE_RATE * 1000);
+      if (!intervals.length) throw new Error("No usable censor intervals were produced.");
+      setProgress(92, "Replacing the spoken words in place with the selected censor effect.");
+      processed = applyCensor(processed, intervals);
+      log(intervals.length + " merged censor interval" + (intervals.length === 1 ? " applied." : "s applied."));
+    } else {
+      log("No bracket censoring requested.");
     }
 
-    setProgress(84, "Building audio.");
-
-    const combined = concatenate(parts);
-    const wav = floatToWav(combined);
-
-    if (state.resultURL) {
-      URL.revokeObjectURL(state.resultURL);
-    }
-
-    state.resultURL =
-      URL.createObjectURL(wav);
-
+    const wav = floatToWav(processed);
+    if (state.resultURL) URL.revokeObjectURL(state.resultURL);
+    state.resultURL = URL.createObjectURL(wav);
     state.resultBlob = wav;
-
     E.player.src = state.resultURL;
     E.downloadButton.href = state.resultURL;
-
-    E.downloadButton.download =
-      "tts-" +
-      voice.id.replace(/[^a-z0-9_-]+/gi, "_") +
-      ".wav";
-
-    E.durationStat.textContent =
-      formatDuration(
-        combined.length / TARGET_SAMPLE_RATE
-      );
-
-    setupPlayerGraph();
+    E.downloadButton.download = "tts-" + voice.id.replace(/[^a-z0-9_-]+/gi, "_") + "-processed.wav";
+    E.durationStat.textContent = formatDuration(processed.length / TARGET_SAMPLE_RATE);
     E.resultPanel.classList.remove("hidden");
-
     setProgress(100, "Finished.");
-
-    setStatus(
-      "Finished",
-      providerName(voice.source) +
-      " generated the voice successfully.",
-      "ok"
-    );
-
-    log("Voice generated.");
-
-    setTimeout(
-      () => E.progressBox.classList.add("hidden"),
-      900
-    );
-
-    E.resultPanel.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    setStatus("Finished", "The preview and downloaded WAV both contain the baked effects" + (needsCensor ? " and timestamped censoring." : "."), "ok");
+    log("Processed voice generated.");
+    setTimeout(() => E.progressBox.classList.add("hidden"), 900);
+    E.resultPanel.scrollIntoView({behavior: "smooth", block: "start"});
   } catch (error) {
-    const message =
-      error?.name === "AbortError"
-        ? "The TTS request timed out."
-        : error?.message || String(error);
-
-    setStatus(
-      "Generation failed",
-      message,
-      "error"
-    );
-
+    const message = error?.name === "AbortError" ? "The request timed out." : error?.message || String(error);
+    setStatus("Generation failed", message, "error");
     log("Error: " + message);
     E.progressBox.classList.add("hidden");
-  } finally {
-    setBusy(false);
-  }
+  } finally { setBusy(false); }
 }
 
-E.textInput.addEventListener(
-  "input",
-  updateTextInfo
-);
+E.textInput.addEventListener("input", updateTextInfo);
+E.clearText.addEventListener("click", () => { E.textInput.value = ""; updateTextInfo(); E.textInput.focus(); });
+E.enableCensor.addEventListener("change", updateTextInfo);
+E.voiceSearch.addEventListener("input", () => filterVoices());
+E.voiceSelect.addEventListener("change", updateVoiceMeta);
+E.reloadVoices.addEventListener("click", loadVoices);
+E.generateButton.addEventListener("click", generate);
+E.mobileButton.addEventListener("click", generate);
+E.generateAgain.addEventListener("click", () => { E.textInput.scrollIntoView({behavior: "smooth", block: "center"}); E.textInput.focus(); });
+E.showKeyButton.addEventListener("click", () => {
+  const showing = E.apiKey.type === "text";
+  E.apiKey.type = showing ? "password" : "text";
+  E.showKeyButton.textContent = showing ? "Show" : "Hide";
+});
+for (const element of [E.distortion, E.speed, E.coverage, E.beepVolume]) element.addEventListener("input", updateSettingsUI);
+$$('input[name="preset"],input[name="timing"],input[name="effect"]').forEach(element => element.addEventListener("change", updateSettingsUI));
+E.clearLog.addEventListener("click", () => { E.log.textContent = ""; });
+window.addEventListener("beforeunload", () => {
+  if (state.resultURL) URL.revokeObjectURL(state.resultURL);
+  if (state.ffmpegClassWorkerURL) URL.revokeObjectURL(state.ffmpegClassWorkerURL);
+});
 
-E.clearText.addEventListener(
-  "click",
-  () => {
-    E.textInput.value = "";
-    updateTextInfo();
-    E.textInput.focus();
-  }
-);
-
-E.voiceSearch.addEventListener(
-  "input",
-  () => filterVoices()
-);
-
-E.voiceSelect.addEventListener(
-  "change",
-  updateVoiceMeta
-);
-
-E.reloadVoices.addEventListener(
-  "click",
-  loadVoices
-);
-
-E.generateButton.addEventListener(
-  "click",
-  generate
-);
-
-E.mobileButton.addEventListener(
-  "click",
-  generate
-);
-
-E.generateAgain.addEventListener(
-  "click",
-  () => {
-    E.textInput.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-
-    E.textInput.focus();
-  }
-);
-
-E.player.addEventListener(
-  "play",
-  setupPlayerGraph
-);
-
-E.distortion.addEventListener(
-  "input",
-  updateEffects
-);
-
-E.speed.addEventListener(
-  "input",
-  updateEffects
-);
-
-E.clearLog.addEventListener(
-  "click",
-  () => {
-    E.log.textContent = "";
-  }
-);
-
-window.addEventListener(
-  "beforeunload",
-  () => {
-    if (state.resultURL) {
-      URL.revokeObjectURL(state.resultURL);
-    }
-  }
-);
-
-updateTextInfo();
-updateEffects();
-loadVoices();
+const rememberedKey = localStorage.getItem("censorElevenLabsKey") || "";
+if (rememberedKey) { E.apiKey.value = rememberedKey; E.rememberKey.checked = true; }
+updateTextInfo(); updateSettingsUI(); loadVoices();
 
 })();
+
 </script>
 </body>
 </html>
