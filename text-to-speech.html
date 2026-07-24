@@ -308,7 +308,10 @@ const E = {
 };
 
 const TTS_ENDPOINT =
-  "https://censor-slwi.vercel.app/api/voiceforge";
+  location.hostname === "censor-slwi.vercel.app" ||
+  location.hostname.startsWith("censor-slwi-")
+    ? "/api/voiceforge"
+    : "https://censor-slwi.vercel.app/api/voiceforge";
 
 const TARGET_SAMPLE_RATE = 44100;
 const MAX_PROVIDER_CHARS = 260;
@@ -1277,7 +1280,6 @@ async function requestServerAudio(voice, text) {
       headers: {
         Accept: "audio/wav, audio/mpeg, application/json",
         "Content-Type": "application/json",
-        "X-TTS-Client": "yazicensor-web",
       },
       body: JSON.stringify({
         provider: voice.source,
@@ -1305,6 +1307,14 @@ async function synthesizeBlob(voice, text) {
     return await promise;
   } catch (error) {
     state.cache.delete(cacheKey);
+
+    if (error instanceof TypeError && /fetch/i.test(error.message)) {
+      throw new Error(
+        "Could not reach the TTS API at " + TTS_ENDPOINT +
+        " from " + location.origin + ". The API deployment or CORS response is unavailable."
+      );
+    }
+
     throw error;
   }
 }
