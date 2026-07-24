@@ -354,7 +354,7 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
     </div>
     <p class="status-message" id="statusMessage">Choose a voice and enter text.</p>
     <div class="stats">
-      <div><span>Audio parts</span><strong id="segmentStat">0</strong></div>
+      <div><span>Audio requests</span><strong id="segmentStat">0</strong></div>
       <div><span>Duration</span><strong id="durationStat">0:00</strong></div>
     </div>
     <div class="log-head"><span>Log</span><button class="button ghost small" id="clearLog" type="button">Clear</button></div>
@@ -1398,17 +1398,34 @@ async function generate() {
   E.resultPanel.classList.add("hidden");
   setProgress(2, "Getting the text ready.");
   try {
-    const chunks = splitLongText(parsed.plainText, providerChunkLimit(voice));
+    const readAloudFamily = ["pollyold", "pollyold2", "onecore"].includes(voice.source);
+    const chunks = readAloudFamily
+      ? [parsed.plainText]
+      : splitLongText(parsed.plainText, providerChunkLimit(voice));
+
     if (!chunks.length) throw new Error("The text does not contain any words to speak.");
+
     E.segmentStat.textContent = String(chunks.length);
-    log("Creating " + chunks.length + " audio part" + (chunks.length === 1 ? "." : "s.") + " Voice service: " + providerName(voice.source) + ".");
+
+    if (readAloudFamily) {
+      log("Creating one continuous ReadLoud audio file. Voice service: " + providerName(voice.source) + ".");
+      setProgress(8, "Creating one continuous ReadLoud audio file.");
+    } else {
+      log("Creating " + chunks.length + " audio part" + (chunks.length === 1 ? "." : "s.") + " Voice service: " + providerName(voice.source) + ".");
+    }
+
     const parts = [];
     for (let index = 0; index < chunks.length; index++) {
-      setProgress(6 + index / chunks.length * 38, "Creating audio part " + (index + 1) + " of " + chunks.length + ".");
+      if (!readAloudFamily) {
+        setProgress(6 + index / chunks.length * 38, "Creating audio part " + (index + 1) + " of " + chunks.length + ".");
+      }
       const samples = toMono44100(await decodeAudio(await synthesizeBlob(voice, chunks[index])));
       parts.push(applyEdgeFade(samples.slice(), 4));
     }
-    let processed = crossfadeConcatenate(parts, 8);
+
+    let processed = readAloudFamily
+      ? parts[0]
+      : crossfadeConcatenate(parts, 8);
     setProgress(48, "Changing the speed.");
     processed = await applySpeedOffline(processed, Number(E.speed.value) / 100);
     setProgress(65, "Adding distortion.");
