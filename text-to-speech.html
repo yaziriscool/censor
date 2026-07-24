@@ -1331,16 +1331,30 @@ function peakLimit(samples, ceiling = .98) {
 function applyDistortionOffline(samples, percent) {
   const amount = clamp(Number(percent) / 100, 0, 1);
   if (amount === 0) return samples.slice();
+
+  // Match the old real-time distortion chain: huge pre-gain into the
+  // WaveShaper, followed by another large output gain. Hard clipping here is
+  // intentional—it raises the average loudness and gives the effect the same
+  // aggressive, blown-out sound in both the preview and downloaded WAV.
+  const inputGain = Math.pow(60, amount);
+  const outputGain = Math.pow(12, amount);
+  const k = amount * 1000;
+  const degrees = Math.PI / 180;
   const output = new Float32Array(samples.length);
-  const drive = 1 + 36 * amount * amount;
-  const normalizer = Math.tanh(drive);
-  const wet = .15 + .85 * amount;
+
   for (let index = 0; index < samples.length; index++) {
-    const dry = samples[index];
-    const crushed = Math.tanh(dry * drive) / normalizer;
-    output[index] = dry * (1 - wet) + crushed * wet;
+    const driven = clamp(samples[index] * inputGain, -1, 1);
+    const shaped = clamp(
+      ((3 + k) * driven * 20 * degrees) /
+        (Math.PI + k * Math.abs(driven)),
+      -1,
+      1
+    );
+
+    output[index] = clamp(shaped * outputGain, -1, 1);
   }
-  return peakLimit(output);
+
+  return output;
 }
 function fallbackSpeedResample(samples, speed) {
   const length = Math.max(1, Math.round(samples.length / speed));
