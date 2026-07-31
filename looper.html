@@ -54,14 +54,14 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.progress-box{margin-top:13px}.track{height:7px;overflow:hidden;border-radius:999px;background:var(--panel2)}.bar{width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--yellow-dim),var(--yellow));transition:width .18s}.progress-box p{margin:7px 0 0;color:var(--dim);font-size:.7rem}
 .result{border-color:var(--yellow-dim);box-shadow:0 22px 65px rgba(0,0,0,.3)}.region-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px;border:1px solid var(--yellow-dim);border-radius:10px;background:#0e0e0d}.region-value{min-width:0;color:var(--yellow);font:800 clamp(.9rem,2vw,1.18rem)/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0}.stats div{min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel2)}.stats span,.stats strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stats span{color:var(--faint);font-size:.61rem;text-transform:uppercase;letter-spacing:.06em}.stats strong{margin-top:3px;color:var(--yellow);font-size:.76rem}
-.wave-wrap{padding:10px;border:1px solid var(--border);border-radius:11px;background:#0e0e0d}.wave-wrap canvas{display:block;width:100%;height:155px}.transport{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.adjust{margin-top:12px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}.adjust-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stepper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.stepper .text{text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mini{width:40px;min-height:40px;padding:0}
+.wave-wrap{position:relative;padding:10px;border:1px solid var(--border);border-radius:11px;background:#0e0e0d}.wave-wrap canvas{display:block;width:100%;height:155px;cursor:pointer}.playback-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;color:var(--dim);font-size:.7rem}.playback-row strong{color:var(--yellow);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.transport{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.settings-details{margin-top:13px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.1)}.settings-details summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76rem;font-weight:850}.settings-body{padding:0 11px 11px}.settings-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.settings-head .note{margin:0}.settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.settings-group{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.settings-group:first-of-type{margin-top:0;padding-top:0;border-top:0}.settings-title{margin:0 0 8px;color:var(--yellow-dim);font-size:.68rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.saved-note{margin:10px 0 0;color:var(--faint);font-size:.68rem}.adjust{margin-top:12px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}.adjust-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stepper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.stepper .text{text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mini{width:40px;min-height:40px;padding:0}
 .downloads{display:grid;gap:7px;margin-top:12px}.download{display:flex;min-width:0;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}.download-copy{min-width:0;flex:1}.download-copy strong,.download-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.download-copy strong{font-size:.78rem}.download-copy span{margin-top:3px;color:var(--dim);font-size:.68rem}
 .status-dot{width:10px;height:10px;border-radius:50%;background:var(--yellow-dim);box-shadow:0 0 0 5px rgba(250,226,157,.05)}.status-dot.busy{background:var(--yellow);animation:pulse 1.1s ease-in-out infinite}.status-dot.error{background:var(--error)}.status-dot.ok{background:var(--ok)}@keyframes pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
 .status-message{min-height:42px;margin:0 0 12px;color:var(--dim);font-size:.76rem;line-height:1.5}.side-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px}.side-stats div{min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel2)}.side-stats span,.side-stats strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.side-stats span{color:var(--faint);font-size:.61rem;text-transform:uppercase;letter-spacing:.06em}.side-stats strong{margin-top:3px;color:var(--yellow);font-size:.76rem}.log-head{display:flex;justify-content:space-between;align-items:center;padding-top:11px;border-top:1px solid var(--border);color:var(--dim);font-size:.7rem;font-weight:850}.text-btn{padding:3px;background:transparent;color:var(--yellow-dim);cursor:pointer;font-size:.72rem;font-weight:850}.text-btn:hover{color:var(--yellow)}.log{min-height:190px;max-height:calc(100vh - 360px);margin:7px 0 0;overflow:auto;padding:10px;border:1px solid var(--border);border-radius:9px;background:#090908;color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.67rem;line-height:1.52;white-space:pre-wrap;word-break:break-word}
 .warning{padding:10px 11px;border:1px solid rgba(232,132,111,.45);border-radius:9px;background:rgba(232,132,111,.065);color:#efad9f;font-size:.73rem;line-height:1.45}.mobile{display:none}
 @media(max-width:900px){.grid{grid-template-columns:1fr}.aside{order:-1}.sticky{position:static;max-height:none}.log{max-height:210px}}
-@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
+@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid,.settings-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-head{align-items:stretch;flex-direction:column}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
 @media(max-width:430px){.segmented{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.file-card{flex-wrap:wrap}.file-copy{flex-basis:calc(100% - 55px)}.file-card .button{width:100%}.download{flex-wrap:wrap}.download a{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
@@ -130,6 +130,54 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <label class="check"><input id="preferFirst" type="checkbox" checked><span>Use the first matching loop</span></label>
       <label class="check"><input id="beatLock" type="checkbox" checked><span>Protect beat timing</span></label>
     </div>
+
+    <details class="settings-details" id="advancedSettings">
+      <summary>Advanced settings</summary>
+      <div class="settings-body">
+        <div class="settings-head">
+          <p class="note">The default values match the original desktop looper.</p>
+          <button class="button ghost small" id="resetSettingsButton" type="button">Reset defaults</button>
+        </div>
+
+        <div class="settings-group">
+          <p class="settings-title">Analysis</p>
+          <div class="settings-grid">
+            <label><span class="label">Analysis sample rate</span><input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="48000" step="1" value="22050"></label>
+            <label><span class="label">Hop length</span><input class="text setting-input" id="hopLength" type="number" min="128" max="2048" step="1" value="512"></label>
+            <label><span class="label">Match window</span><input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="20" step="0.1" value="7"></label>
+            <label><span class="label">Boundary context</span><input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="8" step="0.05" value="2.25"></label>
+            <label><span class="label">Maximum candidates</span><input class="text setting-input" id="maxCandidates" type="number" min="100" max="4000" step="10" value="1500"></label>
+            <label><span class="label">Candidates to refine</span><input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="64" step="1" value="18"></label>
+            <label><span class="label">Auto vocal threshold</span><input class="text setting-input" id="autoVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.5"></label>
+            <label><span class="label">Full-detail refine rate</span><input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="96000" step="1" value="48000"></label>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <p class="settings-title">Boundary refinement</p>
+          <div class="settings-grid">
+            <label><span class="label">Shared search radius</span><input class="text setting-input" id="refineRadiusMs" type="number" min="10" max="1000" step="1" value="180"></label>
+            <label><span class="label">Shared search step</span><input class="text setting-input" id="refineStepMs" type="number" min="0.25" max="20" step="0.25" value="2"></label>
+            <label><span class="label">Match length</span><input class="text setting-input" id="refineMatchMs" type="number" min="50" max="2000" step="5" value="420"></label>
+            <label><span class="label">Period correction</span><input class="text setting-input" id="maxPeriodCorrectionMs" type="number" min="0.25" max="50" step="0.25" value="15"></label>
+            <label><span class="label">Period step</span><input class="text setting-input" id="periodCorrectionStepMs" type="number" min="0.05" max="5" step="0.05" value="0.25"></label>
+            <label><span class="label">Seam shared search</span><input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="5"></label>
+            <label><span class="label">Seam period search</span><input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.6"></label>
+            <label><span class="label">Seam check length</span><input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="32"></label>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <p class="settings-title">First repeat</p>
+          <div class="settings-grid">
+            <label><span class="label">Music threshold</span><input class="text setting-input" id="earliestMusicalThreshold" type="number" min="0" max="1" step="0.01" value="0.72"></label>
+            <label><span class="label">Vocal threshold</span><input class="text setting-input" id="earliestVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.58"></label>
+          </div>
+        </div>
+        <p class="saved-note">Settings save in this browser automatically.</p>
+      </div>
+    </details>
+
     <button class="button primary large" id="findButton" type="button" disabled>Find loop</button>
     <div class="progress-box hidden" id="progressBox"><div class="track"><div class="bar" id="progressBar"></div></div><p id="progressText">Getting ready…</p></div>
   </article>
@@ -144,6 +192,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <div><span>Confidence</span><strong id="confidenceStat">—</strong></div>
     </div>
     <div class="wave-wrap"><canvas id="waveCanvas" width="1200" height="310"></canvas></div>
+    <div class="playback-row"><span>Playback position</span><strong id="playbackPosition">—</strong></div>
     <div class="transport">
       <button class="button secondary" id="playSeamButton" type="button">Play seam</button>
       <button class="button ghost" id="playLoopButton" type="button">Play loop</button>
@@ -156,7 +205,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <label><span class="label">Loop start</span><span class="stepper"><button class="button ghost mini" data-adjust="start" data-direction="-1" type="button">−</button><input class="text" id="startInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="start" data-direction="1" type="button">+</button></span></label>
         <label><span class="label">Loop end</span><span class="stepper"><button class="button ghost mini" data-adjust="end" data-direction="-1" type="button">−</button><input class="text" id="endInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="end" data-direction="1" type="button">+</button></span></label>
       </div>
-      <p class="note">The − and + buttons move one analysis sample at a time.</p>
+      <p class="note">The − and + buttons move one full-detail sample at a time.</p>
     </div>
 
     <div class="downloads">
@@ -266,9 +315,9 @@ function estimateBeatFrames(onset,frameRate){
 }
 function buildFeatures(channels,sampleRate,options){
   const quality=options.power;
-  const analysisRate=quality==="fast"?11025:(quality==="maximum"?22050:16000);
+  const analysisRate=sampleRate;
   const fftSize=quality==="fast"?1024:2048;
-  const hop=quality==="maximum"?384:512;
+  const hop=clamp(Math.round(options.hopLength||512),128,2048);
   const channelCount=channels.length,total=channels[0].length;
   const midOriginal=new Float32Array(total),sideOriginal=new Float32Array(total);
   if(channelCount>=2){const l=channels[0],r=channels[1];for(let i=0;i<total;i++){midOriginal[i]=.5*(l[i]+r[i]);sideOriginal[i]=.5*(l[i]-r[i]);}}
@@ -313,7 +362,7 @@ function localValleys(activity,maxCount){
   const threshold=percentile(activity,.55),filtered=found.filter(i=>activity[i]<=threshold);filtered.sort((a,b)=>activity[a]-activity[b]);return filtered.slice(0,maxCount);
 }
 function makeCandidates(bundle,options){
-  const max=bundle.frames-1,quality=options.power,maxCandidates=quality==="fast"?520:(quality==="maximum"?1150:820),gridSeconds=quality==="maximum"?.28:(quality==="fast"?.55:.40),gridStep=Math.max(1,Math.round(gridSeconds*bundle.frameRate));
+  const max=bundle.frames-1,quality=options.power,maxCandidates=clamp(Math.round(options.maxCandidates||1500),100,4000),gridSeconds=quality==="maximum"?.28:(quality==="fast"?.55:.40),gridStep=Math.max(1,Math.round(gridSeconds*bundle.frameRate));
   const set=new Set([0,max]);for(let i=0;i<=max;i+=gridStep)set.add(i);for(const frame of bundle.beatFrames)set.add(clamp(frame,0,max));for(const frame of localValleys(bundle.activity,quality==="maximum"?500:320))set.add(frame);
   let values=[...set].sort((a,b)=>a-b);
   if(values.length>maxCandidates){const beatSet=new Set(bundle.beatFrames),valleySet=new Set(localValleys(bundle.activity,500));const preferred=values.filter(v=>beatSet.has(v)||valleySet.has(v)),rest=values.filter(v=>!beatSet.has(v)&&!valleySet.has(v));const room=Math.max(0,maxCandidates-preferred.length),sampled=[];for(let i=0;i<room;i++)sampled.push(rest[Math.round(i*(rest.length-1)/Math.max(1,room-1))]);values=[...new Set(preferred.slice(0,maxCandidates).concat(sampled))].sort((a,b)=>a-b).slice(0,maxCandidates);}
@@ -322,7 +371,10 @@ function makeCandidates(bundle,options){
 function normalizeVector(vector){let mean=0;for(let i=0;i<vector.length;i++)mean+=vector[i];mean/=vector.length;let norm=0;for(let i=0;i<vector.length;i++){vector[i]-=mean;norm+=vector[i]*vector[i];}norm=Math.sqrt(norm)||1;for(let i=0;i<vector.length;i++)vector[i]/=norm;return vector;}
 function makeEmbedding(bundle,frame,direction,windowSeconds,bins){
   const {data,frames,dims,frameRate}=bundle,windowFrames=Math.max(bins,Math.round(windowSeconds*frameRate)),out=new Float32Array(dims*bins);
-  const start=direction==="forward"?frame:frame-windowFrames,end=direction==="forward"?frame+windowFrames:frame;
+  let start,end;
+  if(direction==="forward"){start=frame;end=frame+windowFrames;}
+  else if(direction==="backward"){start=frame-windowFrames;end=frame;}
+  else{start=frame-Math.floor(windowFrames/2);end=start+windowFrames;}
   for(let bin=0;bin<bins;bin++){
     const a=Math.floor(lerp(start,end,bin/bins)),b=Math.max(a+1,Math.floor(lerp(start,end,(bin+1)/bins)));
     let count=0;for(let f=a;f<b;f++){const ff=clamp(f,0,frames-1),row=ff*dims;for(let d=0;d<dims;d++)out[bin*dims+d]+=data[row+d];count++;}
@@ -336,16 +388,21 @@ function pushTop(list,item,limit){
   if(item.score<=list[0].score)return;list[0]=item;let i=0;while(i+1<list.length&&list[i].score>list[i+1].score){const t=list[i];list[i]=list[i+1];list[i+1]=t;i++;}
 }
 function coarseSearch(bundle,candidates,options,duration){
-  const quality=options.power,windowSeconds=quality==="fast"?4.2:(quality==="maximum"?7:5.5),bins=quality==="maximum"?5:4,embeddings=[];
-  for(let i=0;i<candidates.length;i++){embeddings.push({forward:makeEmbedding(bundle,candidates[i],"forward",windowSeconds,bins),backward:makeEmbedding(bundle,candidates[i],"backward",windowSeconds,bins)});if(i%80===0)postProgress(30+8*i/candidates.length,"Preparing loop points…");}
-  const minimum=options.minimumLoop,topLimit=quality==="fast"?10:(quality==="maximum"?28:18),top=[];
+  const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="maximum"?6:(quality==="fast"?4:5),embeddings=[];
+  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8);
+  for(let i=0;i<candidates.length;i++){embeddings.push({
+    forward:makeEmbedding(bundle,candidates[i],"forward",windowSeconds,bins),
+    backward:makeEmbedding(bundle,candidates[i],"backward",windowSeconds,bins),
+    boundary:makeEmbedding(bundle,candidates[i],"centered",boundarySeconds,bins)
+  });if(i%80===0)postProgress(30+8*i/candidates.length,"Preparing loop points…");}
+  const minimum=options.minimumLoop,topLimit=clamp(Math.round(options.coarsePairsToRefine||18),1,64),top=[];
   const times=new Float64Array(candidates.length);for(let i=0;i<candidates.length;i++)times[i]=candidates[i]/bundle.frameRate;
   for(let i=0;i<candidates.length;i++){
     const startTime=times[i],riskA=bundle.activity[candidates[i]]||0;
     for(let j=i+1;j<candidates.length;j++){
       const length=times[j]-startTime;if(length<minimum)continue;
-      const forward=dot(embeddings[i].forward,embeddings[j].forward),backward=dot(embeddings[i].backward,embeddings[j].backward),directional=Math.max(forward,backward);
-      let score=directional-.020*length/duration+.010*times[j]/duration-.205*startTime/duration;
+      const forward=dot(embeddings[i].forward,embeddings[j].forward),backward=dot(embeddings[i].backward,embeddings[j].backward),directional=Math.max(forward,backward),boundary=Math.max(0,dot(embeddings[i].boundary,embeddings[j].boundary));
+      let score=(options.useVocals?.82:.86)*directional+(options.useVocals?.18:.14)*boundary-.020*length/duration+.010*times[j]/duration-.205*startTime/duration;
       score+=.205*Math.max(0,forward-backward)*(1-startTime/duration);
       if(options.useVocals){const riskB=bundle.activity[candidates[j]]||0;score-=.10*.5*(riskA+riskB)-.01;score-=.06*Math.abs(riskA-riskB);}
       if(options.beatLock&&bundle.beatPeriod>0){const beats=(candidates[j]-candidates[i])/bundle.beatPeriod,nearest=Math.round(beats),error=Math.abs(beats-nearest);score-=.09*clamp(error/.5,0,1);if(error<.12){if(nearest%16===0)score+=.10;else if(nearest%8===0)score+=.07;else if(nearest%4===0)score+=.045;else if(nearest%2===0)score+=.015;else score-=.06;}}
@@ -385,35 +442,134 @@ function seamCost(channels,start,end,context){
   return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(phase.raw,4)+.42*Math.min(.5*(1-phase.corr),2)+.18*(1-phase.coverage);
 }
 function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeconds=0){
-  const total=channels[0].length,targetPeriod=initialEnd-initialStart;if(targetPeriod<=2)return null;
-  const radius=Math.round(.180*sampleRate),step=Math.max(1,Math.round((options.power==="maximum"?.0015:.0025)*sampleRate)),window=Math.round((options.power==="fast"?.32:.42)*sampleRate);
+  const total=channels[0].length,targetPeriod=initialEnd-initialStart;
+  if(targetPeriod<=2)return null;
+
+  const radius=Math.max(1,Math.round((Number(options.refineRadiusMs)||180)*sampleRate/1000));
+  const step=Math.max(1,Math.round((Number(options.refineStepMs)||2)*sampleRate/1000));
+  const window=Math.max(128,Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000));
   let bestScore=-Infinity,lockedStart=initialStart,lockedEnd=initialEnd;
-  for(let offset=-radius;offset<=radius;offset+=step){const start=initialStart+offset,end=initialEnd+offset;if(start<window+2||end>total)continue;const mf=windowCorrelation(channels,start,end,window,"forward","mono"),mb=windowCorrelation(channels,start,end,window,"backward","mono"),tf=windowCorrelation(channels,start,end,window,"forward","transient",650),tb=windowCorrelation(channels,start,end,window,"backward","transient",650);let score=.39*mf+.21*mb+.25*tf+.15*tb;if(options.useVocals){const vf=windowCorrelation(channels,start,end,window,"forward","vocal"),vb=windowCorrelation(channels,start,end,window,"backward","vocal");score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;}score-=.008*Math.abs(offset)/radius;if(score>bestScore){bestScore=score;lockedStart=start;lockedEnd=end;}}
-  if(options.preferFirst){
-    const anchorRadius=Math.round(Math.min(2.5,Math.max(.55,beatSeconds>0?beatSeconds*2.5:1.4))*sampleRate),anchorStep=Math.max(1,Math.round(.004*sampleRate)),anchorWindow=Math.min(window,Math.round(1.15*sampleRate));let anchorBest=-Infinity,anchorStart=lockedStart;
-    for(let offset=-anchorRadius;offset<=anchorRadius;offset+=anchorStep){const start=lockedStart+offset,end=start+targetPeriod;if(start<0||end>total)continue;const mf=windowCorrelation(channels,start,end,anchorWindow,"forward","mono"),mb=windowCorrelation(channels,start,end,Math.min(anchorWindow,Math.round(.65*sampleRate)),"backward","mono"),tf=windowCorrelation(channels,start,end,anchorWindow,"forward","transient",650);let score=.54*mf+.16*tf+.28*Math.max(0,mf-mb)-.008*Math.abs(offset)/anchorRadius+.025*(lockedStart-start)/anchorRadius;if(options.useVocals)score+=.10*windowCorrelation(channels,start,end,anchorWindow,"forward","vocal");if(score>anchorBest){anchorBest=score;anchorStart=start;}}
-    lockedStart=anchorStart;lockedEnd=anchorStart+targetPeriod;
+
+  for(let offset=-radius;offset<=radius;offset+=step){
+    const start=initialStart+offset,end=initialEnd+offset;
+    if(start<2||end<2||start>=total-2||end>total)continue;
+    const mf=windowCorrelation(channels,start,end,window,"forward","mono");
+    const mb=windowCorrelation(channels,start,end,window,"backward","mono");
+    const tf=windowCorrelation(channels,start,end,window,"forward","transient",650);
+    const tb=windowCorrelation(channels,start,end,window,"backward","transient",650);
+    let score;
+    if(options.useVocals){
+      const vf=windowCorrelation(channels,start,end,window,"forward","vocal");
+      const vb=windowCorrelation(channels,start,end,window,"backward","vocal");
+      score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
+    }else{
+      score=.39*mf+.21*mb+.25*tf+.15*tb;
+    }
+    score-=.008*Math.abs(offset)/Math.max(1,radius);
+    if(score>bestScore){bestScore=score;lockedStart=start;lockedEnd=end;}
   }
-  const phaseContext=Math.round(.090*sampleRate),broadRadius=Math.round((options.power==="fast"?.22:.32)*sampleRate),broadStep=Math.max(1,Math.round(.002*sampleRate));let refinedStart=lockedStart,refinedEnd=lockedEnd,broadBest=-Infinity;
-  for(let delta=-broadRadius;delta<=broadRadius;delta+=broadStep){const end=lockedEnd+delta;if(end<=lockedStart+2||end>total)continue;const mf=windowCorrelation(channels,lockedStart,end,window,"forward","mono"),tf=windowCorrelation(channels,lockedStart,end,window,"forward","transient",650),phase=forwardError(channels,lockedStart,end,phaseContext);let score=.48*mf+.20*tf-.38*Math.min(phase.raw,3)-.26*Math.min(.5*(1-phase.corr),2)+.05*phase.coverage-.018*Math.abs(delta)/broadRadius;if(options.useVocals)score+=.12*windowCorrelation(channels,lockedStart,end,window,"forward","vocal");if(options.beatLock&&beatSeconds>0){const beats=(end-lockedStart)/(sampleRate*beatSeconds),error=Math.abs(beats-Math.round(beats));score-=.22*clamp(error/.5,0,1);}if(score>broadBest){broadBest=score;refinedStart=lockedStart;refinedEnd=end;}}
-  const correction=Math.round(.015*sampleRate),correctionStep=Math.max(1,Math.round((options.power==="maximum"?.00025:.0005)*sampleRate)),fineCenter=refinedEnd;bestScore=broadBest;
-  for(let delta=-correction;delta<=correction;delta+=correctionStep){const end=fineCenter+delta;if(end<=refinedStart+2||end>total)continue;const mf=windowCorrelation(channels,refinedStart,end,window,"forward","mono"),mb=windowCorrelation(channels,refinedStart,end,window,"backward","mono"),phase=forwardError(channels,refinedStart,end,phaseContext);let score=.55*mf+.25*mb-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage-.028*Math.abs(delta)/correction;if(options.useVocals)score+=.12*windowCorrelation(channels,refinedStart,end,window,"forward","vocal");if(options.beatLock&&beatSeconds>0){const beats=(end-refinedStart)/(sampleRate*beatSeconds),error=Math.abs(beats-Math.round(beats));score-=.18*clamp(error/.5,0,1);}if(score>bestScore){bestScore=score;refinedEnd=end;}}
-  let period=refinedEnd-refinedStart,forwardContext=Math.max(32,Math.round(.032*sampleRate)),sharedRadius=Math.max(1,Math.round(.005*sampleRate)),bestCost=Infinity,bestStart=refinedStart,bestEnd=refinedEnd;
-  for(let offset=-sharedRadius;offset<=sharedRadius;offset++){const start=refinedStart+offset,end=start+period;if(start<2||end>total)continue;const cost=seamCost(channels,start,end,forwardContext)+.006*Math.abs(offset)/sharedRadius;if(cost<bestCost){bestCost=cost;bestStart=start;bestEnd=end;}}
-  const tiny=Math.max(1,Math.round(.00060*sampleRate)),periodStart=bestStart,periodEnd=bestEnd;
-  for(let delta=-tiny;delta<=tiny;delta++){const end=periodEnd+delta;if(end<=periodStart+2||end>total)continue;const cost=seamCost(channels,periodStart,end,forwardContext)+.22*Math.abs(delta)/tiny;if(cost<bestCost){bestCost=cost;bestStart=periodStart;bestEnd=end;}}
-  period=bestEnd-bestStart;const center=bestStart;
-  for(let offset=-tiny;offset<=tiny;offset++){const start=center+offset,end=start+period;if(start<2||end>total)continue;const cost=seamCost(channels,start,end,forwardContext)+.012*Math.abs(offset)/tiny;if(cost<bestCost){bestCost=cost;bestStart=start;bestEnd=end;}}
-  return{start:bestStart,end:bestEnd,waveform:bestScore,seam:bestCost,periodCorrection:((bestEnd-bestStart)-targetPeriod)*1000/sampleRate};
+  if(!Number.isFinite(bestScore))return null;
+
+  const maxCorrection=Math.max(1,Math.round((Number(options.maxPeriodCorrectionMs)||15)*sampleRate/1000));
+  const correctionStep=Math.max(1,Math.round((Number(options.periodCorrectionStepMs)||.25)*sampleRate/1000));
+  const phaseContext=Math.max(64,Math.round(.090*sampleRate));
+  let refinedStart=lockedStart,refinedEnd=lockedEnd,waveform=bestScore;
+
+  for(let delta=-maxCorrection;delta<=maxCorrection;delta+=correctionStep){
+    const end=lockedEnd+delta;
+    if(end<=lockedStart+2||end>total)continue;
+    const mf=windowCorrelation(channels,lockedStart,end,window,"forward","mono");
+    const mb=windowCorrelation(channels,lockedStart,end,window,"backward","mono");
+    const tf=windowCorrelation(channels,lockedStart,end,window,"forward","transient",650);
+    const tb=windowCorrelation(channels,lockedStart,end,window,"backward","transient",650);
+    const phase=forwardError(channels,lockedStart,end,phaseContext);
+    let score;
+    if(options.useVocals){
+      const vf=windowCorrelation(channels,lockedStart,end,window,"forward","vocal");
+      const vb=windowCorrelation(channels,lockedStart,end,window,"backward","vocal");
+      score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
+    }else{
+      score=.39*mf+.21*mb+.25*tf+.15*tb;
+    }
+    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage;
+    score-=.028*Math.abs(delta)/Math.max(1,maxCorrection);
+    if(options.beatLock&&beatSeconds>0){
+      const beats=(end-lockedStart)/(sampleRate*beatSeconds),error=Math.abs(beats-Math.round(beats));
+      score-=.085*clamp(error/.5,0,1);
+    }
+    if(score>waveform){waveform=score;refinedEnd=end;}
+  }
+
+  let period=refinedEnd-refinedStart;
+  const forwardContext=Math.max(32,Math.round((Number(options.seamForwardContextMs)||32)*sampleRate/1000));
+  const sharedRadius=Math.max(1,Math.round((Number(options.seamSharedSearchMs)||5)*sampleRate/1000));
+  let bestCost=Infinity,bestStart=refinedStart,bestEnd=refinedEnd;
+
+  for(let offset=-sharedRadius;offset<=sharedRadius;offset++){
+    const start=refinedStart+offset,end=start+period;
+    if(start<2||end>total)continue;
+    const cost=seamCost(channels,start,end,forwardContext)+.006*Math.abs(offset)/Math.max(1,sharedRadius);
+    if(cost<bestCost){bestCost=cost;bestStart=start;bestEnd=end;}
+  }
+
+  const tiny=Math.max(1,Math.round((Number(options.seamPeriodSearchMs)||.60)*sampleRate/1000));
+  const periodStart=bestStart,periodEnd=bestEnd;
+  for(let delta=-tiny;delta<=tiny;delta++){
+    const end=periodEnd+delta;
+    if(end<=periodStart+2||end>total)continue;
+    const cost=seamCost(channels,periodStart,end,forwardContext)+.22*Math.abs(delta)/Math.max(1,tiny);
+    if(cost<bestCost){bestCost=cost;bestStart=periodStart;bestEnd=end;}
+  }
+
+  period=bestEnd-bestStart;
+  const center=bestStart;
+  for(let offset=-tiny;offset<=tiny;offset++){
+    const start=center+offset,end=start+period;
+    if(start<2||end>total)continue;
+    const cost=seamCost(channels,start,end,forwardContext)+.012*Math.abs(offset)/Math.max(1,tiny);
+    if(cost<bestCost){bestCost=cost;bestStart=start;bestEnd=end;}
+  }
+
+  return{
+    start:bestStart,end:bestEnd,waveform,seam:bestCost,
+    periodCorrection:((bestEnd-bestStart)-targetPeriod)*1000/sampleRate
+  };
 }
-function segmentSimilarity(bundle,startFrame,endFrame,otherStart,otherEnd,useVocals){
-  const bins=64,dims=bundle.dims;let dotSum=0,aa=0,bb=0;
-  for(let bin=0;bin<bins;bin++){const a=clamp(Math.floor(lerp(startFrame,endFrame,(bin+.5)/bins)),0,bundle.frames-1),b=clamp(Math.floor(lerp(otherStart,otherEnd,(bin+.5)/bins)),0,bundle.frames-1),rowA=a*dims,rowB=b*dims,limit=useVocals?dims:24;for(let d=0;d<limit;d++){const x=bundle.data[rowA+d],y=bundle.data[rowB+d];dotSum+=x*y;aa+=x*x;bb+=y*y;}}
-  return dotSum/(Math.sqrt(aa*bb)+1e-12);
+function segmentSimilarity(bundle,startFrame,endFrame,otherStart,otherEnd,mode){
+  const bins=96,dims=bundle.dims;
+  let from=0,to=Math.min(24,dims);
+  if(mode==="vocal"){
+    if(dims<=24)return 1;
+    from=24;to=dims;
+  }else if(mode==="all")to=dims;
+  let product=0,aa=0,bb=0;
+  for(let bin=0;bin<bins;bin++){
+    const a=clamp(Math.floor(lerp(startFrame,endFrame,(bin+.5)/bins)),0,bundle.frames-1);
+    const b=clamp(Math.floor(lerp(otherStart,otherEnd,(bin+.5)/bins)),0,bundle.frames-1);
+    const rowA=a*dims,rowB=b*dims;
+    for(let d=from;d<to;d++){
+      const x=bundle.data[rowA+d],y=bundle.data[rowB+d];
+      product+=x*y;aa+=x*x;bb+=y*y;
+    }
+  }
+  return product/(Math.sqrt(aa*bb)+1e-12);
 }
 function shiftEarliest(result,bundle,sampleRate,options){
-  if(!options.preferFirst)return{...result,shifted:0};const period=result.end-result.start;let start=result.start,end=result.end,shifted=0;
-  while(start-period>=0){const prevStart=start-period,prevEnd=start,scale=bundle.analysisRate/(sampleRate*bundle.hop),a=Math.round(prevStart*scale),b=Math.round(prevEnd*scale),c=Math.round(start*scale),d=Math.round(end*scale),similarity=segmentSimilarity(bundle,a,b,c,d,options.useVocals);const threshold=options.useVocals?.64:.74;if(similarity<threshold)break;start=prevStart;end=prevEnd;shifted++;}
+  if(!options.preferFirst)return{...result,shifted:0};
+  const period=result.end-result.start;
+  let start=result.start,end=result.end,shifted=0;
+  const musicThreshold=clamp(Number(options.earliestMusicalThreshold)||.72,0,1);
+  const vocalThreshold=clamp(Number(options.earliestVocalThreshold)||.58,0,1);
+  while(start-period>=0){
+    const previousStart=start-period,previousEnd=start;
+    const scale=bundle.analysisRate/(sampleRate*bundle.hop);
+    const a=Math.round(previousStart*scale),b=Math.round(previousEnd*scale);
+    const c=Math.round(start*scale),d=Math.round(end*scale);
+    const musical=segmentSimilarity(bundle,a,b,c,d,"musical");
+    if(musical<musicThreshold)break;
+    if(options.useVocals&&segmentSimilarity(bundle,a,b,c,d,"vocal")<vocalThreshold)break;
+    start=previousStart;end=previousEnd;shifted++;
+  }
   return{...result,start,end,shifted};
 }
 function confidence(result,musical,options){
@@ -453,7 +609,7 @@ function makeWavePeaks(channels,width=1200){
 function detect(channels,sampleRate,requested){
   const started=now();let options={...requested,useVocals:requested.vocalMode==="vocal"};
   postProgress(3,"Starting analysis…");const fullBundle=buildFeatures(channels,sampleRate,{...options,useVocals:true});
-  if(requested.vocalMode==="auto")options.useVocals=fullBundle.vocalPresence>=.52;else options.useVocals=requested.vocalMode==="vocal";
+  if(requested.vocalMode==="auto")options.useVocals=fullBundle.vocalPresence>=clamp(Number(requested.autoVocalThreshold)||.50,0,1);else options.useVocals=requested.vocalMode==="vocal";
   let bundle=options.useVocals?fullBundle:stripVocalFeatures(fullBundle);
   if(!options.useVocals)postProgress(27,"Using instrumental mode…");
   postMessage({type:"mode",mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence});
@@ -467,7 +623,181 @@ function detect(channels,sampleRate,requested){
   }
   if(!results.length)throw new Error("The loop points could not be refined.");results.sort((a,b)=>b.rank-a.rank);
   for(const shorter of results)for(const longer of results){if(shorter===longer)continue;const shortLength=shorter.end-shorter.start,longLength=longer.end-longer.start;if(shortLength>=longLength*.8||Math.abs(shorter.start-longer.start)>.9*sampleRate)continue;const ratio=longLength/shortLength,integer=Math.round(ratio);if(integer>=2&&integer<=4&&Math.abs(ratio-integer)<.045&&shorter.confidence>=longer.confidence-.055){shorter.rank+=.18;longer.rank-=.07;}}
-  results.sort((a,b)=>b.rank-a.rank);let best=anchorResultToFirstBoundary(channels,sampleRate,results[0],options,bundle);const finalConfidence=confidence(best,best.musical,options);best.confidence=finalConfidence.value;best.confidenceLabel=finalConfidence.label;postProgress(100,"Loop found.");return{start:best.start,end:best.end,confidence:best.confidence,confidenceLabel:best.confidenceLabel,seam:best.seam,waveform:best.waveform,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,elapsed:(now()-started)/1000};
+  results.sort((a,b)=>b.rank-a.rank);let best=results[0];const finalConfidence=confidence(best,best.musical,options);best.confidence=finalConfidence.value;best.confidenceLabel=finalConfidence.label;postProgress(100,"Loop found.");return{start:best.start,end:best.end,confidence:best.confidence,confidenceLabel:best.confidenceLabel,seam:best.seam,waveform:best.waveform,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,elapsed:(now()-started)/1000};
+}
+
+
+function decodeTransferredPcm(buffer,byteOffset,length,channelCount){
+  const interleaved=new Int16Array(buffer,byteOffset,length),frames=Math.floor(interleaved.length/channelCount);
+  const channels=Array.from({length:channelCount},()=>new Float32Array(frames));
+  for(let frame=0;frame<frames;frame++){
+    const base=frame*channelCount;
+    for(let channel=0;channel<channelCount;channel++)channels[channel][frame]=interleaved[base+channel]/32768;
+  }
+  return channels;
+}
+function sliceValue(channels,index,kind){
+  index=clamp(index|0,0,channels[0].length-1);
+  if(kind==="vocal"&&channels.length>=2){
+    const mid=.5*(channels[0][index]+channels[1][index]),side=.5*(channels[0][index]-channels[1][index]);
+    return mid-.40*side;
+  }
+  let sum=0;for(const channel of channels)sum+=channel[index];return sum/channels.length;
+}
+function sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,length,direction,kind,targetSamples=1100){
+  const sign=direction==="forward"?1:-1,stride=Math.max(1,Math.floor(length/targetSamples));
+  let meanA=0,meanB=0,count=0;
+  for(let k=0;k<length;k+=stride){
+    const a=startIndex+sign*k,b=endIndex+sign*k;
+    if(a<0||b<0||a>=startChannels[0].length||b>=endChannels[0].length)break;
+    meanA+=sliceValue(startChannels,a,kind);meanB+=sliceValue(endChannels,b,kind);count++;
+  }
+  if(count<12)return-.5;
+  meanA/=count;meanB/=count;
+  let product=0,energyA=0,energyB=0,n=0;
+  for(let k=0;k<length&&n<count;k+=stride,n++){
+    const a=startIndex+sign*k,b=endIndex+sign*k;
+    if(a<0||b<0||a>=startChannels[0].length||b>=endChannels[0].length)break;
+    let x=sliceValue(startChannels,a,kind)-meanA,y=sliceValue(endChannels,b,kind)-meanB;
+    if(kind==="transient"){
+      const previousA=a-sign,previousB=b-sign;
+      if(previousA<0||previousB<0||previousA>=startChannels[0].length||previousB>=endChannels[0].length)continue;
+      x=Math.abs(sliceValue(startChannels,a,"mono")-sliceValue(startChannels,previousA,"mono"));
+      y=Math.abs(sliceValue(endChannels,b,"mono")-sliceValue(endChannels,previousB,"mono"));
+    }
+    product+=x*y;energyA+=x*x;energyB+=y*y;
+  }
+  return product/(Math.sqrt(energyA*energyB)+1e-12);
+}
+function sliceForwardError(startChannels,endChannels,startIndex,endIndex,context){
+  const available=Math.min(context,startChannels[0].length-startIndex,endChannels[0].length-endIndex);
+  if(available<16)return{raw:.70,corr:.30,coverage:Math.max(0,available/Math.max(1,context))};
+  const stride=Math.max(1,Math.floor(available/192));
+  const channels=Math.min(startChannels.length,endChannels.length);
+  let diff=0,energy=0,meanA=0,meanB=0,count=0;
+  for(let k=0;k<available;k+=stride)for(let c=0;c<channels;c++){
+    const a=startChannels[c][startIndex+k],b=endChannels[c][endIndex+k];
+    diff+=(a-b)*(a-b);energy+=.5*(a*a+b*b);meanA+=a;meanB+=b;count++;
+  }
+  meanA/=Math.max(1,count);meanB/=Math.max(1,count);
+  let product=0,aa=0,bb=0;
+  for(let k=0;k<available;k+=stride)for(let c=0;c<channels;c++){
+    const a=startChannels[c][startIndex+k]-meanA,b=endChannels[c][endIndex+k]-meanB;
+    product+=a*b;aa+=a*a;bb+=b*b;
+  }
+  return{
+    raw:Math.sqrt(diff/Math.max(1,count))/(Math.sqrt(energy/Math.max(1,count))+1e-10),
+    corr:product/(Math.sqrt(aa*bb)+1e-10),
+    coverage:available/Math.max(1,context)
+  };
+}
+function sliceSeamCost(startChannels,endChannels,startIndex,endIndex,context){
+  if(startIndex<2||endIndex<2||startIndex+1>=startChannels[0].length||endIndex>endChannels[0].length)return Infinity;
+  const channels=Math.min(startChannels.length,endChannels.length);
+  const radius=Math.max(32,Math.min(context,Math.round(.050*192000)));
+  let localLevel=0,localDiff=0,count=0;
+  for(let k=-radius;k<=radius;k+=2){
+    const a=clamp(startIndex+k,1,startChannels[0].length-1);
+    const b=clamp(endIndex+k,1,endChannels[0].length-1);
+    for(let c=0;c<channels;c++){
+      const x=startChannels[c][a],y=endChannels[c][b];
+      localLevel+=x*x+y*y;
+      const dx=x-startChannels[c][a-1],dy=y-endChannels[c][b-1];
+      localDiff+=dx*dx+dy*dy;count+=2;
+    }
+  }
+  const localRms=Math.sqrt(localLevel/Math.max(1,count))+1e-10;
+  const derivativeScale=Math.max(Math.sqrt(localDiff/Math.max(1,count)),localRms*.003,1e-8);
+  let jump=0,slope=0;
+  for(let c=0;c<channels;c++){
+    const tail=endChannels[c][endIndex-1],head=startChannels[c][startIndex];
+    const delta=head-tail,before=tail-endChannels[c][endIndex-2],after=startChannels[c][startIndex+1]-head;
+    const expected=.5*(before+after);
+    jump+=delta*delta;slope+=(delta-expected)*(delta-expected);
+  }
+  jump=Math.sqrt(jump/channels)/derivativeScale;
+  slope=Math.sqrt(slope/channels)/derivativeScale;
+  const phase=sliceForwardError(startChannels,endChannels,startIndex,endIndex,context);
+  return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(phase.raw,4)+.42*Math.min(.5*(1-phase.corr),2)+.18*(1-phase.coverage);
+}
+function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,endCenter,options){
+  const radius=Math.max(1,Math.round((Number(options.refineRadiusMs)||180)*sampleRate/1000));
+  const step=Math.max(1,Math.round((Number(options.refineStepMs)||2)*sampleRate/1000));
+  const window=Math.max(128,Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000));
+  let lockedStart=startCenter,lockedEnd=endCenter,bestScore=-Infinity;
+
+  for(let offset=-radius;offset<=radius;offset+=step){
+    const a=startCenter+offset,b=endCenter+offset;
+    if(a<2||b<2||a>=startChannels[0].length-2||b>endChannels[0].length)continue;
+    const mf=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"forward","mono");
+    const mb=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"backward","mono");
+    const tf=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"forward","transient",750);
+    const tb=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"backward","transient",750);
+    let score;
+    if(options.useVocals){
+      const vf=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"forward","vocal");
+      const vb=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"backward","vocal");
+      score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
+    }else score=.39*mf+.21*mb+.25*tf+.15*tb;
+    score-=.008*Math.abs(offset)/Math.max(1,radius);
+    if(score>bestScore){bestScore=score;lockedStart=a;lockedEnd=b;}
+  }
+  if(!Number.isFinite(bestScore))throw new Error("The full-detail boundary windows were too short.");
+
+  const maxCorrection=Math.max(1,Math.round((Number(options.maxPeriodCorrectionMs)||15)*sampleRate/1000));
+  const correctionStep=Math.max(1,Math.round((Number(options.periodCorrectionStepMs)||.25)*sampleRate/1000));
+  const phaseContext=Math.max(64,Math.round(.090*sampleRate));
+  let refinedStart=lockedStart,refinedEnd=lockedEnd,waveform=bestScore;
+
+  for(let delta=-maxCorrection;delta<=maxCorrection;delta+=correctionStep){
+    const b=lockedEnd+delta;
+    if(b<=2||b>endChannels[0].length)continue;
+    const mf=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"forward","mono");
+    const mb=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"backward","mono");
+    const tf=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"forward","transient",750);
+    const tb=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"backward","transient",750);
+    const phase=sliceForwardError(startChannels,endChannels,lockedStart,b,phaseContext);
+    let score;
+    if(options.useVocals){
+      const vf=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"forward","vocal");
+      const vb=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"backward","vocal");
+      score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
+    }else score=.39*mf+.21*mb+.25*tf+.15*tb;
+    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage;
+    score-=.028*Math.abs(delta)/Math.max(1,maxCorrection);
+    if(score>waveform){waveform=score;refinedEnd=b;}
+  }
+
+  const context=Math.max(32,Math.round((Number(options.seamForwardContextMs)||32)*sampleRate/1000));
+  const sharedRadius=Math.max(1,Math.round((Number(options.seamSharedSearchMs)||5)*sampleRate/1000));
+  let bestStart=refinedStart,bestEnd=refinedEnd,bestCost=Infinity;
+  for(let offset=-sharedRadius;offset<=sharedRadius;offset++){
+    const a=refinedStart+offset,b=refinedEnd+offset;
+    const cost=sliceSeamCost(startChannels,endChannels,a,b,context)+.006*Math.abs(offset)/Math.max(1,sharedRadius);
+    if(cost<bestCost){bestCost=cost;bestStart=a;bestEnd=b;}
+  }
+
+  const tiny=Math.max(1,Math.round((Number(options.seamPeriodSearchMs)||.60)*sampleRate/1000));
+  const fixedStart=bestStart,fixedEnd=bestEnd;
+  for(let delta=-tiny;delta<=tiny;delta++){
+    const b=fixedEnd+delta;
+    const cost=sliceSeamCost(startChannels,endChannels,fixedStart,b,context)+.22*Math.abs(delta)/Math.max(1,tiny);
+    if(cost<bestCost){bestCost=cost;bestStart=fixedStart;bestEnd=b;}
+  }
+
+  const finalStart=bestStart,finalEnd=bestEnd;
+  for(let offset=-tiny;offset<=tiny;offset++){
+    const a=finalStart+offset,b=finalEnd+offset;
+    const cost=sliceSeamCost(startChannels,endChannels,a,b,context)+.012*Math.abs(offset)/Math.max(1,tiny);
+    if(cost<bestCost){bestCost=cost;bestStart=a;bestEnd=b;}
+  }
+
+  return{
+    startDelta:bestStart-startCenter,
+    endDelta:bestEnd-endCenter,
+    seam:bestCost,waveform,
+    periodCorrectionMs:((bestEnd-endCenter)-(bestStart-startCenter))*1000/sampleRate
+  };
 }
 
 let loadedChannels=null,loadedSampleRate=0,loadedFrames=0;
@@ -494,6 +824,15 @@ onmessage=event=>{
       postMessage({type:"done",result});
       return;
     }
+    if(message.type==="fine"){
+      const startChannels=decodeTransferredPcm(message.startBuffer,message.startByteOffset,message.startLength,message.startChannels);
+      const endChannels=decodeTransferredPcm(message.endBuffer,message.endByteOffset,message.endLength,message.endChannels);
+      const result=refineBoundarySlices(
+        startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,message.options
+      );
+      postMessage({type:"fineDone",result});
+      return;
+    }
     if(message.type==="dispose"){loadedChannels=null;loadedSampleRate=0;loadedFrames=0;return;}
   }catch(error){
     postMessage({type:"error",message:error&&error.message?error.message:String(error),stack:error&&error.stack?error.stack:""});
@@ -512,10 +851,19 @@ const E={
   fileInput:$("#fileInput"),dropZone:$("#dropZone"),fileCard:$("#fileCard"),fileName:$("#fileName"),fileMeta:$("#fileMeta"),
   changeButton:$("#changeButton"),resetButton:$("#resetButton"),sourcePlayer:$("#sourcePlayer"),protocolWarning:$("#protocolWarning"),
   minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),
+  resetSettingsButton:$("#resetSettingsButton"),analysisSampleRate:$("#analysisSampleRate"),hopLength:$("#hopLength"),
+  matchWindowSeconds:$("#matchWindowSeconds"),boundaryContextSeconds:$("#boundaryContextSeconds"),
+  maxCandidates:$("#maxCandidates"),coarsePairsToRefine:$("#coarsePairsToRefine"),
+  autoVocalThreshold:$("#autoVocalThreshold"),precisionSampleRate:$("#precisionSampleRate"),
+  refineRadiusMs:$("#refineRadiusMs"),refineStepMs:$("#refineStepMs"),refineMatchMs:$("#refineMatchMs"),
+  maxPeriodCorrectionMs:$("#maxPeriodCorrectionMs"),periodCorrectionStepMs:$("#periodCorrectionStepMs"),
+  seamSharedSearchMs:$("#seamSharedSearchMs"),seamPeriodSearchMs:$("#seamPeriodSearchMs"),
+  seamForwardContextMs:$("#seamForwardContextMs"),earliestMusicalThreshold:$("#earliestMusicalThreshold"),
+  earliestVocalThreshold:$("#earliestVocalThreshold"),
   findButton:$("#findButton"),progressBox:$("#progressBox"),progressBar:$("#progressBar"),progressText:$("#progressText"),
   resultPanel:$("#resultPanel"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),
   endStat:$("#endStat"),lengthStat:$("#lengthStat"),confidenceStat:$("#confidenceStat"),waveCanvas:$("#waveCanvas"),
-  playSeamButton:$("#playSeamButton"),playLoopButton:$("#playLoopButton"),stopButton:$("#stopButton"),
+  playbackPosition:$("#playbackPosition"),playSeamButton:$("#playSeamButton"),playLoopButton:$("#playLoopButton"),stopButton:$("#stopButton"),
   startInput:$("#startInput"),endInput:$("#endInput"),downloadText:$("#downloadText"),downloadLoop:$("#downloadLoop"),
   downloadPreview:$("#downloadPreview"),txtName:$("#txtName"),loopName:$("#loopName"),previewName:$("#previewName"),
   findAgainButton:$("#findAgainButton"),statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),
@@ -527,13 +875,27 @@ E.runtimeBadge=E.cpuBadge;
 
 const state={
   file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,
-  analysisWorker:null,analysisPower:null,analysisRate:0,analysisFrames:0,analysisChannels:0,
-  loadWait:null,detectWait:null,
+  analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
+  loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
-  textUrl:"",playAudio:null,playUrl:"",mediaVersion:0
+  textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,mediaVersion:0,
+  precisionRate:48000
 };
 
-const ANALYSIS_RATES={fast:11025,strong:16000,maximum:22050};
+const SETTINGS_KEY="videoGameMusicLooperSettingsV3";
+const DEFAULT_SETTINGS=Object.freeze({
+  vocalMode:"auto",power:"strong",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,
+  analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,
+  maxCandidates:1500,coarsePairsToRefine:18,autoVocalThreshold:.50,precisionSampleRate:48000,
+  refineRadiusMs:180,refineStepMs:2,refineMatchMs:420,maxPeriodCorrectionMs:15,
+  periodCorrectionStepMs:.25,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
+  earliestMusicalThreshold:.72,earliestVocalThreshold:.58
+});
+const POWER_PRESETS=Object.freeze({
+  fast:{analysisSampleRate:11025,hopLength:512,matchWindowSeconds:4.2,boundaryContextSeconds:1.5,maxCandidates:650,coarsePairsToRefine:10,refineStepMs:4,periodCorrectionStepMs:.5},
+  strong:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,maxCandidates:1500,coarsePairsToRefine:18,refineStepMs:2,periodCorrectionStepMs:.25},
+  maximum:{analysisSampleRate:22050,hopLength:384,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:2200,coarsePairsToRefine:28,refineStepMs:1.5,periodCorrectionStepMs:.125}
+});
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
@@ -550,6 +912,83 @@ function status(title,message,type=""){E.statusTitle.textContent=title;E.statusM
 function setProgress(value,text){E.progressBox.classList.remove("hidden");E.progressBar.style.width=`${clamp(value,0,100)}%`;E.progressText.textContent=text;}
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
+function finiteNumber(element,fallback,min=-Infinity,max=Infinity){
+  const value=Number(element?.value);
+  return clamp(Number.isFinite(value)?value:fallback,min,max);
+}
+function radioValue(name,fallback){return selected(name)||fallback;}
+function setRadio(name,value){
+  const input=document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if(input)input.checked=true;
+}
+function readSettings(){
+  return{
+    vocalMode:radioValue("vocalMode",DEFAULT_SETTINGS.vocalMode),
+    power:radioValue("power",DEFAULT_SETTINGS.power),
+    minimumLoop:finiteNumber(E.minimumLoop,DEFAULT_SETTINGS.minimumLoop,3,600),
+    previewRepeats:finiteNumber(E.previewRepeats,DEFAULT_SETTINGS.previewRepeats,2,5),
+    preferFirst:!!E.preferFirst.checked,
+    beatLock:!!E.beatLock.checked,
+    analysisSampleRate:Math.round(finiteNumber(E.analysisSampleRate,DEFAULT_SETTINGS.analysisSampleRate,8000,48000)),
+    hopLength:Math.round(finiteNumber(E.hopLength,DEFAULT_SETTINGS.hopLength,128,2048)),
+    matchWindowSeconds:finiteNumber(E.matchWindowSeconds,DEFAULT_SETTINGS.matchWindowSeconds,1,20),
+    boundaryContextSeconds:finiteNumber(E.boundaryContextSeconds,DEFAULT_SETTINGS.boundaryContextSeconds,.25,8),
+    maxCandidates:Math.round(finiteNumber(E.maxCandidates,DEFAULT_SETTINGS.maxCandidates,100,4000)),
+    coarsePairsToRefine:Math.round(finiteNumber(E.coarsePairsToRefine,DEFAULT_SETTINGS.coarsePairsToRefine,1,64)),
+    autoVocalThreshold:finiteNumber(E.autoVocalThreshold,DEFAULT_SETTINGS.autoVocalThreshold,0,1),
+    precisionSampleRate:Math.round(finiteNumber(E.precisionSampleRate,DEFAULT_SETTINGS.precisionSampleRate,22050,96000)),
+    refineRadiusMs:finiteNumber(E.refineRadiusMs,DEFAULT_SETTINGS.refineRadiusMs,10,1000),
+    refineStepMs:finiteNumber(E.refineStepMs,DEFAULT_SETTINGS.refineStepMs,.25,20),
+    refineMatchMs:finiteNumber(E.refineMatchMs,DEFAULT_SETTINGS.refineMatchMs,50,2000),
+    maxPeriodCorrectionMs:finiteNumber(E.maxPeriodCorrectionMs,DEFAULT_SETTINGS.maxPeriodCorrectionMs,.25,50),
+    periodCorrectionStepMs:finiteNumber(E.periodCorrectionStepMs,DEFAULT_SETTINGS.periodCorrectionStepMs,.05,5),
+    seamSharedSearchMs:finiteNumber(E.seamSharedSearchMs,DEFAULT_SETTINGS.seamSharedSearchMs,.25,20),
+    seamPeriodSearchMs:finiteNumber(E.seamPeriodSearchMs,DEFAULT_SETTINGS.seamPeriodSearchMs,.05,5),
+    seamForwardContextMs:finiteNumber(E.seamForwardContextMs,DEFAULT_SETTINGS.seamForwardContextMs,4,250),
+    earliestMusicalThreshold:finiteNumber(E.earliestMusicalThreshold,DEFAULT_SETTINGS.earliestMusicalThreshold,0,1),
+    earliestVocalThreshold:finiteNumber(E.earliestVocalThreshold,DEFAULT_SETTINGS.earliestVocalThreshold,0,1)
+  };
+}
+function writeSettings(settings){
+  const s={...DEFAULT_SETTINGS,...settings};
+  setRadio("vocalMode",s.vocalMode);setRadio("power",s.power);
+  E.minimumLoop.value=s.minimumLoop;E.previewRepeats.value=String(s.previewRepeats);
+  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;
+  for(const key of [
+    "analysisSampleRate","hopLength","matchWindowSeconds","boundaryContextSeconds",
+    "maxCandidates","coarsePairsToRefine","autoVocalThreshold","precisionSampleRate",
+    "refineRadiusMs","refineStepMs","refineMatchMs","maxPeriodCorrectionMs",
+    "periodCorrectionStepMs","seamSharedSearchMs","seamPeriodSearchMs",
+    "seamForwardContextMs","earliestMusicalThreshold","earliestVocalThreshold"
+  ])if(E[key])E[key].value=String(s[key]);
+}
+function saveSettings(){
+  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(readSettings()));}catch{}
+}
+function loadSettings(){
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null");}catch{}
+  writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
+}
+function resetSettingsDefaults(){
+  writeSettings(DEFAULT_SETTINGS);
+  saveSettings();
+  terminateAnalysisWorker();
+  status("Settings reset","Default loop settings restored.","ok");
+  log("Loop settings reset to defaults.");
+}
+function applyPowerPreset(power){
+  const preset=POWER_PRESETS[power];
+  if(!preset)return;
+  writeSettings({...readSettings(),power,...preset});
+  saveSettings();
+  terminateAnalysisWorker();
+  log(`${power[0].toUpperCase()+power.slice(1)} search preset loaded.`);
+}
+function analysisSignature(settings){
+  return String(settings.analysisSampleRate);
+}
+
 function setBusy(value,message=""){
   state.busy=value;
   for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview]){
@@ -560,17 +999,36 @@ function setBusy(value,message=""){
   if(value)status("Working",message||"Processing the track…","busy");
 }
 
-function stopPlayback(){
-  if(state.playAudio){try{state.playAudio.pause();state.playAudio.src="";}catch{}state.playAudio=null;}
+function stopPlayback(keepSource=false){
+  if(state.playRaf){cancelAnimationFrame(state.playRaf);state.playRaf=0;}
+  if(!keepSource){try{E.sourcePlayer.pause();}catch{}}
+  if(state.playAudio&&state.playAudio!==E.sourcePlayer){try{state.playAudio.pause();state.playAudio.src="";}catch{}}
+  state.playAudio=null;state.playMap=null;state.playheadTime=null;
   if(state.playUrl){URL.revokeObjectURL(state.playUrl);state.playUrl="";}
+  E.playbackPosition.textContent="—";
+  drawWaveform();
+}
+function startPlaybackTracking(audio,map){
+  if(state.playRaf)cancelAnimationFrame(state.playRaf);
+  state.playAudio=audio;state.playMap=map;
+  const update=()=>{
+    if(!state.playAudio||state.playAudio!==audio)return;
+    const mapped=map?map(audio.currentTime||0):audio.currentTime||0;
+    state.playheadTime=Number.isFinite(mapped)?mapped:null;
+    E.playbackPosition.textContent=state.playheadTime==null?"—":formatClock(state.playheadTime);
+    drawWaveform();
+    if(!audio.paused&&!audio.ended)state.playRaf=requestAnimationFrame(update);
+    else state.playRaf=0;
+  };
+  update();
 }
 function revokeTextUrl(){if(state.textUrl){URL.revokeObjectURL(state.textUrl);state.textUrl="";}}
 function invalidateMedia(){stopPlayback();state.mediaVersion++;}
 
 function terminateAnalysisWorker(){
   if(state.analysisWorker){try{state.analysisWorker.postMessage({type:"dispose"});}catch{}try{state.analysisWorker.terminate();}catch{}}
-  state.analysisWorker=null;state.analysisPower=null;state.analysisRate=0;state.analysisFrames=0;state.analysisChannels=0;
-  state.loadWait=null;state.detectWait=null;state.wavePeaks=null;
+  state.analysisWorker=null;state.analysisSignature="";state.analysisRate=0;state.analysisFrames=0;state.analysisChannels=0;
+  state.loadWait=null;state.detectWait=null;state.fineWait=null;state.wavePeaks=null;
 }
 
 function createAnalysisWorker(){
@@ -602,23 +1060,29 @@ function createAnalysisWorker(){
       if(state.detectWait){state.detectWait.resolve(message.result);state.detectWait=null;}
       return;
     }
+    if(message.type==="fineDone"){
+      if(state.fineWait){state.fineWait.resolve(message.result);state.fineWait=null;}
+      return;
+    }
     if(message.type==="error"){
       const error=new Error(message.message||"Worker error.");
       if(state.loadWait){state.loadWait.reject(error);state.loadWait=null;}
       if(state.detectWait){state.detectWait.reject(error);state.detectWait=null;}
+      if(state.fineWait){state.fineWait.reject(error);state.fineWait=null;}
     }
   };
   worker.onerror=event=>{
     const error=new Error(event.message||"Analysis worker failed.");
     if(state.loadWait){state.loadWait.reject(error);state.loadWait=null;}
     if(state.detectWait){state.detectWait.reject(error);state.detectWait=null;}
+    if(state.fineWait){state.fineWait.reject(error);state.fineWait=null;}
   };
   return worker;
 }
 
 function waitForWorker(kind,send){
   return new Promise((resolve,reject)=>{
-    const key=kind==="load"?"loadWait":"detectWait";
+    const key=kind==="load"?"loadWait":(kind==="fine"?"fineWait":"detectWait");
     state[key]={resolve,reject};
     send();
   });
@@ -957,15 +1421,16 @@ async function ensureInputFile(){
   return name;
 }
 
-async function prepareAnalysis(power){
-  if(state.analysisWorker&&state.analysisPower===power&&state.analysisFrames>0)return;
+async function prepareAnalysis(settings){
+  const signature=analysisSignature(settings);
+  if(state.analysisWorker&&state.analysisSignature===signature&&state.analysisFrames>0)return;
   const ffmpeg=await ensureFFmpeg();
   const input=await ensureInputFile();
-  const rate=ANALYSIS_RATES[power]||ANALYSIS_RATES.strong;
+  const rate=settings.analysisSampleRate;
   const output=`looper_analysis_${Date.now().toString(36)}.wav`;
 
   createAnalysisWorker();
-  state.analysisPower=power;
+  state.analysisSignature=signature;
   setProgress(15,`Making a ${rate.toLocaleString()} Hz analysis track…`);
 
   const rc=await ffmpeg.exec([
@@ -974,7 +1439,7 @@ async function prepareAnalysis(power){
   ]);
   if(rc!==0)throw new Error("The browser media engine could not decode this audio.");
 
-  setProgress(38,"Sending the small analysis track to the loop worker…");
+  setProgress(38,"Sending the analysis track to the loop worker…");
   const data=await ffmpeg.readFile(output);
   await safeDelete(output);
   const pcm=parsePcmWav(data);
@@ -988,7 +1453,73 @@ async function prepareAnalysis(power){
   log(`Analysis track ready at ${rate.toLocaleString()} Hz.`);
 }
 
+async function extractPcmWindow(fromSeconds,toSeconds,sampleRate,label){
+  const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile();
+  const output=`looper_${label}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}.wav`;
+  const filter=`atrim=start=${filterNumber(fromSeconds)}:end=${filterNumber(toSeconds)},asetpts=PTS-STARTPTS`;
+  const rc=await ffmpeg.exec([
+    "-i",input,"-vn","-map","0:a:0","-af",filter,
+    "-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",output
+  ]);
+  if(rc!==0)throw new Error("The browser media engine could not read the full-detail loop boundary.");
+  const data=await ffmpeg.readFile(output);
+  await safeDelete(output);
+  return parsePcmWav(data);
+}
+
+async function refineAtFullDetail(coarse,settings){
+  const coarseStart=coarse.start/state.analysisRate,coarseEnd=coarse.end/state.analysisRate;
+  const rate=settings.precisionSampleRate;
+  state.precisionRate=rate;
+
+  const requiredBefore=(settings.refineRadiusMs+settings.refineMatchMs+120)/1000;
+  const requiredAfter=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,90)+120)/1000;
+  const marginBefore=Math.max(.75,requiredBefore);
+  const marginAfter=Math.max(.75,requiredAfter);
+  const duration=Math.max(state.duration,state.analysisFrames&&state.analysisRate?state.analysisFrames/state.analysisRate:0,coarseEnd);
+
+  const startFrom=Math.max(0,coarseStart-marginBefore);
+  const startTo=Math.min(duration,coarseStart+marginAfter);
+  const endFrom=Math.max(0,coarseEnd-marginBefore);
+  const endTo=Math.min(duration,coarseEnd+marginAfter);
+
+  setProgress(82,"Reading the original loop boundaries…");
+  const startPcm=await extractPcmWindow(startFrom,startTo,rate,"start");
+  setProgress(87,"Reading the second loop boundary…");
+  const endPcm=await extractPcmWindow(endFrom,endTo,rate,"end");
+
+  const startCenter=Math.round((coarseStart-startFrom)*rate);
+  const endCenter=Math.round((coarseEnd-endFrom)*rate);
+  const fineOptions={...settings,useVocals:coarse.mode==="Vocals"};
+
+  setProgress(92,"Matching the full-detail samples…");
+  const fine=await waitForWorker("fine",()=>state.analysisWorker.postMessage({
+    type:"fine",sampleRate:rate,startCenter,endCenter,options:fineOptions,
+    startBuffer:startPcm.buffer,startByteOffset:startPcm.byteOffset,startLength:startPcm.length,startChannels:startPcm.channels,
+    endBuffer:endPcm.buffer,endByteOffset:endPcm.byteOffset,endLength:endPcm.length,endChannels:endPcm.channels
+  },[startPcm.buffer,endPcm.buffer]));
+
+  let startSeconds=coarseStart+fine.startDelta/rate;
+  let endSeconds=coarseEnd+fine.endDelta/rate;
+  startSeconds=clamp(startSeconds,0,Math.max(0,duration-2/rate));
+  endSeconds=clamp(endSeconds,startSeconds+2/rate,duration);
+
+  const seamQuality=Math.exp(-Math.max(0,fine.seam));
+  const confidenceValue=clamp(.68*coarse.confidence+.20*clamp((fine.waveform+1)/2,0,1)+.12*seamQuality,0,1);
+  const confidenceLabel=confidenceValue>=.83?"High":(confidenceValue>=.69?"Medium":"Low");
+
+  log(`Full-detail correction: start ${fine.startDelta>=0?"+":""}${(fine.startDelta*1000/rate).toFixed(3)} ms, end ${fine.endDelta>=0?"+":""}${(fine.endDelta*1000/rate).toFixed(3)} ms.`);
+  log(`Hard-seam score: ${fine.seam.toFixed(4)}.`);
+
+  return{
+    ...coarse,startSeconds,endSeconds,sampleRate:rate,
+    seam:fine.seam,waveform:fine.waveform,periodCorrection:fine.periodCorrectionMs,
+    confidence:confidenceValue,confidenceLabel
+  };
+}
+
 async function runDetection(options){
+
   return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
 }
 
@@ -996,12 +1527,12 @@ function reset(){
   const oldInput=state.inputFsName;
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();
   E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");
   E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
-  E.channelsSide.textContent="—";E.modeSide.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
+  E.channelsSide.textContent="—";E.modeSide.textContent="—";E.playbackPosition.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
   status("Ready","Choose an audio file.");
   if(oldInput)safeDelete(oldInput);
 }
@@ -1030,24 +1561,23 @@ function loadFile(file){
 async function findLoop(){
   if(state.busy||!state.file)return;
   invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");
-  const mode=selected("vocalMode")||"auto",power=selected("power")||"strong";
+  const settings=readSettings();
   const maxMinimum=state.duration?Math.max(3,state.duration-.25):600;
-  const minimumLoop=clamp(Number(E.minimumLoop.value)||12,3,maxMinimum);
-  E.minimumLoop.value=String(Math.round(minimumLoop*1000)/1000);
-  log(`Search started: ${mode}, ${power}, minimum ${minimumLoop}s.`);
+  settings.minimumLoop=clamp(settings.minimumLoop,3,maxMinimum);
+  E.minimumLoop.value=String(Math.round(settings.minimumLoop*1000)/1000);
+  saveSettings();
+  log(`Search started: ${settings.vocalMode}, ${settings.power}, minimum ${settings.minimumLoop}s.`);
 
   try{
-    setBusy(true,"Preparing a small analysis track…");
-    await prepareAnalysis(power);
+    setBusy(true,"Preparing the analysis track…");
+    await prepareAnalysis(settings);
     setProgress(42,"Starting loop detection…");
-    const result=await runDetection({
-      vocalMode:mode,power,minimumLoop,
-      preferFirst:E.preferFirst.checked,beatLock:E.beatLock.checked
-    });
-    state.result=result;
+    const coarse=await runDetection(settings);
+    setProgress(80,"Checking the original full-detail samples…");
+    state.result=await refineAtFullDetail(coarse,settings);
     showResult();
-    status("Loop found",`Finished in ${result.elapsed.toFixed(1)} seconds.`,"ok");
-    log(`Loop: ${formatRoblox(result.start/state.analysisRate)}, ${formatRoblox(result.end/state.analysisRate)}.`);
+    status("Loop found",`Finished in ${coarse.elapsed.toFixed(1)} seconds, plus the full-detail seam check.`,"ok");
+    log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
     status("Search failed",error.message||String(error),"error");
@@ -1059,18 +1589,18 @@ async function findLoop(){
 }
 
 function showResult(){
-  if(!state.result||!state.analysisRate)return;
+  if(!state.result)return;
   E.modeSide.textContent=state.result.mode;
-  E.startInput.value=(state.result.start/state.analysisRate).toFixed(6);
-  E.endInput.value=(state.result.end/state.analysisRate).toFixed(6);
+  E.startInput.value=state.result.startSeconds.toFixed(6);
+  E.endInput.value=state.result.endSeconds.toFixed(6);
   updateResult(false);
   E.resultPanel.classList.remove("hidden");
   E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function currentTimes(){
-  if(!state.result||!state.analysisRate)return null;
-  return{start:state.result.start/state.analysisRate,end:state.result.end/state.analysisRate};
+  if(!state.result)return null;
+  return{start:state.result.startSeconds,end:state.result.endSeconds};
 }
 
 function updateTextDownload(){
@@ -1088,16 +1618,19 @@ function updateTextDownload(){
 }
 
 function updateResult(invalidate=true){
-  if(!state.result||!state.analysisRate)return;
-  const total=state.analysisFrames;
+  if(!state.result)return;
+  const rate=state.result.sampleRate||state.precisionRate||48000;
+  const duration=Math.max(state.duration,state.result.endSeconds);
   const parsedStart=Number(E.startInput.value),parsedEnd=Number(E.endInput.value);
-  let start=clamp(Number.isFinite(parsedStart)?Math.round(parsedStart*state.analysisRate):state.result.start,0,total-2);
-  let end=clamp(Number.isFinite(parsedEnd)?Math.round(parsedEnd*state.analysisRate):state.result.end,start+2,total);
-  state.result.start=start;state.result.end=end;
-  const startSeconds=start/state.analysisRate,endSeconds=end/state.analysisRate,length=endSeconds-startSeconds;
-  E.startInput.value=startSeconds.toFixed(6);E.endInput.value=endSeconds.toFixed(6);
-  E.regionValue.textContent=`${formatRoblox(startSeconds)}, ${formatRoblox(endSeconds)}`;
-  E.startStat.textContent=formatClock(startSeconds);E.endStat.textContent=formatClock(endSeconds);
+  let start=Number.isFinite(parsedStart)?parsedStart:state.result.startSeconds;
+  let end=Number.isFinite(parsedEnd)?parsedEnd:state.result.endSeconds;
+  start=Math.round(clamp(start,0,Math.max(0,duration-2/rate))*rate)/rate;
+  end=Math.round(clamp(end,start+2/rate,duration)*rate)/rate;
+  state.result.startSeconds=start;state.result.endSeconds=end;state.result.sampleRate=rate;
+  const length=end-start;
+  E.startInput.value=start.toFixed(6);E.endInput.value=end.toFixed(6);
+  E.regionValue.textContent=`${formatRoblox(start)}, ${formatRoblox(end)}`;
+  E.startStat.textContent=formatClock(start);E.endStat.textContent=formatClock(end);
   E.lengthStat.textContent=formatClock(length);
   E.confidenceStat.textContent=`${state.result.confidenceLabel} · ${Math.round(state.result.confidence*100)}%`;
   if(invalidate)invalidateMedia();
@@ -1115,12 +1648,23 @@ function drawWaveform(){
   for(let x=0;x<width;x++){const source=Math.min(sourceWidth-1,Math.floor(x*sourceWidth/width)),y=middle+peaks[source*2]*middle*.82;if(x===0)context.moveTo(x,y);else context.lineTo(x,y);}
   for(let x=width-1;x>=0;x--){const source=Math.min(sourceWidth-1,Math.floor(x*sourceWidth/width)),y=middle+peaks[source*2+1]*middle*.82;context.lineTo(x,y);}
   context.closePath();context.fill();
+
+  const duration=Math.max(state.duration,state.analysisFrames&&state.analysisRate?state.analysisFrames/state.analysisRate:0,1e-6);
   if(state.result){
-    const duration=state.analysisFrames/state.analysisRate,{start,end}=currentTimes();
-    const startX=start/duration*width,endX=end/duration*width;
-    context.fillStyle="rgba(250,226,157,.09)";context.fillRect(startX,0,endX-startX,height);
+    const {start,end}=currentTimes();
+    const startX=clamp(start/duration*width,0,width),endX=clamp(end/duration*width,0,width);
+    context.fillStyle="rgba(250,226,157,.09)";context.fillRect(startX,0,Math.max(0,endX-startX),height);
     context.strokeStyle="#fae29d";context.lineWidth=3;
     for(const x of [startX,endX]){context.beginPath();context.moveTo(x,0);context.lineTo(x,height);context.stroke();}
+  }
+
+  if(state.playheadTime!=null){
+    const x=clamp(state.playheadTime/duration*width,0,width);
+    context.shadowColor="rgba(255,239,190,.75)";context.shadowBlur=10;
+    context.strokeStyle="#ffefbe";context.lineWidth=2;
+    context.beginPath();context.moveTo(x,0);context.lineTo(x,height);context.stroke();
+    context.fillStyle="#ffefbe";context.beginPath();context.moveTo(x-6,0);context.lineTo(x+6,0);context.lineTo(x,9);context.closePath();context.fill();
+    context.shadowBlur=0;
   }
 }
 
@@ -1205,11 +1749,20 @@ async function playGenerated(kind){
     const blob=await renderWav(kind);
     state.playUrl=URL.createObjectURL(blob);
     const audio=new Audio(state.playUrl);
-    audio.loop=kind==="loop";
-    audio.onended=()=>{if(kind!=="loop")stopPlayback();};
+    const {start,end}=currentTimes(),loopLength=Math.max(1e-9,end-start);
+    let map;
+    if(kind==="loop"){
+      audio.loop=true;
+      map=time=>start+(time%loopLength);
+    }else{
+      const tailStart=Math.max(start,end-2),tailLength=end-tailStart;
+      map=time=>time<tailLength?tailStart+time:start+(time-tailLength);
+      audio.onended=()=>stopPlayback();
+    }
     state.playAudio=audio;
     await audio.play();
-    status(kind==="seam"?"Playing seam":"Playing loop","Press Stop when finished.","ok");
+    startPlaybackTracking(audio,map);
+    status(kind==="seam"?"Playing seam":"Playing loop","The bright line shows the current position.","ok");
   }catch(error){
     stopPlayback();status("Playback failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
   }finally{
@@ -1238,14 +1791,46 @@ E.downloadPreview.addEventListener("click",event=>{event.preventDefault();downlo
 E.clearLogButton.addEventListener("click",()=>E.log.textContent="");
 E.startInput.addEventListener("change",()=>updateResult());
 E.endInput.addEventListener("change",()=>updateResult());
-E.previewRepeats.addEventListener("change",invalidateMedia);
+E.previewRepeats.addEventListener("change",()=>{invalidateMedia();saveSettings();});
+E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
+
+for(const input of $$('input[name="power"]')){
+  input.addEventListener("change",()=>applyPowerPreset(input.value));
+}
+for(const input of $$('input[name="vocalMode"],#minimumLoop,#preferFirst,#beatLock,.setting-input')){
+  input.addEventListener("change",()=>{
+    saveSettings();
+    if(input.id==="analysisSampleRate")terminateAnalysisWorker();
+  });
+}
+E.sourcePlayer.addEventListener("play",()=>{
+  stopPlayback(true);
+  startPlaybackTracking(E.sourcePlayer,time=>time);
+  status("Playing source","The bright line shows the current position.","ok");
+});
+E.sourcePlayer.addEventListener("pause",()=>{
+  if(state.playAudio===E.sourcePlayer&&!E.sourcePlayer.ended){
+    if(state.playRaf){cancelAnimationFrame(state.playRaf);state.playRaf=0;}
+    state.playheadTime=E.sourcePlayer.currentTime||0;
+    E.playbackPosition.textContent=formatClock(state.playheadTime);
+    drawWaveform();
+  }
+});
+E.sourcePlayer.addEventListener("ended",()=>{if(state.playAudio===E.sourcePlayer)stopPlayback(true);});
+E.waveCanvas.addEventListener("click",event=>{
+  if(!state.file||!state.duration)return;
+  const box=E.waveCanvas.getBoundingClientRect(),ratio=clamp((event.clientX-box.left)/Math.max(1,box.width),0,1);
+  E.sourcePlayer.currentTime=ratio*state.duration;
+  E.sourcePlayer.play().catch(()=>{});
+});
 
 for(const button of $$("[data-adjust]")){
   button.addEventListener("click",()=>{
-    if(!state.result||!state.analysisRate)return;
+    if(!state.result)return;
+    const rate=state.result.sampleRate||state.precisionRate||48000;
     const field=button.dataset.adjust==="start"?E.startInput:E.endInput,direction=Number(button.dataset.direction);
-    const samples=Math.round(Number(field.value)*state.analysisRate)+direction;
-    field.value=(samples/state.analysisRate).toFixed(6);updateResult();
+    const samples=Math.round(Number(field.value)*rate)+direction;
+    field.value=(samples/rate).toFixed(6);updateResult();
   });
 }
 
@@ -1259,6 +1844,7 @@ window.addEventListener("beforeunload",()=>{
 
 E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
 E.cpuBadge.textContent="FFmpeg + loop worker";
+loadSettings();
 reset();
 })();
 
