@@ -77,7 +77,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
   <div class="badges">
     <span class="badge">Runs locally</span>
     <span class="badge">No fades</span>
-    <span class="badge" id="cpuBadge">Worker ready</span>
+    <span class="badge" id="cpuBadge">Two-worker engine</span>
   </div>
 </header>
 <main class="shell grid">
@@ -87,6 +87,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <div><p class="kicker">1 · Source</p><h2>Choose audio</h2></div>
       <button class="button ghost small" id="resetButton" type="button">Reset</button>
     </div>
+    <div id="protocolWarning" class="warning hidden" style="margin-bottom:12px">Open this through localhost or a hosted site. Browser audio tools may fail from file://.</div>
     <input class="sr" id="fileInput" type="file" accept="audio/*,.wav,.mp3,.ogg,.oga,.flac,.m4a,.aac,.opus,.aif,.aiff">
     <button class="drop" id="dropZone" type="button">
       <span class="drop-icon">↑</span>
@@ -155,13 +156,13 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <label><span class="label">Loop start</span><span class="stepper"><button class="button ghost mini" data-adjust="start" data-direction="-1" type="button">−</button><input class="text" id="startInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="start" data-direction="1" type="button">+</button></span></label>
         <label><span class="label">Loop end</span><span class="stepper"><button class="button ghost mini" data-adjust="end" data-direction="-1" type="button">−</button><input class="text" id="endInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="end" data-direction="1" type="button">+</button></span></label>
       </div>
-      <p class="note">The − and + buttons move one sample at a time.</p>
+      <p class="note">The − and + buttons move one analysis sample at a time.</p>
     </div>
 
     <div class="downloads">
       <div class="download"><div class="file-icon">TXT</div><div class="download-copy"><strong id="txtName">Loop region</strong><span>Roblox PlaybackRegion values</span></div><a class="button secondary small" id="downloadText">Download</a></div>
-      <div class="download"><div class="file-icon">WAV</div><div class="download-copy"><strong id="loopName">Exact loop</strong><span>Only the looping section</span></div><a class="button secondary small" id="downloadLoop">Download</a></div>
-      <div class="download"><div class="file-icon">WAV</div><div class="download-copy"><strong id="previewName">Roblox preview</strong><span>Intro once, then repeated loop</span></div><a class="button secondary small" id="downloadPreview">Download</a></div>
+      <div class="download"><div class="file-icon">WAV</div><div class="download-copy"><strong id="loopName">Exact loop</strong><span>Only the looping section</span></div><a class="button secondary small" id="downloadLoop" href="#">Download</a></div>
+      <div class="download"><div class="file-icon">WAV</div><div class="download-copy"><strong id="previewName">Roblox preview</strong><span>Intro once, then repeated loop</span></div><a class="button secondary small" id="downloadPreview" href="#">Download</a></div>
     </div>
   </article>
 </section>
@@ -185,25 +186,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 <div class="mobile"><span id="mobileText">Choose an audio file</span><button class="button primary" id="mobileButton" type="button" disabled>Find loop</button></div>
 
 <script>
-(() => {
-"use strict";
-
-const $ = selector => document.querySelector(selector);
-const $$ = selector => [...document.querySelectorAll(selector)];
-const E = {
-  fileInput:$("#fileInput"),dropZone:$("#dropZone"),fileCard:$("#fileCard"),fileName:$("#fileName"),fileMeta:$("#fileMeta"),changeButton:$("#changeButton"),resetButton:$("#resetButton"),sourcePlayer:$("#sourcePlayer"),
-  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),findButton:$("#findButton"),progressBox:$("#progressBox"),progressBar:$("#progressBar"),progressText:$("#progressText"),
-  resultPanel:$("#resultPanel"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),endStat:$("#endStat"),lengthStat:$("#lengthStat"),confidenceStat:$("#confidenceStat"),waveCanvas:$("#waveCanvas"),playSeamButton:$("#playSeamButton"),playLoopButton:$("#playLoopButton"),stopButton:$("#stopButton"),startInput:$("#startInput"),endInput:$("#endInput"),
-  downloadText:$("#downloadText"),downloadLoop:$("#downloadLoop"),downloadPreview:$("#downloadPreview"),txtName:$("#txtName"),loopName:$("#loopName"),previewName:$("#previewName"),findAgainButton:$("#findAgainButton"),
-  statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),durationSide:$("#durationSide"),sampleRateSide:$("#sampleRateSide"),channelsSide:$("#channelsSide"),modeSide:$("#modeSide"),clearLogButton:$("#clearLogButton"),log:$("#log"),mobileText:$("#mobileText"),mobileButton:$("#mobileButton"),cpuBadge:$("#cpuBadge")
-};
-
-const state = {
-  file:null,fileUrl:"",audioBuffer:null,audioContext:null,worker:null,busy:false,result:null,
-  playback:[],downloadUrls:[],wavePeaks:null
-};
-
-const WORKER_SOURCE = String.raw`
+const WORKER_SOURCE=String.raw`
 "use strict";
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -234,7 +217,7 @@ function fftPower(input,tables,real,imag){
   }
 }
 function linearResample(signal,sourceRate,targetRate){
-  if(sourceRate===targetRate)return signal.slice();
+  if(sourceRate===targetRate)return signal;
   const length=Math.max(2,Math.round(signal.length*targetRate/sourceRate)),out=new Float32Array(length),ratio=sourceRate/targetRate;
   for(let i=0;i<length;i++){const pos=i*ratio,left=Math.floor(pos),right=Math.min(signal.length-1,left+1),t=pos-left;out[i]=signal[left]*(1-t)+signal[right]*t;}
   return out;
@@ -443,11 +426,36 @@ function anchorResultToFirstBoundary(channels,sampleRate,result,options,bundle){
   for(let offset=-seamRadius;offset<=seamRadius;offset++){const start=bestStart+offset,end=start+period;if(start<2||end>total)continue;const cost=seamCost(channels,start,end,context)+.010*Math.abs(offset)/seamRadius;if(cost<finalCost){finalCost=cost;finalStart=start;finalEnd=end;}}
   return{...result,start:finalStart,end:finalEnd,seam:finalCost};
 }
+
+function stripVocalFeatures(bundle){
+  if(bundle.dims===24)return bundle;
+  const data=new Float32Array(bundle.frames*24);
+  for(let frame=0;frame<bundle.frames;frame++){
+    const source=frame*bundle.dims,target=frame*24;
+    for(let d=0;d<24;d++)data[target+d]=bundle.data[source+d];
+  }
+  return{...bundle,data,dims:24};
+}
+function makeWavePeaks(channels,width=1200){
+  const length=channels[0].length,peaks=new Float32Array(width*2);
+  for(let x=0;x<width;x++){
+    const start=Math.floor(x*length/width),end=Math.max(start+1,Math.floor((x+1)*length/width));
+    const stride=Math.max(1,Math.floor((end-start)/40));let min=1,max=-1;
+    for(let i=start;i<end;i+=stride){
+      let value=0;for(const channel of channels)value+=channel[i]||0;value/=channels.length;
+      if(value<min)min=value;if(value>max)max=value;
+    }
+    peaks[x*2]=min;peaks[x*2+1]=max;
+  }
+  return peaks;
+}
+
 function detect(channels,sampleRate,requested){
   const started=now();let options={...requested,useVocals:requested.vocalMode==="vocal"};
-  postProgress(3,"Starting analysis…");let bundle=buildFeatures(channels,sampleRate,{...options,useVocals:true});
-  if(requested.vocalMode==="auto")options.useVocals=bundle.vocalPresence>=.52;else options.useVocals=requested.vocalMode==="vocal";
-  if(!options.useVocals){postProgress(27,"Using instrumental mode…");bundle=buildFeatures(channels,sampleRate,{...options,useVocals:false});}
+  postProgress(3,"Starting analysis…");const fullBundle=buildFeatures(channels,sampleRate,{...options,useVocals:true});
+  if(requested.vocalMode==="auto")options.useVocals=fullBundle.vocalPresence>=.52;else options.useVocals=requested.vocalMode==="vocal";
+  let bundle=options.useVocals?fullBundle:stripVocalFeatures(fullBundle);
+  if(!options.useVocals)postProgress(27,"Using instrumental mode…");
   postMessage({type:"mode",mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence});
   const candidates=makeCandidates(bundle,options),duration=channels[0].length/sampleRate;postProgress(30,"Checking "+candidates.length+" loop points…");
   const coarse=coarseSearch(bundle,candidates,options,duration);if(!coarse.length)throw new Error("No loop matched the minimum length.");
@@ -462,86 +470,798 @@ function detect(channels,sampleRate,requested){
   results.sort((a,b)=>b.rank-a.rank);let best=anchorResultToFirstBoundary(channels,sampleRate,results[0],options,bundle);const finalConfidence=confidence(best,best.musical,options);best.confidence=finalConfidence.value;best.confidenceLabel=finalConfidence.label;postProgress(100,"Loop found.");return{start:best.start,end:best.end,confidence:best.confidence,confidenceLabel:best.confidenceLabel,seam:best.seam,waveform:best.waveform,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,elapsed:(now()-started)/1000};
 }
 
+let loadedChannels=null,loadedSampleRate=0,loadedFrames=0;
 onmessage=event=>{
-  const message=event.data;if(message.type!=="detect")return;
-  try{const channels=message.channels.map(buffer=>new Float32Array(buffer)),result=detect(channels,message.sampleRate,message.options);postMessage({type:"done",result});}
-  catch(error){postMessage({type:"error",message:error&&error.message?error.message:String(error),stack:error&&error.stack?error.stack:""});}
+  const message=event.data;
+  try{
+    if(message.type==="load"){
+      let interleaved=new Int16Array(message.buffer,message.byteOffset,message.length);
+      const channelCount=Math.max(1,message.channels|0),frames=Math.floor(interleaved.length/channelCount);
+      const channels=Array.from({length:channelCount},()=>new Float32Array(frames));
+      for(let frame=0;frame<frames;frame++){
+        const base=frame*channelCount;
+        for(let channel=0;channel<channelCount;channel++)channels[channel][frame]=interleaved[base+channel]/32768;
+        if(frame%500000===0)postProgress(4+16*frame/Math.max(1,frames),"Preparing the track…");
+      }
+      interleaved=null;loadedChannels=channels;loadedSampleRate=message.sampleRate;loadedFrames=frames;
+      const peaks=makeWavePeaks(channels);
+      postMessage({type:"loaded",frames,sampleRate:loadedSampleRate,channels:channelCount,peaks:peaks.buffer},[peaks.buffer]);
+      return;
+    }
+    if(message.type==="detect"){
+      if(!loadedChannels)throw new Error("The analysis track is not loaded.");
+      const result=detect(loadedChannels,loadedSampleRate,message.options);
+      postMessage({type:"done",result});
+      return;
+    }
+    if(message.type==="dispose"){loadedChannels=null;loadedSampleRate=0;loadedFrames=0;return;}
+  }catch(error){
+    postMessage({type:"error",message:error&&error.message?error.message:String(error),stack:error&&error.stack?error.stack:""});
+  }
 };
 `;
 
+
+(() => {
+"use strict";
+
+const $=selector=>document.querySelector(selector);
+const $$=selector=>[...document.querySelectorAll(selector)];
+
+const E={
+  fileInput:$("#fileInput"),dropZone:$("#dropZone"),fileCard:$("#fileCard"),fileName:$("#fileName"),fileMeta:$("#fileMeta"),
+  changeButton:$("#changeButton"),resetButton:$("#resetButton"),sourcePlayer:$("#sourcePlayer"),protocolWarning:$("#protocolWarning"),
+  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),
+  findButton:$("#findButton"),progressBox:$("#progressBox"),progressBar:$("#progressBar"),progressText:$("#progressText"),
+  resultPanel:$("#resultPanel"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),
+  endStat:$("#endStat"),lengthStat:$("#lengthStat"),confidenceStat:$("#confidenceStat"),waveCanvas:$("#waveCanvas"),
+  playSeamButton:$("#playSeamButton"),playLoopButton:$("#playLoopButton"),stopButton:$("#stopButton"),
+  startInput:$("#startInput"),endInput:$("#endInput"),downloadText:$("#downloadText"),downloadLoop:$("#downloadLoop"),
+  downloadPreview:$("#downloadPreview"),txtName:$("#txtName"),loopName:$("#loopName"),previewName:$("#previewName"),
+  findAgainButton:$("#findAgainButton"),statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),
+  durationSide:$("#durationSide"),sampleRateSide:$("#sampleRateSide"),channelsSide:$("#channelsSide"),modeSide:$("#modeSide"),
+  clearLogButton:$("#clearLogButton"),log:$("#log"),mobileText:$("#mobileText"),mobileButton:$("#mobileButton"),
+  cpuBadge:$("#cpuBadge")
+};
+E.runtimeBadge=E.cpuBadge;
+
+const state={
+  file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,
+  analysisWorker:null,analysisPower:null,analysisRate:0,analysisFrames:0,analysisChannels:0,
+  loadWait:null,detectWait:null,
+  ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
+  textUrl:"",playAudio:null,playUrl:"",mediaVersion:0
+};
+
+const ANALYSIS_RATES={fast:11025,strong:16000,maximum:22050};
+
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
-function formatBytes(bytes){const units=["B","KB","MB","GB"];let value=bytes,index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return `${value.toFixed(index?1:0)} ${units[index]}`;}
-function formatClock(seconds,short=false){seconds=Math.max(0,Number(seconds)||0);const minutes=Math.floor(seconds/60),remaining=seconds-minutes*60;return short?`${minutes}:${String(Math.floor(remaining)).padStart(2,"0")}`:`${minutes}:${remaining.toFixed(3).padStart(6,"0")}`;}
-function formatRoblox(seconds){const value=Math.max(0,seconds).toFixed(6).replace(/0+$/,"" ).replace(/\.$/,"");return value||"0";}
-function stem(name){return name.replace(/\.[^.]+$/,"").replace(/[\\/:*?"<>|]+/g,"_")||"audio";}
-function log(message){const time=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});E.log.textContent+=`[${time}] ${message}\n`;E.log.scrollTop=E.log.scrollHeight;}
+function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+function extension(name){const match=/\.([^.]+)$/.exec(name||"");return match?match[1].toLowerCase():"";}
+function stem(name){return(name||"audio").replace(/\.[^.]+$/,"").replace(/[\\/:*?"<>|]+/g,"_").replace(/[ .]+$/,"")||"audio";}
+function formatBytes(bytes){const units=["B","KB","MB","GB"];let value=Number(bytes)||0,index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return`${value.toFixed(index?1:0)} ${units[index]}`;}
+function formatClock(seconds,short=false){
+  seconds=Math.max(0,Number(seconds)||0);const minutes=Math.floor(seconds/60),remaining=seconds-minutes*60;
+  return short?`${minutes}:${String(Math.floor(remaining)).padStart(2,"0")}`:`${minutes}:${remaining.toFixed(3).padStart(6,"0")}`;
+}
+function formatRoblox(seconds){const value=Math.max(0,Number(seconds)||0).toFixed(6).replace(/0+$/,"").replace(/\.$/,"");return value||"0";}
+function log(message){const time=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});E.log.textContent+=`[${time}] ${message}\n`;E.log.scrollTop=E.log.scrollHeight;}
 function status(title,message,type=""){E.statusTitle.textContent=title;E.statusMessage.textContent=message;E.statusDot.className="status-dot"+(type?` ${type}`:"");E.mobileText.textContent=message;}
 function setProgress(value,text){E.progressBox.classList.remove("hidden");E.progressBar.style.width=`${clamp(value,0,100)}%`;E.progressText.textContent=text;}
-function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
-function revokeDownloads(){for(const url of state.downloadUrls)URL.revokeObjectURL(url);state.downloadUrls=[];for(const element of [E.downloadText,E.downloadLoop,E.downloadPreview])element.removeAttribute("href");}
-function stopPlayback(){for(const node of state.playback){try{node.stop();}catch{}}state.playback=[];}
-function setBusy(busy){state.busy=busy;E.findButton.disabled=busy||!state.audioBuffer;E.mobileButton.disabled=busy||!state.audioBuffer;E.fileInput.disabled=busy;E.changeButton.disabled=busy;E.resetButton.disabled=busy;if(busy)status("Working","Analyzing the track…","busy");}
-function ensureAudioContext(){if(!state.audioContext)state.audioContext=new (window.AudioContext||window.webkitAudioContext)();return state.audioContext;}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+
+function setBusy(value,message=""){
+  state.busy=value;
+  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview]){
+    if(element)element.disabled=value;
+  }
+  E.findButton.disabled=value||!state.file;
+  E.mobileButton.disabled=value||!state.file;
+  if(value)status("Working",message||"Processing the track…","busy");
+}
+
+function stopPlayback(){
+  if(state.playAudio){try{state.playAudio.pause();state.playAudio.src="";}catch{}state.playAudio=null;}
+  if(state.playUrl){URL.revokeObjectURL(state.playUrl);state.playUrl="";}
+}
+function revokeTextUrl(){if(state.textUrl){URL.revokeObjectURL(state.textUrl);state.textUrl="";}}
+function invalidateMedia(){stopPlayback();state.mediaVersion++;}
+
+function terminateAnalysisWorker(){
+  if(state.analysisWorker){try{state.analysisWorker.postMessage({type:"dispose"});}catch{}try{state.analysisWorker.terminate();}catch{}}
+  state.analysisWorker=null;state.analysisPower=null;state.analysisRate=0;state.analysisFrames=0;state.analysisChannels=0;
+  state.loadWait=null;state.detectWait=null;state.wavePeaks=null;
+}
+
+function createAnalysisWorker(){
+  terminateAnalysisWorker();
+  const blob=new Blob([WORKER_SOURCE],{type:"text/javascript"});
+  const url=URL.createObjectURL(blob);
+  const worker=new Worker(url);
+  URL.revokeObjectURL(url);
+  state.analysisWorker=worker;
+
+  worker.onmessage=event=>{
+    const message=event.data||{};
+    if(message.type==="progress"){setProgress(message.value,message.text);return;}
+    if(message.type==="mode"){E.modeSide.textContent=message.mode;log(`Mode: ${message.mode}.`);return;}
+    if(message.type==="loaded"){
+      state.analysisFrames=message.frames;
+      state.analysisRate=message.sampleRate;
+      state.analysisChannels=message.channels;
+      state.wavePeaks=new Float32Array(message.peaks);
+      E.sampleRateSide.textContent=`${message.sampleRate.toLocaleString()} Hz`;
+      E.channelsSide.textContent=String(message.channels);
+      if(!state.duration)state.duration=message.frames/message.sampleRate;
+      E.durationSide.textContent=formatClock(state.duration,true);
+      drawWaveform();
+      if(state.loadWait){state.loadWait.resolve(message);state.loadWait=null;}
+      return;
+    }
+    if(message.type==="done"){
+      if(state.detectWait){state.detectWait.resolve(message.result);state.detectWait=null;}
+      return;
+    }
+    if(message.type==="error"){
+      const error=new Error(message.message||"Worker error.");
+      if(state.loadWait){state.loadWait.reject(error);state.loadWait=null;}
+      if(state.detectWait){state.detectWait.reject(error);state.detectWait=null;}
+    }
+  };
+  worker.onerror=event=>{
+    const error=new Error(event.message||"Analysis worker failed.");
+    if(state.loadWait){state.loadWait.reject(error);state.loadWait=null;}
+    if(state.detectWait){state.detectWait.reject(error);state.detectWait=null;}
+  };
+  return worker;
+}
+
+function waitForWorker(kind,send){
+  return new Promise((resolve,reject)=>{
+    const key=kind==="load"?"loadWait":"detectWait";
+    state[key]={resolve,reject};
+    send();
+  });
+}
+
+function ascii(view,offset,length){let text="";for(let i=0;i<length;i++)text+=String.fromCharCode(view.getUint8(offset+i));return text;}
+function parsePcmWav(bytes){
+  const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  if(ascii(view,0,4)!=="RIFF"||ascii(view,8,4)!=="WAVE")throw new Error("The analysis WAV is invalid.");
+  let offset=12,format=null,dataOffset=-1,dataSize=0;
+  while(offset+8<=view.byteLength){
+    const id=ascii(view,offset,4),size=view.getUint32(offset+4,true),start=offset+8;
+    if(id==="fmt "&&size>=16){
+      format={type:view.getUint16(start,true),channels:view.getUint16(start+2,true),sampleRate:view.getUint32(start+4,true),bits:view.getUint16(start+14,true)};
+    }else if(id==="data"){dataOffset=start;dataSize=Math.min(size,view.byteLength-start);break;}
+    offset=start+size+(size&1);
+  }
+  if(!format||dataOffset<0||format.type!==1||format.bits!==16)throw new Error("The browser media engine returned an unsupported analysis format.");
+  const absoluteOffset=bytes.byteOffset+dataOffset;
+  return{
+    buffer:bytes.buffer,byteOffset:absoluteOffset,length:Math.floor(dataSize/2),
+    channels:format.channels,sampleRate:format.sampleRate
+  };
+}
+
+
+/* -------------------------------------------------------------------------
+   FFMPEG.WASM
+   ------------------------------------------------------------------------- */
+
+const INLINE_FFMPEG_CLASS_WORKER_SOURCE =
+  "const FFMessageType = Object.freeze({\n  LOAD: \"LOAD\",\n  EXEC: \"EXEC\",\n  FFPROBE: \"FFPROBE\",\n  WRITE_FILE: \"WRITE_FILE\",\n  READ_FILE: \"READ_FILE\",\n  DELETE_FILE: \"DELETE_FILE\",\n  RENAME: \"RENAME\",\n  CREATE_DIR: \"CREATE_DIR\",\n  LIST_DIR: \"LIST_DIR\",\n  DELETE_DIR: \"DELETE_DIR\",\n  ERROR: \"ERROR\",\n  DOWNLOAD: \"DOWNLOAD\",\n  PROGRESS: \"PROGRESS\",\n  LOG: \"LOG\",\n  MOUNT: \"MOUNT\",\n  UNMOUNT: \"UNMOUNT\"\n});\n\nconst ERROR_UNKNOWN_MESSAGE_TYPE =\n  new Error(\"unknown message type\");\n\nconst ERROR_NOT_LOADED =\n  new Error(\n    \"ffmpeg is not loaded, call `await ffmpeg.load()` first\"\n  );\n\nconst ERROR_IMPORT_FAILURE =\n  new Error(\"failed to import ffmpeg-core.js\");\n\nlet ffmpeg;\n\nconst load = async ({\n  coreURL: requestedCoreURL,\n  wasmURL: requestedWasmURL,\n  workerURL: requestedWorkerURL\n}) => {\n  const first = !ffmpeg;\n  let coreURL = requestedCoreURL;\n\n  if (!coreURL) {\n    throw new Error(\n      \"The inline FFmpeg worker requires an explicit coreURL.\"\n    );\n  }\n\n  try {\n    importScripts(coreURL);\n  } catch {\n    const imported =\n      await import(coreURL);\n\n    self.createFFmpegCore =\n      imported.default;\n\n    if (!self.createFFmpegCore) {\n      throw ERROR_IMPORT_FAILURE;\n    }\n  }\n\n  const wasmURL =\n    requestedWasmURL\n    || coreURL.replace(/\\.js$/g, \".wasm\");\n\n  const workerURL =\n    requestedWorkerURL\n    || coreURL.replace(/\\.js$/g, \".worker.js\");\n\n  ffmpeg =\n    await self.createFFmpegCore({\n      mainScriptUrlOrBlob:\n        coreURL\n        + \"#\"\n        + btoa(\n            JSON.stringify({\n              wasmURL,\n              workerURL\n            })\n          )\n    });\n\n  ffmpeg.setLogger(\n    data => self.postMessage({\n      type: FFMessageType.LOG,\n      data\n    })\n  );\n\n  ffmpeg.setProgress(\n    data => self.postMessage({\n      type: FFMessageType.PROGRESS,\n      data\n    })\n  );\n\n  return first;\n};\n\nconst exec = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.exec(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst ffprobe = ({\n  args,\n  timeout = -1\n}) => {\n  ffmpeg.setTimeout(timeout);\n  ffmpeg.ffprobe(...args);\n\n  const result =\n    ffmpeg.ret;\n\n  ffmpeg.reset();\n\n  return result;\n};\n\nconst writeFile = ({\n  path,\n  data\n}) => {\n  ffmpeg.FS.writeFile(\n    path,\n    data\n  );\n\n  return true;\n};\n\nconst readFile = ({\n  path,\n  encoding\n}) =>\n  ffmpeg.FS.readFile(\n    path,\n    {\n      encoding\n    }\n  );\n\nconst deleteFile = ({\n  path\n}) => {\n  ffmpeg.FS.unlink(path);\n  return true;\n};\n\nconst rename = ({\n  oldPath,\n  newPath\n}) => {\n  ffmpeg.FS.rename(\n    oldPath,\n    newPath\n  );\n\n  return true;\n};\n\nconst createDir = ({\n  path\n}) => {\n  ffmpeg.FS.mkdir(path);\n  return true;\n};\n\nconst listDir = ({\n  path\n}) => {\n  const names =\n    ffmpeg.FS.readdir(path);\n\n  const nodes = [];\n\n  for (\n    const name\n    of names\n  ) {\n    const stat =\n      ffmpeg.FS.stat(\n        `${path}/${name}`\n      );\n\n    nodes.push({\n      name,\n      isDir:\n        ffmpeg.FS.isDir(\n          stat.mode\n        )\n    });\n  }\n\n  return nodes;\n};\n\nconst deleteDir = ({\n  path\n}) => {\n  ffmpeg.FS.rmdir(path);\n  return true;\n};\n\nconst mount = ({\n  fsType,\n  options,\n  mountPoint\n}) => {\n  const fileSystem =\n    ffmpeg.FS.filesystems[\n      String(fsType)\n    ];\n\n  if (!fileSystem) {\n    return false;\n  }\n\n  ffmpeg.FS.mount(\n    fileSystem,\n    options,\n    mountPoint\n  );\n\n  return true;\n};\n\nconst unmount = ({\n  mountPoint\n}) => {\n  ffmpeg.FS.unmount(\n    mountPoint\n  );\n\n  return true;\n};\n\nself.onmessage = async ({\n  data: {\n    id,\n    type,\n    data: requestData\n  }\n}) => {\n  const transfer = [];\n  let responseData;\n\n  try {\n    if (\n      type !== FFMessageType.LOAD\n      && !ffmpeg\n    ) {\n      throw ERROR_NOT_LOADED;\n    }\n\n    switch (type) {\n      case FFMessageType.LOAD:\n        responseData =\n          await load(\n            requestData\n          );\n        break;\n\n      case FFMessageType.EXEC:\n        responseData =\n          exec(requestData);\n        break;\n\n      case FFMessageType.FFPROBE:\n        responseData =\n          ffprobe(requestData);\n        break;\n\n      case FFMessageType.WRITE_FILE:\n        responseData =\n          writeFile(requestData);\n        break;\n\n      case FFMessageType.READ_FILE:\n        responseData =\n          readFile(requestData);\n        break;\n\n      case FFMessageType.DELETE_FILE:\n        responseData =\n          deleteFile(requestData);\n        break;\n\n      case FFMessageType.RENAME:\n        responseData =\n          rename(requestData);\n        break;\n\n      case FFMessageType.CREATE_DIR:\n        responseData =\n          createDir(requestData);\n        break;\n\n      case FFMessageType.LIST_DIR:\n        responseData =\n          listDir(requestData);\n        break;\n\n      case FFMessageType.DELETE_DIR:\n        responseData =\n          deleteDir(requestData);\n        break;\n\n      case FFMessageType.MOUNT:\n        responseData =\n          mount(requestData);\n        break;\n\n      case FFMessageType.UNMOUNT:\n        responseData =\n          unmount(requestData);\n        break;\n\n      default:\n        throw ERROR_UNKNOWN_MESSAGE_TYPE;\n    }\n  } catch (error) {\n    self.postMessage({\n      id,\n      type: FFMessageType.ERROR,\n      data:\n        error?.stack\n        || error?.toString?.()\n        || String(error)\n    });\n\n    return;\n  }\n\n  if (\n    responseData\n    instanceof Uint8Array\n  ) {\n    transfer.push(\n      responseData.buffer\n    );\n  }\n\n  self.postMessage(\n    {\n      id,\n      type,\n      data: responseData\n    },\n    transfer\n  );\n};\n";
+
+function makeInlineFFmpegClassWorker() {
+  /*
+    The worker is fully self-contained. It does not import worker.js,
+    ./const.js, ./errors.js, or any other worker-side JavaScript module.
+
+    That removes both failures seen on the hosted site:
+      - SecurityError from constructing a Worker with a cross-origin URL.
+      - Cannot find module blob:https://... from relative imports inside a
+        copied blob worker.
+  */
+  return URL.createObjectURL(
+    new Blob(
+      [
+        INLINE_FFMPEG_CLASS_WORKER_SOURCE
+      ],
+      {
+        type: "text/javascript"
+      }
+    )
+  );
+}
+
+async function importFFmpegWrapper() {
+  const wrapperCandidates = [
+    (
+      "https://cdn.jsdelivr.net/npm/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    ),
+    (
+      "https://cdnjs.cloudflare.com/ajax/libs/"
+      + "ffmpeg/0.12.15/esm/index.js"
+    ),
+    (
+      "https://unpkg.com/"
+      + "@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+    )
+  ];
+
+  const failures = [];
+
+  for (
+    const wrapperURL
+    of wrapperCandidates
+  ) {
+    try {
+      const module =
+        await import(
+          wrapperURL
+        );
+
+      if (
+        module?.FFmpeg
+      ) {
+        return {
+          module,
+          wrapperURL
+        };
+      }
+
+      failures.push(
+        `${wrapperURL}: missing FFmpeg export`
+      );
+    } catch (error) {
+      failures.push(
+        (
+          `${wrapperURL}: `
+          + (
+              error?.message
+              || error
+            )
+        )
+      );
+    }
+  }
+
+  throw new Error(
+    (
+      "Could not load the FFmpeg wrapper from any CDN.\n"
+      + failures.join("\n")
+    )
+  );
+}
+
+function attachFFmpegLogging(
+  ffmpeg
+) {
+  ffmpeg.on(
+    "log",
+    ({message}) => {
+      if (
+        /error|invalid|failed/i.test(
+          message
+        )
+      ) {
+        log(
+          message,
+          "FFMPEG"
+        );
+      }
+    }
+  );
+
+  ffmpeg.on(
+    "progress",
+    ({progress}) => {
+      if (
+        Number.isFinite(
+          progress
+        )
+      ) {
+        const percent =
+          8
+          + clamp(
+              progress,
+              0,
+              1
+            )
+            * 45;
+
+        E.progressBar.style.width =
+          `${percent}%`;
+      }
+    }
+  );
+}
+
+async function loadFFmpegCoreCandidate(
+  FFmpegClass,
+  candidate
+) {
+  const classWorkerURL =
+    makeInlineFFmpegClassWorker();
+
+  const ffmpeg =
+    new FFmpegClass();
+
+  attachFFmpegLogging(
+    ffmpeg
+  );
+
+  try {
+    await ffmpeg.load(
+      {
+        classWorkerURL,
+        coreURL:
+          `${candidate.coreBase}/ffmpeg-core.js`,
+        wasmURL:
+          `${candidate.coreBase}/ffmpeg-core.wasm`
+      }
+    );
+
+    return {
+      ffmpeg,
+      classWorkerURL
+    };
+  } catch (error) {
+    try {
+      ffmpeg.terminate();
+    } catch {
+      // Worker construction may have failed before termination was possible.
+    }
+
+    URL.revokeObjectURL(
+      classWorkerURL
+    );
+
+    throw error;
+  }
+}
+
+async function ensureFFmpeg() {
+  if (
+    state.ffmpegLoaded
+  ) {
+    return state.ffmpeg;
+  }
+
+  if (
+    state.ffmpegLoading
+  ) {
+    return state.ffmpegLoading;
+  }
+
+  state.ffmpegLoading = (
+    async () => {
+      setProgress(
+        3,
+        (
+          "Loading the browser media engine "
+          + "(~32 MB once, then browser-cached)…"
+        )
+      );
+
+      const {
+        module: ffmpegModule,
+        wrapperURL
+      } =
+        await importFFmpegWrapper();
+
+      const coreCandidates = [
+        {
+          name: "jsDelivr core",
+          coreBase:
+            (
+              "https://cdn.jsdelivr.net/npm/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        },
+        {
+          name: "UNPKG core",
+          coreBase:
+            (
+              "https://unpkg.com/"
+              + "@ffmpeg/core@0.12.10/dist/esm"
+            )
+        }
+      ];
+
+      const failures = [];
+
+      for (
+        const candidate
+        of coreCandidates
+      ) {
+        try {
+          setProgress(
+            5,
+            (
+              "Starting the inline browser worker "
+              + `with ${candidate.name}…`
+            )
+          );
+
+          const loaded =
+            await loadFFmpegCoreCandidate(
+              ffmpegModule.FFmpeg,
+              candidate
+            );
+
+          state.ffmpeg =
+            loaded.ffmpeg;
+
+          state.ffmpegClassWorkerURL =
+            loaded.classWorkerURL;
+
+          state.ffmpegLoaded =
+            true;
+
+          E.runtimeBadge.textContent =
+            "ffmpeg.wasm loaded";
+
+          log("Media tools loaded.");
+
+          return state.ffmpeg;
+        } catch (error) {
+          const message =
+            error?.message
+            || String(error);
+
+          failures.push(
+            `${candidate.name}: ${message}`
+          );
+
+          log("Media tools failed to load. Trying another source.");
+        }
+      }
+
+      throw new Error(
+        (
+          "All FFmpeg core CDN attempts failed.\n"
+          + failures.join("\n")
+          + "\n\nThe host must allow worker-src blob: "
+          + "and connect-src/script-src access to jsdelivr or unpkg."
+        )
+      );
+    }
+  )();
+
+  try {
+    return await state.ffmpegLoading;
+  } finally {
+    state.ffmpegLoading = null;
+  }
+}
+async function safeDelete(name) {
+  if (!state.ffmpeg || !name) return;
+  try { await state.ffmpeg.deleteFile(name); } catch {}
+}
+
+
+async function ensureInputFile(){
+  if(state.inputFsName)return state.inputFsName;
+  if(!state.file)throw new Error("Choose an audio file first.");
+  const ffmpeg=await ensureFFmpeg();
+  const ext=extension(state.file.name)||"bin";
+  const name=`looper_input_${Date.now().toString(36)}.${ext}`;
+  setProgress(8,"Loading the selected file…");
+  let bytes=new Uint8Array(await state.file.arrayBuffer());
+  await ffmpeg.writeFile(name,bytes);
+  bytes=null;
+  state.inputFsName=name;
+  log("Audio loaded into the browser media worker.");
+  return name;
+}
+
+async function prepareAnalysis(power){
+  if(state.analysisWorker&&state.analysisPower===power&&state.analysisFrames>0)return;
+  const ffmpeg=await ensureFFmpeg();
+  const input=await ensureInputFile();
+  const rate=ANALYSIS_RATES[power]||ANALYSIS_RATES.strong;
+  const output=`looper_analysis_${Date.now().toString(36)}.wav`;
+
+  createAnalysisWorker();
+  state.analysisPower=power;
+  setProgress(15,`Making a ${rate.toLocaleString()} Hz analysis track…`);
+
+  const rc=await ffmpeg.exec([
+    "-i",input,"-vn","-map","0:a:0",
+    "-ar",String(rate),"-ac","2","-c:a","pcm_s16le",output
+  ]);
+  if(rc!==0)throw new Error("The browser media engine could not decode this audio.");
+
+  setProgress(38,"Sending the small analysis track to the loop worker…");
+  const data=await ffmpeg.readFile(output);
+  await safeDelete(output);
+  const pcm=parsePcmWav(data);
+
+  await waitForWorker("load",()=>{
+    state.analysisWorker.postMessage({
+      type:"load",buffer:pcm.buffer,byteOffset:pcm.byteOffset,length:pcm.length,
+      channels:pcm.channels,sampleRate:pcm.sampleRate
+    },[pcm.buffer]);
+  });
+  log(`Analysis track ready at ${rate.toLocaleString()} Hz.`);
+}
+
+async function runDetection(options){
+  return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
+}
 
 function reset(){
-  stopPlayback();if(state.worker){state.worker.terminate();state.worker=null;}revokeDownloads();if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);state.fileUrl="";state.file=null;state.audioBuffer=null;state.result=null;state.wavePeaks=null;
-  E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";E.channelsSide.textContent="—";E.modeSide.textContent="—";status("Ready","Choose an audio file.");
-}
-async function loadFile(file){
-  if(!file)return;reset();state.file=file;state.fileUrl=URL.createObjectURL(file);E.fileName.textContent=file.name;E.fileMeta.textContent=`${formatBytes(file.size)} · Decoding…`;E.dropZone.classList.add("hidden");E.fileCard.classList.remove("hidden");E.sourcePlayer.src=state.fileUrl;E.sourcePlayer.classList.remove("hidden");status("Loading","Decoding the audio…","busy");log(`Selected ${file.name}.`);
-  try{const context=ensureAudioContext(),arrayBuffer=await file.arrayBuffer();state.audioBuffer=await context.decodeAudioData(arrayBuffer.slice(0));const buffer=state.audioBuffer;E.fileMeta.textContent=`${formatBytes(file.size)} · ${formatClock(buffer.duration,true)} · ${buffer.sampleRate.toLocaleString()} Hz · ${buffer.numberOfChannels} channel${buffer.numberOfChannels===1?"":"s"}`;E.durationSide.textContent=formatClock(buffer.duration,true);E.sampleRateSide.textContent=`${buffer.sampleRate.toLocaleString()} Hz`;E.channelsSide.textContent=String(buffer.numberOfChannels);E.findButton.disabled=false;E.mobileButton.disabled=false;status("Ready","Choose settings and find the loop.","ok");log(`Decoded ${formatClock(buffer.duration)} at ${buffer.sampleRate} Hz.`);drawWaveform();}
-  catch(error){state.audioBuffer=null;status("Could not open audio",error.message||String(error),"error");log(`Error: ${error.message||error}`);}
-}
-function worker(){
-  if(state.worker)state.worker.terminate();const blob=new Blob([WORKER_SOURCE],{type:"text/javascript"}),url=URL.createObjectURL(blob),instance=new Worker(url);URL.revokeObjectURL(url);state.worker=instance;return instance;
-}
-async function findLoop(){
-  if(state.busy||!state.audioBuffer)return;stopPlayback();revokeDownloads();E.resultPanel.classList.add("hidden");setBusy(true);setProgress(1,"Getting ready…");const mode=selected("vocalMode")||"auto",power=selected("power")||"strong",minimumLoop=clamp(Number(E.minimumLoop.value)||12,3,Math.max(3,state.audioBuffer.duration-.25));E.minimumLoop.value=String(minimumLoop);log(`Search started: ${mode}, ${power}, minimum ${minimumLoop}s.`);
-  const channels=[];for(let channel=0;channel<state.audioBuffer.numberOfChannels;channel++){const copy=state.audioBuffer.getChannelData(channel).slice();channels.push(copy.buffer);}const instance=worker();
-  instance.onmessage=event=>{const message=event.data;if(message.type==="progress")setProgress(message.value,message.text);else if(message.type==="mode"){E.modeSide.textContent=message.mode;log(`Mode: ${message.mode}.`);}else if(message.type==="done"){state.result=message.result;setBusy(false);showResult();status("Loop found",`Finished in ${message.result.elapsed.toFixed(1)} seconds.`,"ok");log(`Loop: ${formatRoblox(message.result.start/state.audioBuffer.sampleRate)}, ${formatRoblox(message.result.end/state.audioBuffer.sampleRate)}.`);setTimeout(()=>E.progressBox.classList.add("hidden"),900);}else if(message.type==="error"){setBusy(false);status("Search failed",message.message,"error");log(`Error: ${message.message}`);E.progressBox.classList.add("hidden");}};
-  instance.onerror=error=>{setBusy(false);status("Search failed",error.message||"Worker error.","error");log(`Worker error: ${error.message||error}`);};
-  instance.postMessage({type:"detect",channels,sampleRate:state.audioBuffer.sampleRate,options:{vocalMode:mode,power,minimumLoop,preferFirst:E.preferFirst.checked,beatLock:E.beatLock.checked}},channels);
-}
-function showResult(){
-  const result=state.result,sr=state.audioBuffer.sampleRate;E.modeSide.textContent=result.mode;E.startInput.value=(result.start/sr).toFixed(6);E.endInput.value=(result.end/sr).toFixed(6);updateResult(false);makeDownloads();E.resultPanel.classList.remove("hidden");E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
-}
-function updateResult(rebuild=true){
-  if(!state.result||!state.audioBuffer)return;const sr=state.audioBuffer.sampleRate,total=state.audioBuffer.length;const parsedStart=Number(E.startInput.value),parsedEnd=Number(E.endInput.value);let start=clamp(Number.isFinite(parsedStart)?Math.round(parsedStart*sr):state.result.start,0,total-2),end=clamp(Number.isFinite(parsedEnd)?Math.round(parsedEnd*sr):state.result.end,start+2,total);state.result.start=start;state.result.end=end;const startSeconds=start/sr,endSeconds=end/sr,length=endSeconds-startSeconds,region=`${formatRoblox(startSeconds)}, ${formatRoblox(endSeconds)}`;E.startInput.value=startSeconds.toFixed(6);E.endInput.value=endSeconds.toFixed(6);E.regionValue.textContent=region;E.startStat.textContent=formatClock(startSeconds);E.endStat.textContent=formatClock(endSeconds);E.lengthStat.textContent=formatClock(length);E.confidenceStat.textContent=`${state.result.confidenceLabel} · ${Math.round(state.result.confidence*100)}%`;drawWaveform();if(rebuild)makeDownloads();
-}
-function buildWavePeaks(){
-  if(!state.audioBuffer)return null;const width=1200,peaks=new Float32Array(width*2),length=state.audioBuffer.length,channels=state.audioBuffer.numberOfChannels;
-  for(let x=0;x<width;x++){const start=Math.floor(x*length/width),end=Math.max(start+1,Math.floor((x+1)*length/width));let min=1,max=-1;const stride=Math.max(1,Math.floor((end-start)/30));for(let i=start;i<end;i+=stride){let value=0;for(let c=0;c<channels;c++)value+=state.audioBuffer.getChannelData(c)[i];value/=channels;if(value<min)min=value;if(value>max)max=value;}peaks[x*2]=min;peaks[x*2+1]=max;}state.wavePeaks=peaks;return peaks;
-}
-function drawWaveform(){
-  const canvas=E.waveCanvas,ctx=canvas.getContext("2d"),width=canvas.width,height=canvas.height;ctx.clearRect(0,0,width,height);ctx.fillStyle="#0e0e0d";ctx.fillRect(0,0,width,height);if(!state.audioBuffer)return;const peaks=state.wavePeaks||buildWavePeaks(),middle=height/2;ctx.strokeStyle="#4b4534";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,middle+.5);ctx.lineTo(width,middle+.5);ctx.stroke();ctx.fillStyle="#8c7f58";ctx.beginPath();for(let x=0;x<width;x++){const y=middle+peaks[x*2]*middle*.82;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}for(let x=width-1;x>=0;x--){const y=middle+peaks[x*2+1]*middle*.82;ctx.lineTo(x,y);}ctx.closePath();ctx.fill();if(state.result){const startX=state.result.start/state.audioBuffer.length*width,endX=state.result.end/state.audioBuffer.length*width;ctx.fillStyle="rgba(250,226,157,.09)";ctx.fillRect(startX,0,endX-startX,height);ctx.strokeStyle="#fae29d";ctx.lineWidth=3;for(const x of [startX,endX]){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,height);ctx.stroke();}}
-}
-function writeAscii(view,offset,text){for(let i=0;i<text.length;i++)view.setUint8(offset+i,text.charCodeAt(i));}
-function encodeWav24(buffer,pieces){
-  const channels=buffer.numberOfChannels,sr=buffer.sampleRate;let frames=0;for(const piece of pieces)frames+=piece.end-piece.start;const bytesPerSample=3,blockAlign=channels*bytesPerSample,dataBytes=frames*blockAlign;if(dataBytes>1_500_000_000)throw new Error("The preview is too large to save as one WAV file.");const array=new ArrayBuffer(44+dataBytes),view=new DataView(array);writeAscii(view,0,"RIFF");view.setUint32(4,36+dataBytes,true);writeAscii(view,8,"WAVE");writeAscii(view,12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,sr,true);view.setUint32(28,sr*blockAlign,true);view.setUint16(32,blockAlign,true);view.setUint16(34,24,true);writeAscii(view,36,"data");view.setUint32(40,dataBytes,true);let offset=44;
-  for(const piece of pieces)for(let i=piece.start;i<piece.end;i++)for(let c=0;c<channels;c++){let sample=clamp(buffer.getChannelData(c)[i],-1,1),value=sample<0?Math.round(sample*8388608):Math.round(sample*8388607);if(value<0)value+=16777216;view.setUint8(offset,value&255);view.setUint8(offset+1,(value>>8)&255);view.setUint8(offset+2,(value>>16)&255);offset+=3;}
-  return new Blob([array],{type:"audio/wav"});
-}
-function assignDownload(element,blob,name){const url=URL.createObjectURL(blob);state.downloadUrls.push(url);element.href=url;element.download=name;}
-function makeDownloads(){
-  if(!state.result||!state.audioBuffer||!state.file)return;revokeDownloads();const base=stem(state.file.name),start=state.result.start,end=state.result.end,repeats=clamp(Number(E.previewRepeats.value)||3,2,5),region=`${formatRoblox(start/state.audioBuffer.sampleRate)}, ${formatRoblox(end/state.audioBuffer.sampleRate)}`;const textBlob=new Blob([region],{type:"text/plain;charset=utf-8"}),loopBlob=encodeWav24(state.audioBuffer,[{start,end}]),pieces=[{start:0,end:start}];for(let i=0;i<repeats;i++)pieces.push({start,end});const previewBlob=encodeWav24(state.audioBuffer,pieces),txt=`${base}_ROBLOX_LOOP_REGION.txt`,loop=`${base}_loop_exact.wav`,preview=`${base}_ROBLOX_PREVIEW.wav`;assignDownload(E.downloadText,textBlob,txt);assignDownload(E.downloadLoop,loopBlob,loop);assignDownload(E.downloadPreview,previewBlob,preview);E.txtName.textContent=txt;E.loopName.textContent=loop;E.previewName.textContent=preview;
-}
-function playLoop(){
-  if(!state.result||!state.audioBuffer)return;stopPlayback();const context=ensureAudioContext();context.resume();const source=context.createBufferSource();source.buffer=state.audioBuffer;source.loop=true;source.loopStart=state.result.start/state.audioBuffer.sampleRate;source.loopEnd=state.result.end/state.audioBuffer.sampleRate;source.connect(context.destination);source.start(0,source.loopStart);state.playback=[source];
-}
-function playSeam(){
-  if(!state.result||!state.audioBuffer)return;stopPlayback();const context=ensureAudioContext();context.resume();const sr=state.audioBuffer.sampleRate,start=state.result.start/sr,end=state.result.end/sr,pre=Math.min(2,Math.max(.15,(end-start)*.25)),post=Math.min(2,Math.max(.15,(end-start)*.25)),when=context.currentTime+.05,a=context.createBufferSource(),b=context.createBufferSource();a.buffer=state.audioBuffer;b.buffer=state.audioBuffer;a.connect(context.destination);b.connect(context.destination);a.start(when,Math.max(start,end-pre),pre);b.start(when+pre,start,post);state.playback=[a,b];
+  const oldInput=state.inputFsName;
+  stopPlayback();terminateAnalysisWorker();revokeTextUrl();
+  if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;
+  E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
+  E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();
+  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");
+  E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
+  E.channelsSide.textContent="—";E.modeSide.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
+  status("Ready","Choose an audio file.");
+  if(oldInput)safeDelete(oldInput);
 }
 
-E.dropZone.addEventListener("click",()=>E.fileInput.click());E.changeButton.addEventListener("click",()=>E.fileInput.click());E.fileInput.addEventListener("change",()=>loadFile(E.fileInput.files[0]));E.resetButton.addEventListener("click",reset);
-for(const type of ["dragenter","dragover"])E.dropZone.addEventListener(type,event=>{event.preventDefault();E.dropZone.classList.add("drag")});for(const type of ["dragleave","drop"])E.dropZone.addEventListener(type,event=>{event.preventDefault();E.dropZone.classList.remove("drag")});E.dropZone.addEventListener("drop",event=>loadFile(event.dataTransfer.files[0]));
-E.findButton.addEventListener("click",findLoop);E.mobileButton.addEventListener("click",findLoop);E.findAgainButton.addEventListener("click",findLoop);E.copyRegionButton.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(E.regionValue.textContent);E.copyRegionButton.textContent="Copied";setTimeout(()=>E.copyRegionButton.textContent="Copy",900);}catch{const range=document.createRange();range.selectNodeContents(E.regionValue);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}});
-E.playLoopButton.addEventListener("click",playLoop);E.playSeamButton.addEventListener("click",playSeam);E.stopButton.addEventListener("click",stopPlayback);E.clearLogButton.addEventListener("click",()=>E.log.textContent="");
-E.startInput.addEventListener("change",()=>updateResult());E.endInput.addEventListener("change",()=>updateResult());E.previewRepeats.addEventListener("change",()=>state.result&&makeDownloads());
-for(const button of $$('[data-adjust]'))button.addEventListener("click",()=>{if(!state.result||!state.audioBuffer)return;const field=button.dataset.adjust==="start"?E.startInput:E.endInput,direction=Number(button.dataset.direction),samples=Math.round(Number(field.value)*state.audioBuffer.sampleRate)+direction;field.value=(samples/state.audioBuffer.sampleRate).toFixed(6);updateResult();});
-window.addEventListener("resize",drawWaveform);window.addEventListener("beforeunload",()=>{stopPlayback();revokeDownloads();if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);if(state.worker)state.worker.terminate();});
-E.cpuBadge.textContent=`${navigator.hardwareConcurrency||1} logical cores`;
+function loadFile(file){
+  if(!file)return;
+  reset();
+  state.file=file;
+  state.fileUrl=URL.createObjectURL(file);
+  E.fileName.textContent=file.name;
+  E.fileMeta.textContent=`${formatBytes(file.size)} · Reading details…`;
+  E.dropZone.classList.add("hidden");E.fileCard.classList.remove("hidden");
+  E.sourcePlayer.src=state.fileUrl;E.sourcePlayer.classList.remove("hidden");
+  E.findButton.disabled=false;E.mobileButton.disabled=false;
+  status("Ready","Choose settings and find the loop.","ok");
+  log(`Selected ${file.name}.`);
+
+  E.sourcePlayer.onloadedmetadata=()=>{
+    state.duration=Number.isFinite(E.sourcePlayer.duration)?E.sourcePlayer.duration:0;
+    E.durationSide.textContent=formatClock(state.duration,true);
+    E.fileMeta.textContent=`${formatBytes(file.size)}${state.duration?` · ${formatClock(state.duration,true)}`:""}`;
+  };
+  E.sourcePlayer.onerror=()=>{E.fileMeta.textContent=formatBytes(file.size);};
+}
+
+async function findLoop(){
+  if(state.busy||!state.file)return;
+  invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");
+  const mode=selected("vocalMode")||"auto",power=selected("power")||"strong";
+  const maxMinimum=state.duration?Math.max(3,state.duration-.25):600;
+  const minimumLoop=clamp(Number(E.minimumLoop.value)||12,3,maxMinimum);
+  E.minimumLoop.value=String(Math.round(minimumLoop*1000)/1000);
+  log(`Search started: ${mode}, ${power}, minimum ${minimumLoop}s.`);
+
+  try{
+    setBusy(true,"Preparing a small analysis track…");
+    await prepareAnalysis(power);
+    setProgress(42,"Starting loop detection…");
+    const result=await runDetection({
+      vocalMode:mode,power,minimumLoop,
+      preferFirst:E.preferFirst.checked,beatLock:E.beatLock.checked
+    });
+    state.result=result;
+    showResult();
+    status("Loop found",`Finished in ${result.elapsed.toFixed(1)} seconds.`,"ok");
+    log(`Loop: ${formatRoblox(result.start/state.analysisRate)}, ${formatRoblox(result.end/state.analysisRate)}.`);
+    setTimeout(()=>E.progressBox.classList.add("hidden"),900);
+  }catch(error){
+    status("Search failed",error.message||String(error),"error");
+    log(`Error: ${error.message||error}`);
+    E.progressBox.classList.add("hidden");
+  }finally{
+    setBusy(false);
+  }
+}
+
+function showResult(){
+  if(!state.result||!state.analysisRate)return;
+  E.modeSide.textContent=state.result.mode;
+  E.startInput.value=(state.result.start/state.analysisRate).toFixed(6);
+  E.endInput.value=(state.result.end/state.analysisRate).toFixed(6);
+  updateResult(false);
+  E.resultPanel.classList.remove("hidden");
+  E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function currentTimes(){
+  if(!state.result||!state.analysisRate)return null;
+  return{start:state.result.start/state.analysisRate,end:state.result.end/state.analysisRate};
+}
+
+function updateTextDownload(){
+  revokeTextUrl();
+  if(!state.result||!state.file)return;
+  const {start,end}=currentTimes(),region=`${formatRoblox(start)}, ${formatRoblox(end)}`;
+  const blob=new Blob([region],{type:"text/plain;charset=utf-8"});
+  state.textUrl=URL.createObjectURL(blob);
+  E.downloadText.href=state.textUrl;
+  const base=stem(state.file.name);
+  E.downloadText.download=`${base}_ROBLOX_LOOP_REGION.txt`;
+  E.txtName.textContent=E.downloadText.download;
+  E.loopName.textContent=`${base}_loop_exact.wav`;
+  E.previewName.textContent=`${base}_ROBLOX_PREVIEW.wav`;
+}
+
+function updateResult(invalidate=true){
+  if(!state.result||!state.analysisRate)return;
+  const total=state.analysisFrames;
+  const parsedStart=Number(E.startInput.value),parsedEnd=Number(E.endInput.value);
+  let start=clamp(Number.isFinite(parsedStart)?Math.round(parsedStart*state.analysisRate):state.result.start,0,total-2);
+  let end=clamp(Number.isFinite(parsedEnd)?Math.round(parsedEnd*state.analysisRate):state.result.end,start+2,total);
+  state.result.start=start;state.result.end=end;
+  const startSeconds=start/state.analysisRate,endSeconds=end/state.analysisRate,length=endSeconds-startSeconds;
+  E.startInput.value=startSeconds.toFixed(6);E.endInput.value=endSeconds.toFixed(6);
+  E.regionValue.textContent=`${formatRoblox(startSeconds)}, ${formatRoblox(endSeconds)}`;
+  E.startStat.textContent=formatClock(startSeconds);E.endStat.textContent=formatClock(endSeconds);
+  E.lengthStat.textContent=formatClock(length);
+  E.confidenceStat.textContent=`${state.result.confidenceLabel} · ${Math.round(state.result.confidence*100)}%`;
+  if(invalidate)invalidateMedia();
+  updateTextDownload();
+  drawWaveform();
+}
+
+function drawWaveform(){
+  const canvas=E.waveCanvas,context=canvas.getContext("2d"),width=canvas.width,height=canvas.height;
+  context.clearRect(0,0,width,height);context.fillStyle="#0e0e0d";context.fillRect(0,0,width,height);
+  const peaks=state.wavePeaks;if(!peaks)return;
+  const sourceWidth=peaks.length/2,middle=height/2;
+  context.strokeStyle="#4b4534";context.lineWidth=1;context.beginPath();context.moveTo(0,middle+.5);context.lineTo(width,middle+.5);context.stroke();
+  context.fillStyle="#8c7f58";context.beginPath();
+  for(let x=0;x<width;x++){const source=Math.min(sourceWidth-1,Math.floor(x*sourceWidth/width)),y=middle+peaks[source*2]*middle*.82;if(x===0)context.moveTo(x,y);else context.lineTo(x,y);}
+  for(let x=width-1;x>=0;x--){const source=Math.min(sourceWidth-1,Math.floor(x*sourceWidth/width)),y=middle+peaks[source*2+1]*middle*.82;context.lineTo(x,y);}
+  context.closePath();context.fill();
+  if(state.result){
+    const duration=state.analysisFrames/state.analysisRate,{start,end}=currentTimes();
+    const startX=start/duration*width,endX=end/duration*width;
+    context.fillStyle="rgba(250,226,157,.09)";context.fillRect(startX,0,endX-startX,height);
+    context.strokeStyle="#fae29d";context.lineWidth=3;
+    for(const x of [startX,endX]){context.beginPath();context.moveTo(x,0);context.lineTo(x,height);context.stroke();}
+  }
+}
+
+function filterNumber(value){return Math.max(0,value).toFixed(9);}
+function previewFilter(start,end,repeats){
+  const hasIntro=start>.000001,total=repeats+(hasIntro?1:0);
+  const sourceLabels=Array.from({length:total},(_,index)=>`s${index}`);
+  let graph=`[0:a:0]asplit=${total}${sourceLabels.map(label=>`[${label}]`).join("")};`;
+  const outputs=[];let sourceIndex=0;
+  if(hasIntro){
+    graph+=`[${sourceLabels[sourceIndex++]}]atrim=start=0:end=${filterNumber(start)},asetpts=PTS-STARTPTS[intro];`;
+    outputs.push("[intro]");
+  }
+  for(let index=0;index<repeats;index++){
+    graph+=`[${sourceLabels[sourceIndex++]}]atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS[l${index}];`;
+    outputs.push(`[l${index}]`);
+  }
+  graph+=`${outputs.join("")}concat=n=${outputs.length}:v=0:a=1[out]`;
+  return graph;
+}
+function seamFilter(start,end){
+  const tailStart=Math.max(start,end-2),headEnd=Math.min(end,start+2);
+  return`[0:a:0]asplit=2[a][b];`+
+    `[a]atrim=start=${filterNumber(tailStart)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS[tail];`+
+    `[b]atrim=start=${filterNumber(start)}:end=${filterNumber(headEnd)},asetpts=PTS-STARTPTS[head];`+
+    `[tail][head]concat=n=2:v=0:a=1[out]`;
+}
+
+async function renderWav(kind){
+  if(!state.result||!state.file)throw new Error("Find a loop first.");
+  const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile(),{start,end}=currentTimes();
+  const output=`looper_${kind}_${Date.now().toString(36)}.wav`;
+  let args;
+  if(kind==="loop"){
+    args=["-i",input,"-vn","-map","0:a:0","-af",
+      `atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS`,
+      "-c:a","pcm_s16le",output];
+  }else if(kind==="preview"){
+    const repeats=clamp(Number(E.previewRepeats.value)||3,2,5);
+    args=["-i",input,"-vn","-filter_complex",previewFilter(start,end,repeats),"-map","[out]","-c:a","pcm_s16le",output];
+  }else if(kind==="seam"){
+    args=["-i",input,"-vn","-filter_complex",seamFilter(start,end),"-map","[out]","-c:a","pcm_s16le",output];
+  }else{
+    throw new Error("Unknown output type.");
+  }
+
+  setProgress(20,kind==="preview"?"Building the Roblox preview…":kind==="seam"?"Building the seam preview…":"Building the exact loop…");
+  const rc=await ffmpeg.exec(args);
+  if(rc!==0)throw new Error("The browser media engine could not create the WAV.");
+  const data=await ffmpeg.readFile(output);
+  await safeDelete(output);
+  return new Blob([data],{type:"audio/wav"});
+}
+
+function triggerDownload(blob,name){
+  const url=URL.createObjectURL(blob),anchor=document.createElement("a");
+  anchor.href=url;anchor.download=name;anchor.style.display="none";document.body.appendChild(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+
+async function downloadGenerated(kind,button){
+  if(state.busy||!state.result)return;
+  const original=button.textContent;
+  try{
+    setBusy(true,kind==="preview"?"Building the preview…":"Building the exact loop…");
+    button.textContent="Working…";
+    const blob=await renderWav(kind),base=stem(state.file.name);
+    triggerDownload(blob,kind==="preview"?`${base}_ROBLOX_PREVIEW.wav`:`${base}_loop_exact.wav`);
+    status("Download ready","The WAV was created.","ok");
+  }catch(error){
+    status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
+  }finally{
+    button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");
+  }
+}
+
+async function playGenerated(kind){
+  if(state.busy||!state.result)return;
+  stopPlayback();
+  try{
+    setBusy(true,kind==="seam"?"Building the seam preview…":"Building the exact loop…");
+    const blob=await renderWav(kind);
+    state.playUrl=URL.createObjectURL(blob);
+    const audio=new Audio(state.playUrl);
+    audio.loop=kind==="loop";
+    audio.onended=()=>{if(kind!=="loop")stopPlayback();};
+    state.playAudio=audio;
+    await audio.play();
+    status(kind==="seam"?"Playing seam":"Playing loop","Press Stop when finished.","ok");
+  }catch(error){
+    stopPlayback();status("Playback failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
+  }finally{
+    setBusy(false);E.progressBox.classList.add("hidden");
+  }
+}
+
+E.dropZone.addEventListener("click",()=>E.fileInput.click());
+E.changeButton.addEventListener("click",()=>E.fileInput.click());
+E.fileInput.addEventListener("change",()=>loadFile(E.fileInput.files[0]));
+for(const type of ["dragenter","dragover"])E.dropZone.addEventListener(type,event=>{event.preventDefault();E.dropZone.classList.add("drag");});
+for(const type of ["dragleave","drop"])E.dropZone.addEventListener(type,event=>{event.preventDefault();E.dropZone.classList.remove("drag");});
+E.dropZone.addEventListener("drop",event=>loadFile(event.dataTransfer.files[0]));
+
+E.findButton.addEventListener("click",findLoop);E.mobileButton.addEventListener("click",findLoop);E.findAgainButton.addEventListener("click",findLoop);
+E.resetButton.addEventListener("click",reset);
+E.copyRegionButton.addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(E.regionValue.textContent);E.copyRegionButton.textContent="Copied";setTimeout(()=>E.copyRegionButton.textContent="Copy",900);}
+  catch{const range=document.createRange();range.selectNodeContents(E.regionValue);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);}
+});
+E.playSeamButton.addEventListener("click",()=>playGenerated("seam"));
+E.playLoopButton.addEventListener("click",()=>playGenerated("loop"));
+E.stopButton.addEventListener("click",()=>{stopPlayback();status("Stopped","Choose an action.","ok");});
+E.downloadLoop.addEventListener("click",event=>{event.preventDefault();downloadGenerated("loop",E.downloadLoop);});
+E.downloadPreview.addEventListener("click",event=>{event.preventDefault();downloadGenerated("preview",E.downloadPreview);});
+E.clearLogButton.addEventListener("click",()=>E.log.textContent="");
+E.startInput.addEventListener("change",()=>updateResult());
+E.endInput.addEventListener("change",()=>updateResult());
+E.previewRepeats.addEventListener("change",invalidateMedia);
+
+for(const button of $$("[data-adjust]")){
+  button.addEventListener("click",()=>{
+    if(!state.result||!state.analysisRate)return;
+    const field=button.dataset.adjust==="start"?E.startInput:E.endInput,direction=Number(button.dataset.direction);
+    const samples=Math.round(Number(field.value)*state.analysisRate)+direction;
+    field.value=(samples/state.analysisRate).toFixed(6);updateResult();
+  });
+}
+
+window.addEventListener("resize",drawWaveform);
+window.addEventListener("beforeunload",()=>{
+  stopPlayback();terminateAnalysisWorker();revokeTextUrl();
+  if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
+  if(state.ffmpeg){try{state.ffmpeg.terminate();}catch{}}
+  if(state.ffmpegClassWorkerURL)URL.revokeObjectURL(state.ffmpegClassWorkerURL);
+});
+
+E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
+E.cpuBadge.textContent="FFmpeg + loop worker";
 reset();
 })();
+
 </script>
 </body>
 </html>
