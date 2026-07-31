@@ -124,11 +124,12 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 
     <div class="two field">
       <label><span class="label">Minimum loop length</span><input class="text" id="minimumLoop" type="number" min="3" max="600" step="1" value="12"></label>
-      <label><span class="label">Preview repeats</span><select id="previewRepeats"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></label>
+      <label><span class="label">Preview repeats</span><input class="text" id="previewRepeats" type="number" min="1" max="50" step="1" value="3"></label>
     </div>
     <div class="checks">
       <label class="check"><input id="preferFirst" type="checkbox" checked><span>Use the first matching loop</span></label>
       <label class="check"><input id="beatLock" type="checkbox" checked><span>Protect beat timing</span></label>
+      <label class="check"><input id="tempoAware" type="checkbox" checked><span>Handle speed changes</span></label>
     </div>
 
     <details class="settings-details" id="advancedSettings">
@@ -164,6 +165,17 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
             <label><span class="label">Seam shared search</span><input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="5"></label>
             <label><span class="label">Seam period search</span><input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.6"></label>
             <label><span class="label">Seam check length</span><input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="32"></label>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <p class="settings-title">Speed and beat changes</p>
+          <div class="settings-grid">
+            <label><span class="label">Tempo window</span><input class="text setting-input" id="tempoWindowSeconds" type="number" min="3" max="20" step="0.5" value="8"></label>
+            <label><span class="label">Tempo tolerance %</span><input class="text setting-input" id="tempoTolerancePercent" type="number" min="1" max="35" step="0.5" value="8"></label>
+            <label><span class="label">Ramp penalty</span><input class="text setting-input" id="tempoRampPenalty" type="number" min="0" max="0.75" step="0.01" value="0.16"></label>
+            <label><span class="label">Beat phase check</span><input class="text setting-input" id="beatPhaseContextSeconds" type="number" min="0.5" max="12" step="0.25" value="3.5"></label>
+            <label><span class="label">Beat phase weight</span><input class="text setting-input" id="beatPhaseWeight" type="number" min="0" max="0.75" step="0.01" value="0.18"></label>
           </div>
         </div>
 
@@ -313,6 +325,64 @@ function estimateBeatFrames(onset,frameRate){
   const points=[];for(let n=0;;n++){const i=Math.round(phase+n*period);if(i>=onset.length)break;points.push(i);}
   return{period,frames:Int32Array.from(points)};
 }
+function estimateLocalTempoMap(onset,frameRate,globalPeriod,options){
+  const count=onset.length,period=new Float32Array(count),stability=new Float32Array(count),ramp=new Float32Array(count),settled=new Float32Array(count);
+  const fallback=globalPeriod>0?globalPeriod:Math.max(2,Math.round(frameRate*.5));
+  if(!options.tempoAware||count<32){period.fill(fallback);stability.fill(.65);return{period,stability,ramp,settled};}
+  const windowSeconds=clamp(Number(options.tempoWindowSeconds)||8,3,20),windowFrames=Math.max(24,Math.round(windowSeconds*frameRate));
+  const half=Math.max(12,windowFrames>>1),step=Math.max(2,Math.round(.5*frameRate));
+  const minLag=Math.max(2,Math.round(frameRate*60/260)),maxLag=Math.max(minLag+1,Math.min(Math.round(frameRate*60/42),windowFrames>>1));
+  const centers=[],periods=[],qualities=[];
+  for(let center=0;center<count;center+=step){
+    const left=Math.max(0,center-half),right=Math.min(count,center+half),length=right-left;
+    let mean=0;for(let i=left;i<right;i++)mean+=onset[i];mean/=Math.max(1,length);
+    let bestLag=fallback,best=-Infinity,second=-Infinity;
+    for(let lag=minLag;lag<=maxLag;lag++){
+      let product=0,aa=0,bb=0,pairs=0;
+      for(let i=left+lag;i<right;i++){
+        const a=onset[i]-mean,b=onset[i-lag]-mean;product+=a*b;aa+=a*a;bb+=b*b;pairs++;
+      }
+      if(pairs<12)continue;
+      const correlation=product/(Math.sqrt(aa*bb)+1e-9);
+      const globalPreference=globalPeriod>0?Math.exp(-.055*Math.abs(Math.log2(Math.max(1e-6,lag/globalPeriod)))):1;
+      const score=correlation*globalPreference;
+      if(score>best){second=best;best=score;bestLag=lag;}else if(score>second)second=score;
+    }
+    let localPeriod=bestLag;
+    if(globalPeriod>0){while(localPeriod/globalPeriod>1.58)localPeriod*=.5;while(localPeriod/globalPeriod<.63)localPeriod*=2;}
+    const separation=Math.max(0,best-second),quality=clamp((best+.02)/.72,0,1)*clamp(.55+3.5*separation,0,1);
+    centers.push(center);periods.push(localPeriod);qualities.push(quality);
+  }
+  if(centers[centers.length-1]!==count-1){centers.push(count-1);periods.push(periods[periods.length-1]||fallback);qualities.push(qualities[qualities.length-1]||.4);}
+  let segment=0;
+  for(let frame=0;frame<count;frame++){
+    while(segment+1<centers.length-1&&frame>centers[segment+1])segment++;
+    const a=centers[segment],b=centers[Math.min(segment+1,centers.length-1)],t=b>a?(frame-a)/(b-a):0;
+    period[frame]=lerp(periods[segment],periods[Math.min(segment+1,periods.length-1)],t);
+    stability[frame]=lerp(qualities[segment],qualities[Math.min(segment+1,qualities.length-1)],t);
+  }
+  const smoothedPeriod=smooth(period,Math.max(1,Math.round(.6*frameRate))),logPeriod=new Float32Array(count),prefix=new Float64Array(count+1),prefixSq=new Float64Array(count+1);
+  for(let i=0;i<count;i++){period[i]=Math.max(1,smoothedPeriod[i]);logPeriod[i]=Math.log2(period[i]);prefix[i+1]=prefix[i]+logPeriod[i];prefixSq[i+1]=prefixSq[i]+logPeriod[i]*logPeriod[i];}
+  const derivativeRadius=Math.max(1,Math.round(1.5*frameRate)),varianceRadius=Math.max(2,Math.round(2.0*frameRate)),priorOffset=Math.max(1,Math.round(7*frameRate));
+  for(let i=0;i<count;i++){
+    const l=Math.max(0,i-derivativeRadius),r=Math.min(count-1,i+derivativeRadius),seconds=Math.max(.1,(r-l)/frameRate);
+    ramp[i]=clamp(Math.abs(logPeriod[r]-logPeriod[l])/(seconds*.075),0,1);
+    const a=Math.max(0,i-varianceRadius),b=Math.min(count,i+varianceRadius+1),n=Math.max(1,b-a),mean=(prefix[b]-prefix[a])/n,variance=Math.max(0,(prefixSq[b]-prefixSq[a])/n-mean*mean);
+    stability[i]=clamp(stability[i]*Math.exp(-10*Math.sqrt(variance))*(1-.58*ramp[i]),0,1);
+    const previous=Math.max(0,i-priorOffset),speedUp=Math.max(0,logPeriod[previous]-logPeriod[i]);
+    settled[i]=stability[i]*(1-ramp[i])*clamp(speedUp/.11,0,1);
+  }
+  return{period,stability,ramp,settled};
+}
+function makeSeriesEmbedding(series,frame,direction,windowSeconds,bins,frameRate){
+  const output=new Float32Array(bins),windowFrames=Math.max(bins,Math.round(windowSeconds*frameRate));
+  let start,end;if(direction==="forward"){start=frame;end=frame+windowFrames;}else{start=frame-windowFrames;end=frame;}
+  for(let bin=0;bin<bins;bin++){
+    const a=Math.floor(lerp(start,end,bin/bins)),b=Math.max(a+1,Math.floor(lerp(start,end,(bin+1)/bins)));let sum=0,count=0;
+    for(let i=a;i<b;i++){sum+=series[clamp(i,0,series.length-1)];count++;}output[bin]=sum/Math.max(1,count);
+  }
+  return normalizeVector(output);
+}
 function buildFeatures(channels,sampleRate,options){
   const quality=options.power;
   const analysisRate=sampleRate;
@@ -352,10 +422,10 @@ function buildFeatures(channels,sampleRate,options){
     if(frame%160===0)postProgress(8+18*frame/frames,"Reading the track…");
   }
   normalizeColumns(data,frames,dims);
-  const activity=smooth(normalize01(activityRaw),Math.max(1,Math.round(.18*analysisRate/hop))),onset=smooth(normalize01(onsetRaw),1),frameRate=analysisRate/hop,beat=estimateBeatFrames(onset,frameRate);
+  const activity=smooth(normalize01(activityRaw),Math.max(1,Math.round(.18*analysisRate/hop))),onset=smooth(normalize01(onsetRaw),1),frameRate=analysisRate/hop,beat=estimateBeatFrames(onset,frameRate),tempo=estimateLocalTempoMap(onset,frameRate,beat.period,options);
   const centerDominance=centerEnergySum/(centerEnergySum+sideEnergySum+1e-12),activitySpread=percentile(activity,.9)-percentile(activity,.2),ratioLevel=vocalRatioSum/Math.max(1,frames);
   const vocalPresence=clamp(.50*centerDominance+.30*clamp(activitySpread*1.8,0,1)+.20*clamp(ratioLevel*5,0,1),0,1);
-  return{data,frames,dims,activity,onset,beatFrames:beat.frames,beatPeriod:beat.period,analysisRate,hop,frameRate,mid,side,vocalPresence};
+  return{data,frames,dims,activity,onset,beatFrames:beat.frames,beatPeriod:beat.period,localPeriod:tempo.period,tempoStability:tempo.stability,tempoRamp:tempo.ramp,tempoSettled:tempo.settled,analysisRate,hop,frameRate,mid,side,vocalPresence};
 }
 function localValleys(activity,maxCount){
   const found=[];for(let i=1;i<activity.length-1;i++)if(activity[i]<=activity[i-1]&&activity[i]<=activity[i+1])found.push(i);
@@ -389,24 +459,39 @@ function pushTop(list,item,limit){
 }
 function coarseSearch(bundle,candidates,options,duration){
   const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="maximum"?6:(quality==="fast"?4:5),embeddings=[];
-  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8);
-  for(let i=0;i<candidates.length;i++){embeddings.push({
-    forward:makeEmbedding(bundle,candidates[i],"forward",windowSeconds,bins),
-    backward:makeEmbedding(bundle,candidates[i],"backward",windowSeconds,bins),
-    boundary:makeEmbedding(bundle,candidates[i],"centered",boundarySeconds,bins)
+  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="maximum"?24:(quality==="fast"?12:18);
+  for(let i=0;i<candidates.length;i++){const frame=candidates[i];embeddings.push({
+    forward:makeEmbedding(bundle,frame,"forward",windowSeconds,bins),
+    backward:makeEmbedding(bundle,frame,"backward",windowSeconds,bins),
+    boundary:makeEmbedding(bundle,frame,"centered",boundarySeconds,bins),
+    rhythmForward:makeSeriesEmbedding(bundle.onset,frame,"forward",phaseSeconds,rhythmBins,bundle.frameRate),
+    rhythmBackward:makeSeriesEmbedding(bundle.onset,frame,"backward",phaseSeconds,rhythmBins,bundle.frameRate)
   });if(i%80===0)postProgress(30+8*i/candidates.length,"Preparing loop points…");}
   const minimum=options.minimumLoop,topLimit=clamp(Math.round(options.coarsePairsToRefine||18),1,64),top=[];
   const times=new Float64Array(candidates.length);for(let i=0;i<candidates.length;i++)times[i]=candidates[i]/bundle.frameRate;
+  const tolerance=Math.max(.01,(Number(options.tempoTolerancePercent)||8)/100),rampPenalty=clamp(Number(options.tempoRampPenalty)||.16,0,.75);
   for(let i=0;i<candidates.length;i++){
-    const startTime=times[i],riskA=bundle.activity[candidates[i]]||0;
+    const frameA=candidates[i],startTime=times[i],riskA=bundle.activity[frameA]||0;
     for(let j=i+1;j<candidates.length;j++){
-      const length=times[j]-startTime;if(length<minimum)continue;
+      const frameB=candidates[j],length=times[j]-startTime;if(length<minimum)continue;
       const forward=dot(embeddings[i].forward,embeddings[j].forward),backward=dot(embeddings[i].backward,embeddings[j].backward),directional=Math.max(forward,backward),boundary=Math.max(0,dot(embeddings[i].boundary,embeddings[j].boundary));
-      let score=(options.useVocals?.82:.86)*directional+(options.useVocals?.18:.14)*boundary-.020*length/duration+.010*times[j]/duration-.205*startTime/duration;
+      const rhythmForward=dot(embeddings[i].rhythmForward,embeddings[j].rhythmForward),rhythmBackward=dot(embeddings[i].rhythmBackward,embeddings[j].rhythmBackward),rhythm=Math.max(rhythmForward,rhythmBackward);
+      let score=(options.useVocals?.76:.80)*directional+(options.useVocals?.15:.12)*boundary+.09*rhythm-.020*length/duration+.010*times[j]/duration-.205*startTime/duration;
       score+=.205*Math.max(0,forward-backward)*(1-startTime/duration);
-      if(options.useVocals){const riskB=bundle.activity[candidates[j]]||0;score-=.10*.5*(riskA+riskB)-.01;score-=.06*Math.abs(riskA-riskB);}
-      if(options.beatLock&&bundle.beatPeriod>0){const beats=(candidates[j]-candidates[i])/bundle.beatPeriod,nearest=Math.round(beats),error=Math.abs(beats-nearest);score-=.09*clamp(error/.5,0,1);if(error<.12){if(nearest%16===0)score+=.10;else if(nearest%8===0)score+=.07;else if(nearest%4===0)score+=.045;else if(nearest%2===0)score+=.015;else score-=.06;}}
-      pushTop(top,{i,j,score,musical:directional,forward,backward},topLimit);
+      if(options.useVocals){const riskB=bundle.activity[frameB]||0;score-=.10*.5*(riskA+riskB)-.01;score-=.06*Math.abs(riskA-riskB);}
+      let tempoSimilarity=.75,tempoStability=.65,rampRisk=0,settledTempo=0,localBeatPeriod=bundle.beatPeriod;
+      if(options.tempoAware&&bundle.localPeriod){
+        const periodA=Math.max(1,bundle.localPeriod[frameA]||bundle.beatPeriod||1),periodB=Math.max(1,bundle.localPeriod[frameB]||bundle.beatPeriod||1);
+        const mismatch=Math.abs(Math.log(periodA/periodB))/Math.log(1+tolerance);
+        tempoSimilarity=Math.exp(-1.6*mismatch);
+        tempoStability=.5*((bundle.tempoStability[frameA]||0)+(bundle.tempoStability[frameB]||0));
+        rampRisk=.5*((bundle.tempoRamp[frameA]||0)+(bundle.tempoRamp[frameB]||0));
+        settledTempo=(bundle.tempoSettled[frameA]||0)*Math.min(1,tempoStability*1.4);
+        localBeatPeriod=.5*(periodA+periodB);
+        score+=.065*tempoSimilarity+.045*tempoStability+.095*settledTempo-rampPenalty*rampRisk-.085*clamp(mismatch,0,1);
+      }
+      if(options.beatLock&&localBeatPeriod>0){const beats=(frameB-frameA)/localBeatPeriod,nearest=Math.round(beats),error=Math.abs(beats-nearest);score-=.115*clamp(error/.5,0,1);if(error<.10){if(nearest%16===0)score+=.105;else if(nearest%8===0)score+=.075;else if(nearest%4===0)score+=.050;else if(nearest%2===0)score+=.018;else score-=.065;}}
+      pushTop(top,{i,j,score,musical:directional,forward,backward,rhythm,tempoSimilarity,tempoStability,rampRisk,settledTempo,localBeatSeconds:localBeatPeriod>0?localBeatPeriod/bundle.frameRate:0},topLimit);
     }
     if(i%30===0)postProgress(38+18*i/candidates.length,"Comparing loop points…");
   }
@@ -448,6 +533,8 @@ function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeco
   const radius=Math.max(1,Math.round((Number(options.refineRadiusMs)||180)*sampleRate/1000));
   const step=Math.max(1,Math.round((Number(options.refineStepMs)||2)*sampleRate/1000));
   const window=Math.max(128,Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000));
+  const phaseWindow=Math.max(window,Math.round((Number(options.beatPhaseContextSeconds)||3.5)*sampleRate));
+  const phaseWeight=clamp(Number(options.beatPhaseWeight)||.18,0,.75);
   let bestScore=-Infinity,lockedStart=initialStart,lockedEnd=initialEnd;
 
   for(let offset=-radius;offset<=radius;offset+=step){
@@ -465,6 +552,8 @@ function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeco
     }else{
       score=.39*mf+.21*mb+.25*tf+.15*tb;
     }
+    const longTf=Math.max(windowCorrelation(channels,start,end,phaseWindow,"forward","transient",1700),windowCorrelation(channels,start,end,phaseWindow,"backward","transient",1700));
+    score+=phaseWeight*.42*longTf;
     score-=.008*Math.abs(offset)/Math.max(1,radius);
     if(score>bestScore){bestScore=score;lockedStart=start;lockedEnd=end;}
   }
@@ -491,8 +580,10 @@ function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeco
     }else{
       score=.39*mf+.21*mb+.25*tf+.15*tb;
     }
-    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage;
-    score-=.028*Math.abs(delta)/Math.max(1,maxCorrection);
+    const longTf=Math.max(windowCorrelation(channels,lockedStart,end,phaseWindow,"forward","transient",1900),windowCorrelation(channels,lockedStart,end,phaseWindow,"backward","transient",1900));
+    const longMf=Math.max(windowCorrelation(channels,lockedStart,end,phaseWindow,"forward","mono",1200),windowCorrelation(channels,lockedStart,end,phaseWindow,"backward","mono",1200));
+    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage+phaseWeight*(.78*longTf+.22*longMf);
+    score-=.034*Math.abs(delta)/Math.max(1,maxCorrection);
     if(options.beatLock&&beatSeconds>0){
       const beats=(end-lockedStart)/(sampleRate*beatSeconds),error=Math.abs(beats-Math.round(beats));
       score-=.085*clamp(error/.5,0,1);
@@ -530,8 +621,9 @@ function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeco
     if(cost<bestCost){bestCost=cost;bestStart=start;bestEnd=end;}
   }
 
+  const phaseAlignment=Math.max(windowCorrelation(channels,bestStart,bestEnd,phaseWindow,"forward","transient",1900),windowCorrelation(channels,bestStart,bestEnd,phaseWindow,"backward","transient",1900));
   return{
-    start:bestStart,end:bestEnd,waveform,seam:bestCost,
+    start:bestStart,end:bestEnd,waveform,seam:bestCost,phaseAlignment,
     periodCorrection:((bestEnd-bestStart)-targetPeriod)*1000/sampleRate
   };
 }
@@ -558,13 +650,17 @@ function shiftEarliest(result,bundle,sampleRate,options){
   if(!options.preferFirst)return{...result,shifted:0};
   const period=result.end-result.start;
   let start=result.start,end=result.end,shifted=0;
-  const musicThreshold=clamp(Number(options.earliestMusicalThreshold)||.72,0,1);
-  const vocalThreshold=clamp(Number(options.earliestVocalThreshold)||.58,0,1);
+  const musicThreshold=clamp(Number(options.earliestMusicalThreshold)||.72,0,1),vocalThreshold=clamp(Number(options.earliestVocalThreshold)||.58,0,1),tempoTolerance=Math.max(.01,(Number(options.tempoTolerancePercent)||8)/100);
+  const scale=bundle.analysisRate/(sampleRate*bundle.hop);
   while(start-period>=0){
     const previousStart=start-period,previousEnd=start;
-    const scale=bundle.analysisRate/(sampleRate*bundle.hop);
-    const a=Math.round(previousStart*scale),b=Math.round(previousEnd*scale);
-    const c=Math.round(start*scale),d=Math.round(end*scale);
+    const a=Math.round(previousStart*scale),b=Math.round(previousEnd*scale),c=Math.round(start*scale),d=Math.round(end*scale);
+    if(options.tempoAware&&bundle.localPeriod){
+      const previousTempo=Math.max(1,bundle.localPeriod[clamp(a,0,bundle.frames-1)]||1),currentTempo=Math.max(1,bundle.localPeriod[clamp(c,0,bundle.frames-1)]||1);
+      const mismatch=Math.abs(previousTempo/currentTempo-1);
+      const previousRamp=bundle.tempoRamp[clamp(a,0,bundle.frames-1)]||0,currentRamp=bundle.tempoRamp[clamp(c,0,bundle.frames-1)]||0;
+      if(mismatch>tempoTolerance||previousRamp>Math.max(.35,currentRamp+.18))break;
+    }
     const musical=segmentSimilarity(bundle,a,b,c,d,"musical");
     if(musical<musicThreshold)break;
     if(options.useVocals&&segmentSimilarity(bundle,a,b,c,d,"vocal")<vocalThreshold)break;
@@ -572,8 +668,13 @@ function shiftEarliest(result,bundle,sampleRate,options){
   }
   return{...result,start,end,shifted};
 }
-function confidence(result,musical,options){
-  const musical01=clamp((musical+1)/2,0,1),wave01=clamp((result.waveform+1)/2,0,1),seam01=Math.exp(-Math.max(0,result.seam));let value=.44*musical01+.30*wave01+.26*seam01;if(options.useVocals)value-=.04;value=clamp(value,0,1);return{value,label:value>=.82?"High":(value>=.67?"Medium":"Low")};
+function confidence(result,evidence,options,marginScore=.55){
+  const musical=typeof evidence==="number"?evidence:(evidence.musical??0),rhythm=typeof evidence==="object"?(evidence.rhythm??musical):musical;
+  const tempoSimilarity=typeof evidence==="object"?(evidence.tempoSimilarity??.75):.75,tempoStability=typeof evidence==="object"?(evidence.tempoStability??.65):.65;
+  const musical01=clamp((musical+1)/2,0,1),wave01=clamp((result.waveform+1)/2,0,1),seam01=Math.exp(-Math.max(0,result.seam)),rhythm01=clamp((rhythm+1)/2,0,1),phase01=clamp(((result.phaseAlignment??rhythm)+1)/2,0,1);
+  let value=.29*musical01+.20*wave01+.15*seam01+.14*rhythm01+.08*phase01+.055*clamp(tempoSimilarity,0,1)+.035*clamp(tempoStability,0,1)+.04*clamp(marginScore,0,1);
+  if(options.useVocals)value-=.012;
+  value=clamp(value,0,1);return{value,label:value>=.82?"High":(value>=.67?"Medium":"Low")};
 }
 function anchorResultToFirstBoundary(channels,sampleRate,result,options,bundle){
   if(!options.preferFirst)return result;const total=channels[0].length,period=result.end-result.start;if(period<=4)return result;const beatSeconds=bundle.beatPeriod>0?bundle.beatPeriod/bundle.frameRate:0,backRadius=Math.min(period,Math.round(8*sampleRate)),forwardRadius=Math.min(Math.round(1.25*sampleRate),Math.max(0,total-period-result.start)),from=Math.max(0,result.start-backRadius),to=Math.min(total-period,result.start+forwardRadius),step=Math.max(1,Math.round((options.power==="maximum"?.003:.006)*sampleRate)),window=Math.min(Math.round(1.15*sampleRate),Math.max(128,Math.round(period*.18)));let bestStart=result.start,bestScore=-Infinity;
@@ -617,13 +718,13 @@ function detect(channels,sampleRate,requested){
   const coarse=coarseSearch(bundle,candidates,options,duration);if(!coarse.length)throw new Error("No loop matched the minimum length.");
   const results=[];for(let index=0;index<coarse.length;index++){
     const pair=coarse[index],startSeconds=candidates[pair.i]/bundle.frameRate,endSeconds=candidates[pair.j]/bundle.frameRate,initialStart=Math.round(startSeconds*sampleRate),initialEnd=Math.round(endSeconds*sampleRate);
-    let refined=refinePair(channels,sampleRate,initialStart,initialEnd,options,bundle.beatPeriod/bundle.frameRate);if(!refined)continue;const shifted=shiftEarliest(refined,bundle,sampleRate,options);if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,options,bundle.beatPeriod/bundle.frameRate)||shifted;else refined=shifted;
-    const length=(refined.end-refined.start)/sampleRate,correctionPenalty=.30*clamp(Math.abs(refined.periodCorrection||0)/120,0,1),rank=pair.score+.13*refined.waveform+.18*Math.exp(-Math.max(0,refined.seam))-.06*Math.min(Math.max(refined.seam,0),6)+.08*length/duration-.095*(refined.start/sampleRate)/duration+.03*(refined.shifted||0)-correctionPenalty,conf=confidence(refined,pair.musical,options);
-    results.push({...refined,musical:pair.musical,rank,confidence:conf.value,confidenceLabel:conf.label});postProgress(58+37*(index+1)/coarse.length,"Refining "+(index+1)+" of "+coarse.length+"…");
+    let refined=refinePair(channels,sampleRate,initialStart,initialEnd,options,pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate);if(!refined)continue;const shifted=shiftEarliest(refined,bundle,sampleRate,options);if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,options,pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate)||shifted;else refined=shifted;
+    const length=(refined.end-refined.start)/sampleRate,correctionPenalty=.30*clamp(Math.abs(refined.periodCorrection||0)/120,0,1),phase01=clamp(((refined.phaseAlignment??pair.rhythm)+1)/2,0,1),rank=pair.score+.12*refined.waveform+.18*Math.exp(-Math.max(0,refined.seam))+.09*phase01+.055*(pair.tempoStability||0)-.055*(pair.rampRisk||0)-.06*Math.min(Math.max(refined.seam,0),6)+.08*length/duration-.095*(refined.start/sampleRate)/duration+.03*(refined.shifted||0)-correctionPenalty,conf=confidence(refined,pair,options);
+    results.push({...refined,...pair,musical:pair.musical,rank,confidence:conf.value,confidenceLabel:conf.label});postProgress(58+37*(index+1)/coarse.length,"Refining "+(index+1)+" of "+coarse.length+"…");
   }
   if(!results.length)throw new Error("The loop points could not be refined.");results.sort((a,b)=>b.rank-a.rank);
   for(const shorter of results)for(const longer of results){if(shorter===longer)continue;const shortLength=shorter.end-shorter.start,longLength=longer.end-longer.start;if(shortLength>=longLength*.8||Math.abs(shorter.start-longer.start)>.9*sampleRate)continue;const ratio=longLength/shortLength,integer=Math.round(ratio);if(integer>=2&&integer<=4&&Math.abs(ratio-integer)<.045&&shorter.confidence>=longer.confidence-.055){shorter.rank+=.18;longer.rank-=.07;}}
-  results.sort((a,b)=>b.rank-a.rank);let best=results[0];const finalConfidence=confidence(best,best.musical,options);best.confidence=finalConfidence.value;best.confidenceLabel=finalConfidence.label;postProgress(100,"Loop found.");return{start:best.start,end:best.end,confidence:best.confidence,confidenceLabel:best.confidenceLabel,seam:best.seam,waveform:best.waveform,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,elapsed:(now()-started)/1000};
+  results.sort((a,b)=>b.rank-a.rank);let best=results[0];const margin=results.length>1?clamp(.5+(best.rank-results[1].rank)*2.2,.5,1):.8,finalConfidence=confidence(best,best,options,margin);best.confidence=finalConfidence.value;best.confidenceLabel=finalConfidence.label;postProgress(100,"Loop found.");return{start:best.start,end:best.end,confidence:best.confidence,confidenceLabel:best.confidenceLabel,seam:best.seam,waveform:best.waveform,phaseAlignment:best.phaseAlignment,rhythm:best.rhythm,tempoSimilarity:best.tempoSimilarity,tempoStability:best.tempoStability,rampRisk:best.rampRisk,localBeatSeconds:best.localBeatSeconds,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,elapsed:(now()-started)/1000};
 }
 
 
@@ -724,6 +825,8 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
   const radius=Math.max(1,Math.round((Number(options.refineRadiusMs)||180)*sampleRate/1000));
   const step=Math.max(1,Math.round((Number(options.refineStepMs)||2)*sampleRate/1000));
   const window=Math.max(128,Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000));
+  const phaseWindow=Math.max(window,Math.round((Number(options.beatPhaseContextSeconds)||3.5)*sampleRate));
+  const phaseWeight=clamp(Number(options.beatPhaseWeight)||.18,0,.75);
   let lockedStart=startCenter,lockedEnd=endCenter,bestScore=-Infinity;
 
   for(let offset=-radius;offset<=radius;offset+=step){
@@ -739,6 +842,8 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
       const vb=sliceWindowCorrelation(startChannels,endChannels,a,b,window,"backward","vocal");
       score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
     }else score=.39*mf+.21*mb+.25*tf+.15*tb;
+    const longTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"forward","transient",1900),sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"backward","transient",1900));
+    score+=phaseWeight*.42*longTf;
     score-=.008*Math.abs(offset)/Math.max(1,radius);
     if(score>bestScore){bestScore=score;lockedStart=a;lockedEnd=b;}
   }
@@ -763,8 +868,11 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
       const vb=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"backward","vocal");
       score=.29*mf+.18*mb+.20*tf+.12*tb+.14*vf+.07*vb;
     }else score=.39*mf+.21*mb+.25*tf+.15*tb;
-    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage;
-    score-=.028*Math.abs(delta)/Math.max(1,maxCorrection);
+    const longTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"forward","transient",2100),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"backward","transient",2100));
+    const longMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"forward","mono",1300),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"backward","mono",1300));
+    score+=-.34*Math.min(phase.raw,3)-.24*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage+phaseWeight*(.80*longTf+.20*longMf);
+    score-=.034*Math.abs(delta)/Math.max(1,maxCorrection);
+    if(options.beatLock&&Number(options.localBeatSeconds)>0){const beats=(b-lockedStart)/(sampleRate*Number(options.localBeatSeconds)),error=Math.abs(beats-Math.round(beats));score-=.12*clamp(error/.5,0,1);}
     if(score>waveform){waveform=score;refinedEnd=b;}
   }
 
@@ -792,10 +900,11 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
     if(cost<bestCost){bestCost=cost;bestStart=a;bestEnd=b;}
   }
 
+  const phaseAlignment=Math.max(sliceWindowCorrelation(startChannels,endChannels,bestStart,bestEnd,phaseWindow,"forward","transient",2100),sliceWindowCorrelation(startChannels,endChannels,bestStart,bestEnd,phaseWindow,"backward","transient",2100));
   return{
     startDelta:bestStart-startCenter,
     endDelta:bestEnd-endCenter,
-    seam:bestCost,waveform,
+    seam:bestCost,waveform,phaseAlignment,
     periodCorrectionMs:((bestEnd-endCenter)-(bestStart-startCenter))*1000/sampleRate
   };
 }
@@ -850,7 +959,7 @@ const $$=selector=>[...document.querySelectorAll(selector)];
 const E={
   fileInput:$("#fileInput"),dropZone:$("#dropZone"),fileCard:$("#fileCard"),fileName:$("#fileName"),fileMeta:$("#fileMeta"),
   changeButton:$("#changeButton"),resetButton:$("#resetButton"),sourcePlayer:$("#sourcePlayer"),protocolWarning:$("#protocolWarning"),
-  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),
+  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),tempoAware:$("#tempoAware"),
   resetSettingsButton:$("#resetSettingsButton"),analysisSampleRate:$("#analysisSampleRate"),hopLength:$("#hopLength"),
   matchWindowSeconds:$("#matchWindowSeconds"),boundaryContextSeconds:$("#boundaryContextSeconds"),
   maxCandidates:$("#maxCandidates"),coarsePairsToRefine:$("#coarsePairsToRefine"),
@@ -858,7 +967,8 @@ const E={
   refineRadiusMs:$("#refineRadiusMs"),refineStepMs:$("#refineStepMs"),refineMatchMs:$("#refineMatchMs"),
   maxPeriodCorrectionMs:$("#maxPeriodCorrectionMs"),periodCorrectionStepMs:$("#periodCorrectionStepMs"),
   seamSharedSearchMs:$("#seamSharedSearchMs"),seamPeriodSearchMs:$("#seamPeriodSearchMs"),
-  seamForwardContextMs:$("#seamForwardContextMs"),earliestMusicalThreshold:$("#earliestMusicalThreshold"),
+  seamForwardContextMs:$("#seamForwardContextMs"),tempoWindowSeconds:$("#tempoWindowSeconds"),tempoTolerancePercent:$("#tempoTolerancePercent"),
+  tempoRampPenalty:$("#tempoRampPenalty"),beatPhaseContextSeconds:$("#beatPhaseContextSeconds"),beatPhaseWeight:$("#beatPhaseWeight"),earliestMusicalThreshold:$("#earliestMusicalThreshold"),
   earliestVocalThreshold:$("#earliestVocalThreshold"),
   findButton:$("#findButton"),progressBox:$("#progressBox"),progressBar:$("#progressBar"),progressText:$("#progressText"),
   resultPanel:$("#resultPanel"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),
@@ -878,17 +988,18 @@ const state={
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
-  textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,mediaVersion:0,
+  textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
   precisionRate:48000
 };
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV3";
+const SETTINGS_KEY="videoGameMusicLooperSettingsV4",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV3";
 const DEFAULT_SETTINGS=Object.freeze({
-  vocalMode:"auto",power:"strong",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,
+  vocalMode:"auto",power:"strong",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
   analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,
   maxCandidates:1500,coarsePairsToRefine:18,autoVocalThreshold:.50,precisionSampleRate:48000,
   refineRadiusMs:180,refineStepMs:2,refineMatchMs:420,maxPeriodCorrectionMs:15,
   periodCorrectionStepMs:.25,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
+  tempoWindowSeconds:8,tempoTolerancePercent:8,tempoRampPenalty:.16,beatPhaseContextSeconds:3.5,beatPhaseWeight:.18,
   earliestMusicalThreshold:.72,earliestVocalThreshold:.58
 });
 const POWER_PRESETS=Object.freeze({
@@ -926,9 +1037,10 @@ function readSettings(){
     vocalMode:radioValue("vocalMode",DEFAULT_SETTINGS.vocalMode),
     power:radioValue("power",DEFAULT_SETTINGS.power),
     minimumLoop:finiteNumber(E.minimumLoop,DEFAULT_SETTINGS.minimumLoop,3,600),
-    previewRepeats:finiteNumber(E.previewRepeats,DEFAULT_SETTINGS.previewRepeats,2,5),
+    previewRepeats:Math.round(finiteNumber(E.previewRepeats,DEFAULT_SETTINGS.previewRepeats,1,50)),
     preferFirst:!!E.preferFirst.checked,
     beatLock:!!E.beatLock.checked,
+    tempoAware:!!E.tempoAware.checked,
     analysisSampleRate:Math.round(finiteNumber(E.analysisSampleRate,DEFAULT_SETTINGS.analysisSampleRate,8000,48000)),
     hopLength:Math.round(finiteNumber(E.hopLength,DEFAULT_SETTINGS.hopLength,128,2048)),
     matchWindowSeconds:finiteNumber(E.matchWindowSeconds,DEFAULT_SETTINGS.matchWindowSeconds,1,20),
@@ -945,6 +1057,11 @@ function readSettings(){
     seamSharedSearchMs:finiteNumber(E.seamSharedSearchMs,DEFAULT_SETTINGS.seamSharedSearchMs,.25,20),
     seamPeriodSearchMs:finiteNumber(E.seamPeriodSearchMs,DEFAULT_SETTINGS.seamPeriodSearchMs,.05,5),
     seamForwardContextMs:finiteNumber(E.seamForwardContextMs,DEFAULT_SETTINGS.seamForwardContextMs,4,250),
+    tempoWindowSeconds:finiteNumber(E.tempoWindowSeconds,DEFAULT_SETTINGS.tempoWindowSeconds,3,20),
+    tempoTolerancePercent:finiteNumber(E.tempoTolerancePercent,DEFAULT_SETTINGS.tempoTolerancePercent,1,35),
+    tempoRampPenalty:finiteNumber(E.tempoRampPenalty,DEFAULT_SETTINGS.tempoRampPenalty,0,.75),
+    beatPhaseContextSeconds:finiteNumber(E.beatPhaseContextSeconds,DEFAULT_SETTINGS.beatPhaseContextSeconds,.5,12),
+    beatPhaseWeight:finiteNumber(E.beatPhaseWeight,DEFAULT_SETTINGS.beatPhaseWeight,0,.75),
     earliestMusicalThreshold:finiteNumber(E.earliestMusicalThreshold,DEFAULT_SETTINGS.earliestMusicalThreshold,0,1),
     earliestVocalThreshold:finiteNumber(E.earliestVocalThreshold,DEFAULT_SETTINGS.earliestVocalThreshold,0,1)
   };
@@ -953,13 +1070,14 @@ function writeSettings(settings){
   const s={...DEFAULT_SETTINGS,...settings};
   setRadio("vocalMode",s.vocalMode);setRadio("power",s.power);
   E.minimumLoop.value=s.minimumLoop;E.previewRepeats.value=String(s.previewRepeats);
-  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;
+  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;E.tempoAware.checked=!!s.tempoAware;
   for(const key of [
     "analysisSampleRate","hopLength","matchWindowSeconds","boundaryContextSeconds",
     "maxCandidates","coarsePairsToRefine","autoVocalThreshold","precisionSampleRate",
     "refineRadiusMs","refineStepMs","refineMatchMs","maxPeriodCorrectionMs",
     "periodCorrectionStepMs","seamSharedSearchMs","seamPeriodSearchMs",
-    "seamForwardContextMs","earliestMusicalThreshold","earliestVocalThreshold"
+    "seamForwardContextMs","tempoWindowSeconds","tempoTolerancePercent","tempoRampPenalty",
+    "beatPhaseContextSeconds","beatPhaseWeight","earliestMusicalThreshold","earliestVocalThreshold"
   ])if(E[key])E[key].value=String(s[key]);
 }
 function saveSettings(){
@@ -967,7 +1085,7 @@ function saveSettings(){
 }
 function loadSettings(){
   let saved=null;
-  try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null");}catch{}
+  try{saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||localStorage.getItem(LEGACY_SETTINGS_KEY)||"null");}catch{}
   writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
 }
 function resetSettingsDefaults(){
@@ -1003,7 +1121,8 @@ function stopPlayback(keepSource=false){
   if(state.playRaf){cancelAnimationFrame(state.playRaf);state.playRaf=0;}
   if(!keepSource){try{E.sourcePlayer.pause();}catch{}}
   if(state.playAudio&&state.playAudio!==E.sourcePlayer){try{state.playAudio.pause();state.playAudio.src="";}catch{}}
-  state.playAudio=null;state.playMap=null;state.playheadTime=null;
+  if(state.webAudioSource){try{state.webAudioSource.onended=null;state.webAudioSource.stop();state.webAudioSource.disconnect();}catch{}}
+  state.webAudioSource=null;state.playAudio=null;state.playMap=null;state.playheadTime=null;
   if(state.playUrl){URL.revokeObjectURL(state.playUrl);state.playUrl="";}
   E.playbackPosition.textContent="—";
   drawWaveform();
@@ -1017,8 +1136,25 @@ function startPlaybackTracking(audio,map){
     state.playheadTime=Number.isFinite(mapped)?mapped:null;
     E.playbackPosition.textContent=state.playheadTime==null?"—":formatClock(state.playheadTime);
     drawWaveform();
-    if(!audio.paused&&!audio.ended)state.playRaf=requestAnimationFrame(update);
-    else state.playRaf=0;
+    if(!audio.paused&&!audio.ended)state.playRaf=requestAnimationFrame(update);else state.playRaf=0;
+  };
+  update();
+}
+async function audioContext(){
+  if(!state.webAudioContext){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)throw new Error("This browser does not support gapless playback.");state.webAudioContext=new Context();}
+  if(state.webAudioContext.state==="suspended")await state.webAudioContext.resume();
+  return state.webAudioContext;
+}
+function startWebAudioTracking(context,source,map,duration=0){
+  if(state.playRaf)cancelAnimationFrame(state.playRaf);
+  state.webAudioSource=source;state.webAudioStartedAt=context.currentTime;
+  const update=()=>{
+    if(state.webAudioSource!==source)return;
+    const elapsed=Math.max(0,context.currentTime-state.webAudioStartedAt);
+    state.playheadTime=map(elapsed);
+    E.playbackPosition.textContent=formatClock(state.playheadTime);drawWaveform();
+    if(duration>0&&elapsed>=duration){stopPlayback();return;}
+    state.playRaf=requestAnimationFrame(update);
   };
   update();
 }
@@ -1472,8 +1608,8 @@ async function refineAtFullDetail(coarse,settings){
   const rate=settings.precisionSampleRate;
   state.precisionRate=rate;
 
-  const requiredBefore=(settings.refineRadiusMs+settings.refineMatchMs+120)/1000;
-  const requiredAfter=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,90)+120)/1000;
+  const requiredBefore=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,settings.beatPhaseContextSeconds*1000)+120)/1000;
+  const requiredAfter=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,settings.beatPhaseContextSeconds*1000,90)+120)/1000;
   const marginBefore=Math.max(.75,requiredBefore);
   const marginAfter=Math.max(.75,requiredAfter);
   const duration=Math.max(state.duration,state.analysisFrames&&state.analysisRate?state.analysisFrames/state.analysisRate:0,coarseEnd);
@@ -1490,7 +1626,7 @@ async function refineAtFullDetail(coarse,settings){
 
   const startCenter=Math.round((coarseStart-startFrom)*rate);
   const endCenter=Math.round((coarseEnd-endFrom)*rate);
-  const fineOptions={...settings,useVocals:coarse.mode==="Vocals"};
+  const fineOptions={...settings,useVocals:coarse.mode==="Vocals",localBeatSeconds:coarse.localBeatSeconds||0};
 
   setProgress(92,"Matching the full-detail samples…");
   const fine=await waitForWorker("fine",()=>state.analysisWorker.postMessage({
@@ -1504,8 +1640,8 @@ async function refineAtFullDetail(coarse,settings){
   startSeconds=clamp(startSeconds,0,Math.max(0,duration-2/rate));
   endSeconds=clamp(endSeconds,startSeconds+2/rate,duration);
 
-  const seamQuality=Math.exp(-Math.max(0,fine.seam));
-  const confidenceValue=clamp(.68*coarse.confidence+.20*clamp((fine.waveform+1)/2,0,1)+.12*seamQuality,0,1);
+  const seamQuality=Math.exp(-Math.max(0,fine.seam)),phaseQuality=clamp((fine.phaseAlignment+1)/2,0,1);
+  const confidenceValue=clamp(.48*coarse.confidence+.20*clamp((fine.waveform+1)/2,0,1)+.13*seamQuality+.14*phaseQuality+.05*clamp(coarse.tempoStability??.65,0,1),0,1);
   const confidenceLabel=confidenceValue>=.83?"High":(confidenceValue>=.69?"Medium":"Low");
 
   log(`Full-detail correction: start ${fine.startDelta>=0?"+":""}${(fine.startDelta*1000/rate).toFixed(3)} ms, end ${fine.endDelta>=0?"+":""}${(fine.endDelta*1000/rate).toFixed(3)} ms.`);
@@ -1513,7 +1649,7 @@ async function refineAtFullDetail(coarse,settings){
 
   return{
     ...coarse,startSeconds,endSeconds,sampleRate:rate,
-    seam:fine.seam,waveform:fine.waveform,periodCorrection:fine.periodCorrectionMs,
+    seam:fine.seam,waveform:fine.waveform,phaseAlignment:fine.phaseAlignment,periodCorrection:fine.periodCorrectionMs,
     confidence:confidenceValue,confidenceLabel
   };
 }
@@ -1703,7 +1839,7 @@ async function renderWav(kind){
       `atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS`,
       "-c:a","pcm_s16le",output];
   }else if(kind==="preview"){
-    const repeats=clamp(Number(E.previewRepeats.value)||3,2,5);
+    const repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
     args=["-i",input,"-vn","-filter_complex",previewFilter(start,end,repeats),"-map","[out]","-c:a","pcm_s16le",output];
   }else if(kind==="seam"){
     args=["-i",input,"-vn","-filter_complex",seamFilter(start,end),"-map","[out]","-c:a","pcm_s16le",output];
@@ -1746,22 +1882,17 @@ async function playGenerated(kind){
   stopPlayback();
   try{
     setBusy(true,kind==="seam"?"Building the seam preview…":"Building the exact loop…");
-    const blob=await renderWav(kind);
-    state.playUrl=URL.createObjectURL(blob);
-    const audio=new Audio(state.playUrl);
+    const blob=await renderWav(kind),context=await audioContext(),decoded=await context.decodeAudioData(await blob.arrayBuffer());
+    const source=context.createBufferSource();source.buffer=decoded;source.connect(context.destination);
     const {start,end}=currentTimes(),loopLength=Math.max(1e-9,end-start);
-    let map;
     if(kind==="loop"){
-      audio.loop=true;
-      map=time=>start+(time%loopLength);
+      source.loop=true;source.loopStart=0;source.loopEnd=decoded.duration;source.start(0);
+      startWebAudioTracking(context,source,elapsed=>start+(elapsed%loopLength));
     }else{
-      const tailStart=Math.max(start,end-2),tailLength=end-tailStart;
-      map=time=>time<tailLength?tailStart+time:start+(time-tailLength);
-      audio.onended=()=>stopPlayback();
+      const tailStart=Math.max(start,end-2),tailLength=end-tailStart;source.start(0);
+      source.onended=()=>{if(state.webAudioSource===source)stopPlayback();};
+      startWebAudioTracking(context,source,elapsed=>elapsed<tailLength?tailStart+elapsed:start+(elapsed-tailLength),decoded.duration);
     }
-    state.playAudio=audio;
-    await audio.play();
-    startPlaybackTracking(audio,map);
     status(kind==="seam"?"Playing seam":"Playing loop","The bright line shows the current position.","ok");
   }catch(error){
     stopPlayback();status("Playback failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
@@ -1769,7 +1900,6 @@ async function playGenerated(kind){
     setBusy(false);E.progressBox.classList.add("hidden");
   }
 }
-
 E.dropZone.addEventListener("click",()=>E.fileInput.click());
 E.changeButton.addEventListener("click",()=>E.fileInput.click());
 E.fileInput.addEventListener("change",()=>loadFile(E.fileInput.files[0]));
@@ -1791,13 +1921,13 @@ E.downloadPreview.addEventListener("click",event=>{event.preventDefault();downlo
 E.clearLogButton.addEventListener("click",()=>E.log.textContent="");
 E.startInput.addEventListener("change",()=>updateResult());
 E.endInput.addEventListener("change",()=>updateResult());
-E.previewRepeats.addEventListener("change",()=>{invalidateMedia();saveSettings();});
+E.previewRepeats.addEventListener("change",()=>{E.previewRepeats.value=String(clamp(Math.round(Number(E.previewRepeats.value)||3),1,50));invalidateMedia();saveSettings();});
 E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
 
 for(const input of $$('input[name="power"]')){
   input.addEventListener("change",()=>applyPowerPreset(input.value));
 }
-for(const input of $$('input[name="vocalMode"],#minimumLoop,#preferFirst,#beatLock,.setting-input')){
+for(const input of $$('input[name="vocalMode"],#minimumLoop,#preferFirst,#beatLock,#tempoAware,.setting-input')){
   input.addEventListener("change",()=>{
     saveSettings();
     if(input.id==="analysisSampleRate")terminateAnalysisWorker();
