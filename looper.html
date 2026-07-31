@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0a">
 <meta name="color-scheme" content="dark">
-<title>Video Game Music Looper — Deep Analyze</title>
+<title>Video Game Music Looper — Learning Edition</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
@@ -60,8 +60,11 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 .status-dot{width:10px;height:10px;border-radius:50%;background:var(--yellow-dim);box-shadow:0 0 0 5px rgba(250,226,157,.05)}.status-dot.busy{background:var(--yellow);animation:pulse 1.1s ease-in-out infinite}.status-dot.error{background:var(--error)}.status-dot.ok{background:var(--ok)}@keyframes pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
 .status-message{min-height:42px;margin:0 0 12px;color:var(--dim);font-size:.76rem;line-height:1.5}.side-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px}.side-stats div{min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel2)}.side-stats span,.side-stats strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.side-stats span{color:var(--faint);font-size:.61rem;text-transform:uppercase;letter-spacing:.06em}.side-stats strong{margin-top:3px;color:var(--yellow);font-size:.76rem}.log-head{display:flex;justify-content:space-between;align-items:center;padding-top:11px;border-top:1px solid var(--border);color:var(--dim);font-size:.7rem;font-weight:850}.text-btn{padding:3px;background:transparent;color:var(--yellow-dim);cursor:pointer;font-size:.72rem;font-weight:850}.text-btn:hover{color:var(--yellow)}.log{min-height:190px;max-height:calc(100vh - 360px);margin:7px 0 0;overflow:auto;padding:10px;border:1px solid var(--border);border-radius:9px;background:#090908;color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.67rem;line-height:1.52;white-space:pre-wrap;word-break:break-word}
 .warning{padding:10px 11px;border:1px solid rgba(232,132,111,.45);border-radius:9px;background:rgba(232,132,111,.065);color:#efad9f;font-size:.73rem;line-height:1.45}.mobile{display:none}
+
+.solution-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:15px 0 8px}.solution-head strong{font-size:.84rem;color:var(--yellow)}.solution-head span{color:var(--dim);font-size:.69rem}.solution-list{display:grid;gap:8px}.solution-card{padding:11px;border:1px solid var(--border);border-radius:11px;background:var(--panel2);transition:border-color .12s,background .12s}.solution-card.active{border-color:var(--yellow-dim);background:rgba(250,226,157,.075)}.solution-card.ai-pick{box-shadow:inset 3px 0 0 var(--yellow)}.solution-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.solution-title{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}.solution-title strong{font-size:.8rem}.solution-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border:1px solid var(--border2);border-radius:999px;color:var(--yellow-dim);font-size:.61rem;font-weight:850}.solution-region{margin-top:5px;color:var(--yellow);font:800 .74rem/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.solution-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}.solution-meta div{min-width:0;padding:6px;border:1px solid var(--border);border-radius:7px;background:#121210}.solution-meta span,.solution-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.solution-meta span{color:var(--faint);font-size:.56rem;text-transform:uppercase;letter-spacing:.05em}.solution-meta strong{margin-top:2px;color:var(--text);font-size:.68rem}.solution-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rating-button{min-width:42px}.rating-button.selected-like{border-color:var(--ok);color:var(--ok);background:rgba(183,221,155,.08)}.rating-button.selected-dislike{border-color:var(--error);color:var(--error);background:rgba(232,132,111,.08)}.learning-box{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:#0e0e0d}.learning-copy{min-width:0}.learning-copy strong,.learning-copy span{display:block}.learning-copy strong{font-size:.76rem;color:var(--yellow)}.learning-copy span{margin-top:3px;color:var(--dim);font-size:.66rem;line-height:1.4}.learning-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}.disabled-link{pointer-events:none;opacity:.43}.saved-result-note{margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--dim);font-size:.68rem}.data-count{color:var(--yellow)!important}
+
 @media(max-width:900px){.grid{grid-template-columns:1fr}.aside{order:-1}.sticky{position:static;max-height:none}.log{max-height:210px}}
-@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid,.settings-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-head{align-items:stretch;flex-direction:column}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
+@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid,.settings-grid{grid-template-columns:1fr}.stats,.solution-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.learning-box{align-items:stretch;flex-direction:column}.learning-actions{justify-content:flex-start}.settings-head{align-items:stretch;flex-direction:column}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
 @media(max-width:430px){.segmented{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.file-card{flex-wrap:wrap}.file-copy{flex-basis:calc(100% - 55px)}.file-card .button{width:100%}.download{flex-wrap:wrap}.download a{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
@@ -77,7 +80,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
   <div class="badges">
     <span class="badge">Runs locally</span>
     <span class="badge">No fades</span>
-    <span class="badge" id="cpuBadge">Flow-aware engine</span>
+    <span class="badge" id="cpuBadge">Learning loop analyzer</span>
   </div>
 </header>
 <main class="shell grid">
@@ -124,7 +127,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
     </div>
 
     <div class="two field">
-      <label><span class="label">Minimum loop length</span><input class="text" id="minimumLoop" type="number" min="1" max="600" step="1" value="12"></label>
+      <label><span class="label">Minimum loop length</span><input class="text" id="minimumLoop" type="number" min="3" max="600" step="1" value="12"></label>
       <label><span class="label">Preview repeats</span><input class="text" id="previewRepeats" type="number" min="1" max="50" step="1" value="3"></label>
     </div>
     <div class="checks">
@@ -197,7 +200,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
             <label><span class="label">Lag fine search</span><input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="220"></label>
             <label><span class="label">Speed-ramp crossing penalty</span><input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46"></label>
             <label><span class="label">Settled-speed bonus</span><input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14"></label>
-            <label><span class="label">Full-detail candidates</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="6" step="1" value="3"></label>
+            <label><span class="label">Solutions to check</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="2" max="6" step="1" value="4"></label>
             <label><span class="label">Direct repeat floor</span><input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58"></label>
           </div>
         </div>
@@ -226,6 +229,25 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <div><span>Length</span><strong id="lengthStat">0:00.000</strong></div>
       <div><span>Confidence</span><strong id="confidenceStat">—</strong></div>
     </div>
+
+    <div class="solution-head">
+      <strong>Loop solutions</strong>
+      <span id="solutionSummary">0 solutions</span>
+    </div>
+    <div class="solution-list" id="solutionList"></div>
+
+    <div class="learning-box">
+      <div class="learning-copy">
+        <strong>Local neural ranker</strong>
+        <span id="learningStatus">No ratings yet.</span>
+      </div>
+      <div class="learning-actions">
+        <button class="button ghost small" id="downloadLearningDataButton" type="button">Download data</button>
+        <button class="button ghost small" id="resetLearningDataButton" type="button">Reset data</button>
+      </div>
+    </div>
+    <div class="saved-result-note hidden" id="savedResultNote">Saved result restored. Choose the same audio file to play or download it.</div>
+
     <div class="wave-wrap"><canvas id="waveCanvas" width="1200" height="310"></canvas></div>
     <div class="playback-row"><span>Playback position</span><strong id="playbackPosition">—</strong></div>
     <div class="transport">
@@ -1012,7 +1034,7 @@ function detect(channels,sampleRate,requested){
     if(repeat.coverage>=minimumCoverage)pair.score+=repeatWeight*repeat.score*repeat.coverage;else pair.score-=.05*(minimumCoverage-repeat.coverage)/minimumCoverage;
   }
   searchPool.sort((a,b)=>b.score-a.score);
-  const refineCount=options.power==="deep"?Math.min(4,clamp(Math.round(options.coarsePairsToRefine||18),1,64)):clamp(Math.round(options.coarsePairsToRefine||18),1,64),coarse=searchPool.slice(0,refineCount),results=[];
+  const refineCount=options.power==="deep"?Math.min(6,clamp(Math.round(options.coarsePairsToRefine||18),1,64)):clamp(Math.round(options.coarsePairsToRefine||18),1,64),coarse=searchPool.slice(0,refineCount),results=[];
   for(let index=0;index<coarse.length;index++){
     const pair=coarse[index],startSeconds=pair.startFrame/bundle.frameRate,endSeconds=pair.endFrame/bundle.frameRate,initialStart=Math.round(startSeconds*sampleRate),initialEnd=Math.round(endSeconds*sampleRate);
     const lowOptions=options.power==="deep"?{...options,refineRadiusMs:Math.min(120,Number(options.refineRadiusMs)||180),refineStepMs:Math.max(4,Number(options.refineStepMs)||2),maxPeriodCorrectionMs:Math.min(10,Number(options.maxPeriodCorrectionMs)||15),periodCorrectionStepMs:Math.max(1,Number(options.periodCorrectionStepMs)||.25),seamSharedSearchMs:Math.min(2,Number(options.seamSharedSearchMs)||5),seamPeriodSearchMs:Math.min(.25,Number(options.seamPeriodSearchMs)||.6),beatDriftCorrectionMs:0}:options;
@@ -1256,20 +1278,23 @@ const E={
   findAgainButton:$("#findAgainButton"),statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),
   durationSide:$("#durationSide"),sampleRateSide:$("#sampleRateSide"),channelsSide:$("#channelsSide"),modeSide:$("#modeSide"),
   clearLogButton:$("#clearLogButton"),log:$("#log"),mobileText:$("#mobileText"),mobileButton:$("#mobileButton"),
-  cpuBadge:$("#cpuBadge")
+  cpuBadge:$("#cpuBadge"),solutionList:$("#solutionList"),solutionSummary:$("#solutionSummary"),learningStatus:$("#learningStatus"),
+  downloadLearningDataButton:$("#downloadLearningDataButton"),resetLearningDataButton:$("#resetLearningDataButton"),savedResultNote:$("#savedResultNote")
 };
 E.runtimeBadge=E.cpuBadge;
 
 const state={
-  file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,
+  file:null,fileUrl:"",duration:0,busy:false,result:null,solutions:[],activeCandidateId:"",wavePeaks:null,
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
-  precisionRate:48000
+  precisionRate:48000,learning:null,currentSessionId:"",savedSession:null,restoredWithoutFile:false,saveTimer:0,sessionPersistenceEnabled:true
 };
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV6",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV5";
+const SETTINGS_KEY="videoGameMusicLooperSettingsV7",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV6";
+const LEARNING_KEY="videoGameMusicLooperLearningV1";
+const APP_VERSION="neural-feedback-1";
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
   analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,
@@ -1279,14 +1304,14 @@ const DEFAULT_SETTINGS=Object.freeze({
   tempoWindowSeconds:8,tempoTolerancePercent:8,tempoRampPenalty:.16,beatPhaseContextSeconds:3.5,beatPhaseWeight:.18,
   instrumentFlowSeconds:12,instrumentFlowWeight:.30,instrumentFlowMinimum:.62,tempoPathWeight:.10,
   repeatContentWeight:.24,repeatMinimumCoverage:.55,beatDriftCorrectionMs:18,beatDriftMinGain:.035,
-  deepLagCandidates:32,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,speedRampCrossingPenalty:.46,settledSpeedBonus:.14,fullDetailCandidates:3,deepSimilarityFloor:.58,
+  deepLagCandidates:32,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,speedRampCrossingPenalty:.46,settledSpeedBonus:.14,fullDetailCandidates:4,deepSimilarityFloor:.58,
   earliestMusicalThreshold:.72,earliestVocalThreshold:.58
 });
 const POWER_PRESETS=Object.freeze({
   fast:{analysisSampleRate:11025,hopLength:512,matchWindowSeconds:4.2,boundaryContextSeconds:1.5,maxCandidates:650,coarsePairsToRefine:10,refineStepMs:4,periodCorrectionStepMs:.5,instrumentFlowSeconds:8,instrumentFlowWeight:.24},
   strong:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,maxCandidates:1500,coarsePairsToRefine:18,refineStepMs:2,periodCorrectionStepMs:.25,instrumentFlowSeconds:12,instrumentFlowWeight:.30},
   maximum:{analysisSampleRate:22050,hopLength:384,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:2200,coarsePairsToRefine:28,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:16,instrumentFlowWeight:.36},
-  deep:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,maxCandidates:380,coarsePairsToRefine:18,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:12,instrumentFlowWeight:.30,deepLagCandidates:32,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,fullDetailCandidates:3}
+  deep:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,maxCandidates:380,coarsePairsToRefine:18,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:12,instrumentFlowWeight:.30,deepLagCandidates:32,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,fullDetailCandidates:4}
 });
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
@@ -1365,7 +1390,7 @@ function readSettings(){
     deepLagSearchMs:finiteNumber(E.deepLagSearchMs,DEFAULT_SETTINGS.deepLagSearchMs,20,1000),
     speedRampCrossingPenalty:finiteNumber(E.speedRampCrossingPenalty,DEFAULT_SETTINGS.speedRampCrossingPenalty,0,1),
     settledSpeedBonus:finiteNumber(E.settledSpeedBonus,DEFAULT_SETTINGS.settledSpeedBonus,0,.5),
-    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,1,6)),
+    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,2,6)),
     deepSimilarityFloor:finiteNumber(E.deepSimilarityFloor,DEFAULT_SETTINGS.deepSimilarityFloor,.25,.95),
     earliestMusicalThreshold:finiteNumber(E.earliestMusicalThreshold,DEFAULT_SETTINGS.earliestMusicalThreshold,0,1),
     earliestVocalThreshold:finiteNumber(E.earliestVocalThreshold,DEFAULT_SETTINGS.earliestVocalThreshold,0,1)
@@ -1397,7 +1422,7 @@ function loadSettings(){
     const current=localStorage.getItem(SETTINGS_KEY),older=current?null:localStorage.getItem(LEGACY_SETTINGS_KEY);
     legacy=!current&&!!older;saved=JSON.parse(current||older||"null");
   }catch{}
-  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",maxCandidates:380,coarsePairsToRefine:18,beatDriftCorrectionMs:18,beatDriftMinGain:.035,deepLagCandidates:32,deepLagSearchMs:220,fullDetailCandidates:3};
+  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",maxCandidates:380,coarsePairsToRefine:18,beatDriftCorrectionMs:18,beatDriftMinGain:.035,deepLagCandidates:32,deepLagSearchMs:220,fullDetailCandidates:4};
   writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
 }
 function resetSettingsDefaults(){
@@ -1419,9 +1444,237 @@ function analysisSignature(settings){
   return String(settings.analysisSampleRate);
 }
 
+
+const FEATURE_NAMES=Object.freeze([
+  "base_rank","confidence","deep_alignment","weakest_repeat","instrument_flow","harmonic_flow",
+  "timbre_flow","phase_alignment","waveform_match","hard_seam","tempo_match","repeat_match",
+  "tempo_stability","ramp_safety","candidate_margin","early_position","loop_coverage","settled_speed_section"
+]);
+const NEURAL_INPUTS=FEATURE_NAMES.length,NEURAL_HIDDEN=10;
+
+function seededRandomFactory(seed=0x71c3a95d){
+  let value=seed>>>0;
+  return()=>{value^=value<<13;value^=value>>>17;value^=value<<5;return(value>>>0)/4294967296;};
+}
+function createNeuralModel(){
+  const random=seededRandomFactory(),w1=Array.from({length:NEURAL_HIDDEN},()=>Array.from({length:NEURAL_INPUTS},()=>((random()-.5)*.12))),
+    b1=Array(NEURAL_HIDDEN).fill(0),w2=Array.from({length:NEURAL_HIDDEN},()=>((random()-.5)*.12));
+  return{version:1,inputSize:NEURAL_INPUTS,hiddenSize:NEURAL_HIDDEN,w1,b1,w2,b2:0,feedbackCount:0,trainedAt:null};
+}
+function defaultLearningData(){return{version:1,updatedAt:new Date().toISOString(),feedback:[],sessions:[],model:createNeuralModel()};}
+function validModel(model){
+  return model&&model.inputSize===NEURAL_INPUTS&&model.hiddenSize===NEURAL_HIDDEN&&Array.isArray(model.w1)&&model.w1.length===NEURAL_HIDDEN&&Array.isArray(model.w2)&&model.w2.length===NEURAL_HIDDEN;
+}
+function loadLearningData(){
+  let data=null;
+  try{data=JSON.parse(localStorage.getItem(LEARNING_KEY)||"null");}catch{}
+  if(!data||typeof data!=="object")data=defaultLearningData();
+  if(!Array.isArray(data.feedback))data.feedback=[];
+  if(!Array.isArray(data.sessions))data.sessions=[];
+  if(!validModel(data.model))data.model=createNeuralModel();
+  state.learning=data;
+  updateLearningUi();
+}
+function saveLearningData(){
+  if(!state.learning)return;
+  state.learning.updatedAt=new Date().toISOString();
+  state.learning.sessions=state.learning.sessions.slice(-16);
+  state.learning.feedback=state.learning.feedback.slice(-600);
+  try{localStorage.setItem(LEARNING_KEY,JSON.stringify(state.learning));}
+  catch(error){
+    state.learning.sessions=state.learning.sessions.slice(-6);
+    try{localStorage.setItem(LEARNING_KEY,JSON.stringify(state.learning));}catch{}
+    log(`Browser storage warning: ${error.message||error}`);
+  }
+}
+function sigmoid(value){return value>=0?1/(1+Math.exp(-value)):Math.exp(value)/(1+Math.exp(value));}
+function neuralForward(model,features){
+  const hidden=new Float64Array(NEURAL_HIDDEN);
+  for(let h=0;h<NEURAL_HIDDEN;h++){
+    let sum=Number(model.b1[h])||0;
+    for(let i=0;i<NEURAL_INPUTS;i++)sum+=(Number(model.w1[h][i])||0)*features[i];
+    hidden[h]=Math.tanh(sum);
+  }
+  let output=Number(model.b2)||0;
+  for(let h=0;h<NEURAL_HIDDEN;h++)output+=(Number(model.w2[h])||0)*hidden[h];
+  return{hidden,value:sigmoid(output)};
+}
+function trainNeuralModel(){
+  if(!state.learning)return;
+  const examples=state.learning.feedback.filter(item=>Array.isArray(item.features)&&item.features.length===NEURAL_INPUTS&&(item.label===0||item.label===1)).slice(-400);
+  const model=createNeuralModel();
+  if(examples.length){
+    const steps=Math.min(14000,Math.max(1800,examples.length*180));
+    const rate=.026/Math.sqrt(1+examples.length/30),decay=.00035;
+    for(let step=0;step<steps;step++){
+      const example=examples[(step*17+Math.floor(step/examples.length)*7)%examples.length],x=example.features,label=example.label;
+      const forward=neuralForward(model,x),error=clamp(forward.value-label,-1,1),oldW2=model.w2.slice();
+      for(let h=0;h<NEURAL_HIDDEN;h++)model.w2[h]-=rate*(error*forward.hidden[h]+decay*model.w2[h]);
+      model.b2-=rate*error;
+      for(let h=0;h<NEURAL_HIDDEN;h++){
+        const hiddenGradient=error*oldW2[h]*(1-forward.hidden[h]*forward.hidden[h]);
+        for(let i=0;i<NEURAL_INPUTS;i++)model.w1[h][i]-=rate*(hiddenGradient*x[i]+decay*model.w1[h][i]);
+        model.b1[h]-=rate*hiddenGradient;
+      }
+    }
+  }
+  model.feedbackCount=examples.length;model.trainedAt=new Date().toISOString();
+  state.learning.model=model;saveLearningData();updateLearningUi();
+}
+function quality01(value,fallback=.5){return clamp(Number.isFinite(Number(value))?Number(value):fallback,0,1);}
+function similarity01(value,fallback=0){return clamp(((Number.isFinite(Number(value))?Number(value):fallback)+1)/2,0,1);}
+function candidateBaseScore(candidate){return clamp(((Number(candidate.fullDetailRank)||0)+.25)/1.65,0,1);}
+function candidateFeatureVector(candidate){
+  const duration=Math.max(state.duration,Number(candidate.endSeconds)||0,1),start=Math.max(0,Number(candidate.startSeconds)||0),end=Math.max(start,Number(candidate.endSeconds)||start),length=end-start;
+  const settled=Number(candidate.settledSpeedStartSeconds),afterSettled=settled>=0?clamp(.5+(start-settled)/Math.max(2,Math.min(12,duration*.08)),0,1):.5;
+  const seamSafe=Math.exp(-.52*Math.max(0,Number(candidate.seam)||0));
+  const values=[
+    candidateBaseScore(candidate),quality01(candidate.confidence),quality01(candidate.deepAligned,similarity01(candidate.instrumentFlow)),
+    quality01(candidate.deepLower,quality01(candidate.deepAligned,.5)),similarity01(candidate.instrumentFlow),similarity01(candidate.harmonicFlow,candidate.instrumentFlow||0),
+    similarity01(candidate.timbreFlow??candidate.deepTimbre,candidate.instrumentFlow||0),similarity01(candidate.phaseAlignment,candidate.rhythm||0),
+    similarity01(candidate.waveform),seamSafe,quality01(candidate.deepTempo,quality01(candidate.tempoSimilarity,.65)),
+    (Number(candidate.repeatCoverage)||0)>0?similarity01(candidate.repeatConsistency):quality01(candidate.deepCoverage,.5),
+    quality01(candidate.deepStability,quality01(candidate.tempoStability,.55)),1-quality01(candidate.deepRamp,quality01(candidate.rampRisk,0)),
+    quality01(candidate.deepMargin,.55),1-clamp(start/duration,0,1),clamp(length/duration*2.2,0,1),afterSettled
+  ];
+  return values.map(value=>clamp(value,0,1)*2-1);
+}
+function learningBlend(){
+  const count=state.learning?.feedback?.length||0;
+  return count?Math.min(.40,.055+.055*Math.log2(count+1)):0;
+}
+function scoreCandidateWithLearning(candidate){
+  const base=candidateBaseScore(candidate),model=state.learning?.model;
+  const prediction=validModel(model)?neuralForward(model,candidateFeatureVector(candidate)).value:.5,blend=learningBlend();
+  candidate.neuralScore=prediction;candidate.baseScore=base;candidate.learningScore=(1-blend)*base+blend*prediction;
+  return candidate.learningScore;
+}
+function ensureCandidateId(candidate,index=0){
+  if(!candidate.candidateId){
+    const rate=candidate.sampleRate||state.precisionRate||48000;
+    candidate.candidateId=`${Math.round((candidate.startSeconds||0)*rate)}-${Math.round((candidate.endSeconds||0)*rate)}-${index}`;
+  }
+  return candidate.candidateId;
+}
+function rerankSolutions(){
+  for(let index=0;index<state.solutions.length;index++){ensureCandidateId(state.solutions[index],index);scoreCandidateWithLearning(state.solutions[index]);}
+  state.solutions.sort((a,b)=>(b.learningScore-a.learningScore)||((b.fullDetailRank||0)-(a.fullDetailRank||0)));
+}
+function updateLearningUi(){
+  if(!E.learningStatus)return;
+  const ratings=state.learning?.feedback?.length||0,sessions=state.learning?.sessions?.length||0,blend=Math.round(learningBlend()*100);
+  E.learningStatus.innerHTML=ratings?`<span class="data-count">${ratings} rating${ratings===1?"":"s"}</span> · ${sessions} saved result${sessions===1?"":"s"} · learning weight ${blend}%`:`No ratings yet · ${sessions} saved result${sessions===1?"":"s"}.`;
+}
+function primitiveCandidate(candidate){
+  const copy={};
+  for(const[key,value]of Object.entries(candidate||{})){
+    if(["alternatives"].includes(key))continue;
+    if(typeof value==="number"&&Number.isFinite(value))copy[key]=value;
+    else if(typeof value==="string"||typeof value==="boolean"||value===null)copy[key]=value;
+  }
+  return copy;
+}
+function quantizePeaks(peaks){return peaks?Array.from(peaks,value=>Math.round(clamp(value,-1,1)*32767)):[];}
+function restorePeaks(values){return Array.isArray(values)?Float32Array.from(values,value=>clamp(Number(value)||0,-32767,32767)/32767):null;}
+function makeSessionSnapshot(){
+  if(!state.solutions.length)return null;
+  const previous=state.savedSession||{},id=state.currentSessionId||previous.id||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+  state.currentSessionId=id;
+  return{
+    id,version:1,createdAt:previous.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),
+    fileName:state.file?.name||previous.fileName||"audio",fileSize:state.file?.size??previous.fileSize??0,
+    duration:state.duration,analysisRate:state.analysisRate,analysisFrames:state.analysisFrames,precisionRate:state.precisionRate,
+    activeCandidateId:state.activeCandidateId||state.result?.candidateId||"",wavePeaks:quantizePeaks(state.wavePeaks),
+    candidates:state.solutions.map(primitiveCandidate),settings:readSettings()
+  };
+}
+function saveCurrentSession(){
+  if(!state.learning||!state.sessionPersistenceEnabled)return;
+  const snapshot=makeSessionSnapshot();if(!snapshot)return;
+  const index=state.learning.sessions.findIndex(item=>item.id===snapshot.id);
+  if(index>=0)state.learning.sessions[index]=snapshot;else state.learning.sessions.push(snapshot);
+  state.savedSession=snapshot;saveLearningData();updateLearningUi();
+}
+function scheduleSessionSave(){
+  if(state.saveTimer)clearTimeout(state.saveTimer);
+  state.saveTimer=setTimeout(()=>{state.saveTimer=0;saveCurrentSession();},180);
+}
+function sessionMatchesFile(session,file){return!!(session&&file&&session.fileName===file.name&&Number(session.fileSize||0)===Number(file.size||0));}
+function restoreSession(session,withFile=false){
+  state.sessionPersistenceEnabled=true;
+  if(!session||!Array.isArray(session.candidates)||!session.candidates.length)return false;
+  state.savedSession=session;state.currentSessionId=session.id||"";state.duration=Number(session.duration)||0;
+  state.analysisRate=Number(session.analysisRate)||0;state.analysisFrames=Number(session.analysisFrames)||0;state.precisionRate=Number(session.precisionRate)||48000;
+  state.wavePeaks=restorePeaks(session.wavePeaks);state.solutions=session.candidates.map((candidate,index)=>({...candidate,candidateId:candidate.candidateId||`saved-${index}`}));
+  rerankSolutions();
+  state.activeCandidateId=session.activeCandidateId&&state.solutions.some(item=>item.candidateId===session.activeCandidateId)?session.activeCandidateId:state.solutions[0].candidateId;
+  state.result=state.solutions.find(item=>item.candidateId===state.activeCandidateId)||state.solutions[0];
+  state.restoredWithoutFile=!withFile;
+  E.durationSide.textContent=formatClock(state.duration,true);E.modeSide.textContent=state.result.mode||"—";
+  showResult(false);E.savedResultNote.classList.toggle("hidden",withFile);
+  if(!withFile)status("Saved result restored","Choose the same audio file to play or download it.","ok");
+  else status("Saved result ready","The saved solutions are connected to the selected audio.","ok");
+  return true;
+}
+function restoreLastSession(){
+  const sessions=state.learning?.sessions||[];
+  if(sessions.length)restoreSession(sessions[sessions.length-1],false);
+}
+function renderSolutions(){
+  if(!E.solutionList)return;
+  rerankSolutions();E.solutionList.textContent="";
+  const aiPick=state.solutions[0]?.candidateId||"";
+  state.solutions.forEach((candidate,index)=>{
+    const card=document.createElement("div"),active=candidate.candidateId===state.activeCandidateId,length=Math.max(0,candidate.endSeconds-candidate.startSeconds);
+    card.className=`solution-card${active?" active":""}${candidate.candidateId===aiPick?" ai-pick":""}`;
+    const liked=candidate.userRating===1,disliked=candidate.userRating===-1;
+    card.innerHTML=`<div class="solution-top"><div class="solution-title"><strong>Solution ${index+1}</strong>${candidate.candidateId===aiPick?'<span class="solution-tag">AI pick</span>':''}${active?'<span class="solution-tag">Selected</span>':''}</div><span class="solution-tag">${candidate.confidenceLabel||"Low"} ${Math.round((candidate.confidence||0)*100)}%</span></div>
+      <div class="solution-region">${formatRoblox(candidate.startSeconds)}, ${formatRoblox(candidate.endSeconds)}</div>
+      <div class="solution-meta"><div><span>Start</span><strong>${formatClock(candidate.startSeconds)}</strong></div><div><span>End</span><strong>${formatClock(candidate.endSeconds)}</strong></div><div><span>Length</span><strong>${formatClock(length)}</strong></div><div><span>Learned</span><strong>${Math.round((candidate.learningScore||0)*100)}%</strong></div></div>
+      <div class="solution-actions"><button class="button ${active?"secondary":"ghost"} small" data-solution-action="use" data-candidate-id="${candidate.candidateId}" type="button">${active?"Using":"Use"}</button><button class="button ghost small" data-solution-action="seam" data-candidate-id="${candidate.candidateId}" type="button" ${state.file?"":"disabled"}>Play seam</button><button class="button ghost small" data-solution-action="loop" data-candidate-id="${candidate.candidateId}" type="button" ${state.file?"":"disabled"}>Play loop</button><button class="button ghost small rating-button${liked?" selected-like":""}" data-solution-action="like" data-candidate-id="${candidate.candidateId}" type="button" title="Like this solution">👍</button><button class="button ghost small rating-button${disliked?" selected-dislike":""}" data-solution-action="dislike" data-candidate-id="${candidate.candidateId}" type="button" title="Dislike this solution">👎</button></div>`;
+    E.solutionList.appendChild(card);
+  });
+  E.solutionSummary.textContent=`${state.solutions.length} solution${state.solutions.length===1?"":"s"} · ${state.learning?.feedback?.length||0} ratings`;
+  updateLearningUi();
+}
+function activateCandidate(candidateId,save=true){
+  const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
+  state.activeCandidateId=candidateId;state.result=candidate;
+  E.startInput.value=candidate.startSeconds.toFixed(6);E.endInput.value=candidate.endSeconds.toFixed(6);
+  updateResult(false);renderSolutions();if(save)scheduleSessionSave();
+}
+function rateCandidate(candidateId,label){
+  if(!state.learning)return;
+  state.sessionPersistenceEnabled=true;
+  const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
+  const key=`${state.currentSessionId||"current"}:${candidateId}`,index=state.learning.feedback.findIndex(item=>item.key===key),same=candidate.userRating===label;
+  if(index>=0)state.learning.feedback.splice(index,1);
+  candidate.userRating=same?0:label;
+  if(!same){
+    state.learning.feedback.push({key,sessionId:state.currentSessionId||"",candidateId,label:label===1?1:0,rating:label,features:candidateFeatureVector(candidate),track:state.file?.name||state.savedSession?.fileName||"audio",start:candidate.startSeconds,end:candidate.endSeconds,confidence:candidate.confidence,timestamp:new Date().toISOString()});
+  }
+  trainNeuralModel();rerankSolutions();renderSolutions();scheduleSessionSave();
+  status("Feedback saved",same?"Rating removed.":label===1?"This solution was liked.":"This solution was disliked.","ok");
+}
+function exportLearningData(){
+  if(!state.learning)return;
+  saveCurrentSession();
+  const payload={app:"Video Game Music Looper",appVersion:APP_VERSION,exportedAt:new Date().toISOString(),featureNames:FEATURE_NAMES,settings:readSettings(),learning:state.learning};
+  triggerDownload(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`video_game_music_looper_learning_${new Date().toISOString().replace(/[:.]/g,"-")}.json`);
+  status("Data exported","The learning data JSON was downloaded.","ok");
+}
+function resetLearningData(){
+  if(!confirm("Reset all likes, dislikes, learned weights, and saved loop results?"))return;
+  try{localStorage.removeItem(LEARNING_KEY);}catch{}
+  state.learning=defaultLearningData();state.savedSession=null;state.currentSessionId="";state.sessionPersistenceEnabled=false;
+  for(const candidate of state.solutions)candidate.userRating=0;
+  rerankSolutions();renderSolutions();saveLearningData();
+  status("Learning data reset","Ratings, learned weights, and saved results were cleared.","ok");log("Learning data reset.");
+}
+
 function setBusy(value,message=""){
   state.busy=value;
-  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview]){
+  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview,E.downloadLearningDataButton,E.resetLearningDataButton,...$$(`[data-solution-action]`)]){
     if(element)element.disabled=value;
   }
   E.findButton.disabled=value||!state.file;
@@ -1976,22 +2229,23 @@ async function runDetection(options){
   return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
 }
 
-function reset(){
-  const oldInput=state.inputFsName;
+function reset(options={}){
+  const oldInput=state.inputFsName,preservedSession=options.preserveSavedSession?state.savedSession:null;
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.solutions=[];state.activeCandidateId="";state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
+  state.currentSessionId="";state.savedSession=preservedSession;state.restoredWithoutFile=false;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();
-  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");
+  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");E.solutionList.textContent="";E.savedResultNote.classList.add("hidden");
   E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
   E.channelsSide.textContent="—";E.modeSide.textContent="—";E.playbackPosition.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
-  status("Ready","Choose an audio file.");
+  status("Ready","Choose an audio file.");updateLearningUi();
   if(oldInput)safeDelete(oldInput);
 }
-
 function loadFile(file){
   if(!file)return;
+  const matchingSession=state.savedSession&&sessionMatchesFile(state.savedSession,file)?state.savedSession:null;
   if(!isSupportedAudioFile(file)){
     const ext=extension(file.name);
     const midi=BLOCKED_MIDI_EXTENSIONS.has(ext);
@@ -2000,7 +2254,7 @@ function loadFile(file){
     E.fileInput.value="";
     return;
   }
-  reset();
+  reset({preserveSavedSession:!!matchingSession});
   state.file=file;
   state.fileUrl=URL.createObjectURL(file);
   E.fileName.textContent=file.name;
@@ -2017,6 +2271,7 @@ function loadFile(file){
     E.fileMeta.textContent=`${formatBytes(file.size)}${state.duration?` · ${formatClock(state.duration,true)}`:""}`;
   };
   E.sourcePlayer.onerror=()=>{E.fileMeta.textContent=formatBytes(file.size);};
+  if(matchingSession){restoreSession(matchingSession,true);renderSolutions();}
 }
 
 async function findLoop(){
@@ -2047,12 +2302,14 @@ async function findLoop(){
       catch(error){log(`Candidate ${index+1} full-detail check failed: ${error.message||error}`);}
     }
     if(!verified.length)throw new Error("The full-detail loop checks could not finish.");
-    verified.sort((a,b)=>(b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence));
-    state.result=verified[0];
-    showResult();
+    state.currentSessionId=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+    state.savedSession=null;state.sessionPersistenceEnabled=true;
+    state.solutions=verified.map((candidate,index)=>({...candidate,candidateId:`${Math.round(candidate.startSeconds*candidate.sampleRate)}-${Math.round(candidate.endSeconds*candidate.sampleRate)}-${index}`,userRating:0}));
+    rerankSolutions();state.result=state.solutions[0];state.activeCandidateId=state.result.candidateId;
+    showResult();saveCurrentSession();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
-    log(`Deep repeat match: ${Math.round((state.result.deepAligned??0)*100)}%; full-detail candidates checked: ${verified.length}.`);
-    status("Loop found",`Deep analysis checked ${verified.length} full-detail candidate${verified.length===1?"":"s"}.`,"ok");
+    log(`Deep repeat match: ${Math.round((state.result.deepAligned??0)*100)}%; ${state.solutions.length} full-detail solutions checked.`);
+    status("Loop found",`${state.solutions.length} solutions are ready. Like or dislike them to train the local ranker.`,"ok");
     log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
@@ -2064,14 +2321,18 @@ async function findLoop(){
   }
 }
 
-function showResult(){
+function showResult(scroll=true){
   if(!state.result)return;
   E.modeSide.textContent=state.result.mode;
   E.startInput.value=state.result.startSeconds.toFixed(6);
   E.endInput.value=state.result.endSeconds.toFixed(6);
-  updateResult(false);
+  updateResult(false);renderSolutions();
   E.resultPanel.classList.remove("hidden");
-  E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
+  const mediaReady=!!state.file;
+  for(const button of [E.playSeamButton,E.playLoopButton,E.stopButton])button.disabled=!mediaReady;
+  for(const link of [E.downloadLoop,E.downloadPreview])link.classList.toggle("disabled-link",!mediaReady);
+  E.savedResultNote.classList.toggle("hidden",mediaReady||!state.restoredWithoutFile);
+  if(scroll)E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function currentTimes(){
@@ -2081,12 +2342,12 @@ function currentTimes(){
 
 function updateTextDownload(){
   revokeTextUrl();
-  if(!state.result||!state.file)return;
+  if(!state.result)return;
   const {start,end}=currentTimes(),region=`${formatRoblox(start)}, ${formatRoblox(end)}`;
   const blob=new Blob([region],{type:"text/plain;charset=utf-8"});
   state.textUrl=URL.createObjectURL(blob);
   E.downloadText.href=state.textUrl;
-  const base=stem(state.file.name);
+  const base=stem(state.file?.name||state.savedSession?.fileName||"audio");
   E.downloadText.download=`${base}_ROBLOX_LOOP_REGION.txt`;
   E.txtName.textContent=E.downloadText.download;
   E.loopName.textContent=`${base}_loop_exact.wav`;
@@ -2103,6 +2364,8 @@ function updateResult(invalidate=true){
   start=Math.round(clamp(start,0,Math.max(0,duration-2/rate))*rate)/rate;
   end=Math.round(clamp(end,start+2/rate,duration)*rate)/rate;
   state.result.startSeconds=start;state.result.endSeconds=end;state.result.sampleRate=rate;
+  const selectedCandidate=state.solutions.find(item=>item.candidateId===state.activeCandidateId);
+  if(selectedCandidate&&selectedCandidate!==state.result){selectedCandidate.startSeconds=start;selectedCandidate.endSeconds=end;selectedCandidate.sampleRate=rate;}
   const length=end-start;
   E.startInput.value=start.toFixed(6);E.endInput.value=end.toFixed(6);
   E.regionValue.textContent=`${formatRoblox(start)}, ${formatRoblox(end)}`;
@@ -2112,6 +2375,7 @@ function updateResult(invalidate=true){
   if(invalidate)invalidateMedia();
   updateTextDownload();
   drawWaveform();
+  if(invalidate){renderSolutions();scheduleSessionSave();}
 }
 
 function drawWaveform(){
@@ -2263,6 +2527,17 @@ E.startInput.addEventListener("change",()=>updateResult());
 E.endInput.addEventListener("change",()=>updateResult());
 E.previewRepeats.addEventListener("change",()=>{E.previewRepeats.value=String(clamp(Math.round(Number(E.previewRepeats.value)||3),1,50));invalidateMedia();saveSettings();});
 E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
+E.downloadLearningDataButton.addEventListener("click",exportLearningData);
+E.resetLearningDataButton.addEventListener("click",resetLearningData);
+E.solutionList.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-solution-action]");if(!button||state.busy)return;
+  const action=button.dataset.solutionAction,candidateId=button.dataset.candidateId;
+  if(action==="like"){rateCandidate(candidateId,1);return;}
+  if(action==="dislike"){rateCandidate(candidateId,-1);return;}
+  activateCandidate(candidateId);
+  if(action==="seam")await playGenerated("seam");
+  else if(action==="loop")await playGenerated("loop");
+});
 
 for(const input of $$('input[name="power"]')){
   input.addEventListener("change",()=>applyPowerPreset(input.value));
@@ -2306,6 +2581,7 @@ for(const button of $$("[data-adjust]")){
 
 window.addEventListener("resize",drawWaveform);
 window.addEventListener("beforeunload",()=>{
+  saveCurrentSession();
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   if(state.ffmpeg){try{state.ffmpeg.terminate();}catch{}}
@@ -2313,9 +2589,11 @@ window.addEventListener("beforeunload",()=>{
 });
 
 E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
-E.cpuBadge.textContent="Deep loop analyzer";
+E.cpuBadge.textContent="Learning loop analyzer";
 loadSettings();
+loadLearningData();
 reset();
+restoreLastSession();
 })();
 
 </script>
