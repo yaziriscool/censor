@@ -360,11 +360,114 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
   .custom-censor-meta .button{width:100%}
 }
 
+
+.mobile-quick-nav{display:none}.mobile-collapse-button{display:none}
+@media(max-width:680px){
+ html{scroll-padding-top:58px}body{padding-top:48px}header{padding-top:16px}
+ .mobile-quick-nav{position:fixed;z-index:260;inset:4px 0 auto;display:flex;gap:6px;overflow-x:auto;padding:7px 8px;border-bottom:1px solid var(--border2);background:rgba(13,13,12,.97);box-shadow:0 9px 25px rgba(0,0,0,.3);backdrop-filter:blur(12px);scrollbar-width:none}
+ .mobile-quick-nav::-webkit-scrollbar{display:none}
+ .mobile-quick-nav button{flex:0 0 auto;min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:999px;background:var(--panel2);color:var(--dim);font-size:.7rem;font-weight:850;white-space:nowrap;cursor:pointer}
+ .mobile-quick-nav button.active{border-color:var(--yellow);background:var(--yellow);color:var(--ink)}
+ .main>.panel{scroll-margin-top:58px}
+ .mobile-collapse-button{display:grid;width:38px;height:38px;flex:0 0 auto;place-items:center;border:1px solid var(--border);border-radius:9px;background:var(--panel2);color:var(--yellow);cursor:pointer;font-size:1.05rem;font-weight:900}
+ .panel.mobile-collapsed{padding-bottom:12px}.panel.mobile-collapsed>.panel-head{margin-bottom:0}.panel.mobile-collapsed>:not(.panel-head){display:none!important}
+ .panel-head{align-items:center}.mobile{min-height:66px}.mobile .button{min-width:145px}textarea{min-height:145px}
+}
+
+.youtube-import{margin-top:15px;padding-top:15px;border-top:1px solid var(--border)}
+.youtube-import h3{margin:0;color:var(--text);font-size:.95rem}
+.youtube-grid{display:grid;grid-template-columns:minmax(0,1fr) 118px 112px auto;gap:8px;align-items:end;margin-top:10px}
+.youtube-grid .button{min-height:43px}.youtube-settings{margin-top:10px}.youtube-settings .details-body{padding-top:1px}.youtube-progress{margin-top:11px}
+@media(max-width:800px){.youtube-grid{grid-template-columns:minmax(0,1fr) 105px 105px}.youtube-grid .button{grid-column:1/-1;width:100%}}
+@media(max-width:680px){.youtube-grid{grid-template-columns:1fr 1fr}.youtube-grid>label:first-child{grid-column:1/-1}.youtube-grid .button{grid-column:1/-1}}
+
+
+.custom-censor-list{
+  display:grid;
+  gap:8px;
+  margin-top:10px
+}
+.custom-censor-empty{
+  padding:11px;
+  border:1px dashed var(--border);
+  border-radius:9px;
+  color:var(--faint);
+  font-size:.72rem;
+  text-align:center
+}
+.custom-censor-item{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  padding:9px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--panel)
+}
+.custom-censor-item-copy{
+  min-width:0
+}
+.custom-censor-item-copy strong,
+.custom-censor-item-copy span{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap
+}
+.custom-censor-item-copy strong{
+  color:var(--yellow);
+  font-size:.75rem
+}
+.custom-censor-item-copy span{
+  margin-top:3px;
+  color:var(--faint);
+  font-size:.65rem
+}
+.custom-censor-item audio{
+  grid-column:1/-1;
+  width:100%;
+  height:36px
+}
+.custom-censor-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:9px
+}
+.custom-censor-toolbar span{
+  color:var(--dim);
+  font-size:.7rem
+}
+@media(max-width:680px){
+  .custom-censor-item{
+    grid-template-columns:minmax(0,1fr) 78px
+  }
+  .custom-censor-item .button{
+    min-width:78px
+  }
+  .custom-censor-toolbar{
+    align-items:stretch;
+    flex-direction:column
+  }
+  .custom-censor-toolbar .button{
+    width:100%
+  }
+}
+
 </style>
 </head>
 
 <body>
 <div class="topline"></div>
+<nav class="mobile-quick-nav" aria-label="Quick page navigation">
+  <button type="button" data-mobile-target="sourcePanel">Source</button>
+  <button type="button" data-mobile-target="transcriptionPanel">Transcribe</button>
+  <button type="button" data-mobile-target="wordPanel">Words</button>
+  <button type="button" data-mobile-target="stylePanel">Style</button>
+  <button type="button" data-mobile-target="resultPanel">Result</button>
+</nav>
 
 <header class="shell">
   <div>
@@ -380,7 +483,7 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
 <main class="shell grid">
 <section class="main">
 
-  <article class="panel">
+  <article class="panel" id="sourcePanel" data-mobile-section data-mobile-default="open">
     <div class="panel-head">
       <div><p class="kicker">1 · Source</p><h2>Upload audio or video</h2></div>
       <button class="button ghost small" id="resetBtn" type="button">Reset</button>
@@ -413,9 +516,21 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
       <audio id="sourceAudio" class="preview hidden" controls preload="metadata"></audio>
       <video id="sourceVideo" class="preview hidden" controls playsinline preload="metadata"></video>
     </div>
+
+    <div class="youtube-import">
+      <div><p class="kicker">YouTube link</p><h3>Import a video or MP3</h3></div>
+      <div class="youtube-grid">
+        <label><span class="label">YouTube URL</span><input class="text" id="youtubeUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <label><span class="label">Import as</span><select id="youtubeFormat"><option value="mp4" selected>MP4 video</option><option value="mp3">MP3 audio</option></select></label>
+        <label id="youtubeQualityLabel"><span class="label">Quality</span><select id="youtubeQuality"><option value="1080" selected>1080p</option><option value="720">720p</option><option value="480">480p</option><option value="360">360p</option></select></label>
+        <button class="button secondary" id="youtubeImportButton" type="button">Import link</button>
+      </div>
+      <div class="progress-box youtube-progress hidden" id="youtubeProgressBox"><div class="track"><div class="bar" id="youtubeProgressBar"></div></div><p id="youtubeProgressText">Preparing link…</p></div>
+      <details class="youtube-settings"><summary>YouTube server settings</summary><div class="details-body"><label class="label" for="cobaltEndpoint">Cobalt API address</label><input class="text mono" id="cobaltEndpoint" value="/api/cobalt" autocomplete="off" spellcheck="false"><p class="note">Use a self-hosted Cobalt API or a same-origin proxy. The public Cobalt service is not intended to be embedded in other websites. Import only media that can legally be downloaded.</p></div></details>
+    </div>
   </article>
 
-  <article class="panel">
+  <article class="panel" id="transcriptionPanel" data-mobile-section data-mobile-default="open">
     <div class="panel-head"><div><p class="kicker">2 · Transcription</p><h2>Choose transcription</h2></div></div>
 
     <div class="segmented provider" role="radiogroup">
@@ -492,7 +607,7 @@ biatch=bitch</textarea>
     </div>
   </article>
 
-  <article class="panel hidden" id="wordPanel">
+  <article class="panel hidden" id="wordPanel" data-mobile-section data-mobile-default="open">
     <div class="panel-head">
       <div><p class="kicker">3 · Word picker</p><h2>Tap every word that should be censored</h2></div>
       <button class="button ghost small" id="fullPickerBtn" type="button">Open word picker</button>
@@ -521,7 +636,7 @@ biatch=bitch</textarea>
     <div class="words" id="wordChips" role="list"></div>
   </article>
 
-  <article class="panel">
+  <article class="panel" id="stylePanel" data-mobile-section data-mobile-default="closed">
     <div class="panel-head"><div><p class="kicker">4 · Censor style</p><h2>Length, timing, and effect</h2></div></div>
 
     <div class="presets" role="radiogroup">
@@ -573,29 +688,30 @@ biatch=bitch</textarea>
         <output id="volumeOut">42%</output>
       </label>
       <div class="custom-censor-box setting-extra hidden" id="customCensorBox">
-        <label class="label" for="customCensorInput">Custom censor audio</label>
+        <label class="label" for="customCensorInput">Custom censor sounds</label>
         <input
           class="text"
           id="customCensorInput"
           type="file"
+          multiple
           accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,.aiff,.aif"
         >
-        <div class="custom-censor-preview hidden" id="customCensorPreviewWrap">
-          <audio id="customCensorPreview" controls preload="metadata"></audio>
-          <div class="custom-censor-meta">
-            <strong id="customCensorName">No file selected</strong>
-            <button class="button ghost small" id="clearCustomCensor" type="button">Remove</button>
-          </div>
+        <div class="custom-censor-toolbar">
+          <span id="customCensorCount">0 sounds loaded</span>
+          <button class="button ghost small" id="clearAllCustomCensors" type="button">Clear all</button>
+        </div>
+        <div class="custom-censor-list" id="customCensorList">
+          <div class="custom-censor-empty">Choose one or more audio files.</div>
         </div>
         <p class="note">
-          The sound stays in the browser. It restarts for every censor,
-          loops when it is shorter, and is trimmed when it is longer.
+          A different sound is chosen randomly for each censored section.
+          The same sound is avoided twice in a row when possible. Short sounds
+          loop, and long sounds are trimmed.
         </p>
-      </div>
-    </div>
+      </div>    </div>
   </article>
 
-  <article class="panel">
+  <article class="panel" id="outputPanel" data-mobile-section data-mobile-default="closed">
     <div class="panel-head"><div><p class="kicker">5 · Output</p><h2>Generate result</h2></div></div>
 
     <div class="output-grid">
@@ -621,7 +737,7 @@ biatch=bitch</textarea>
     <button class="button primary large" id="generateBtn" type="button" disabled>2. Generate censored result</button>
   </article>
 
-  <article class="panel result hidden" id="resultPanel">
+  <article class="panel result hidden" id="resultPanel" data-mobile-section data-mobile-default="closed">
     <div class="panel-head">
       <div><p class="kicker">Finished</p><h2>Preview result</h2></div>
       <button class="button ghost small" id="redoBtn" type="button">Edit and generate again</button>
@@ -711,8 +827,8 @@ const E = {
   volumeRow: $("#volumeRow"), volumeLabel: $("#volumeLabel"),
   beepVolume: $("#beepVolume"), volumeOut: $("#volumeOut"),
   customCensorBox: $("#customCensorBox"), customCensorInput: $("#customCensorInput"),
-  customCensorPreviewWrap: $("#customCensorPreviewWrap"), customCensorPreview: $("#customCensorPreview"),
-  customCensorName: $("#customCensorName"), clearCustomCensor: $("#clearCustomCensor"),
+  customCensorList: $("#customCensorList"), customCensorCount: $("#customCensorCount"),
+  clearAllCustomCensors: $("#clearAllCustomCensors"),
   outputFormat: $("#outputFormat"), reportCheck: $("#reportCheck"),
   strictWholeWord: $("#strictWholeWord"), generateBtn: $("#generateBtn"),
   resultPanel: $("#resultPanel"), resultPreview: $("#resultPreview"),
@@ -726,6 +842,10 @@ const E = {
   modalClearBtn: $("#modalClearBtn"), modalSearch: $("#modalSearch"),
   modalWords: $("#modalWords"), modalSelection: $("#modalSelection"),
   modalGenerateBtn: $("#modalGenerateBtn"), runtimeBadge: $("#runtimeBadge"),
+  youtubeUrl: $("#youtubeUrl"), youtubeFormat: $("#youtubeFormat"), youtubeQuality: $("#youtubeQuality"),
+  youtubeQualityLabel: $("#youtubeQualityLabel"), youtubeImportButton: $("#youtubeImportButton"),
+  cobaltEndpoint: $("#cobaltEndpoint"), youtubeProgressBox: $("#youtubeProgressBox"),
+  youtubeProgressBar: $("#youtubeProgressBar"), youtubeProgressText: $("#youtubeProgressText"),
 };
 
 const VIDEO_EXTS = new Set(["mp4","mov","mkv","webm","avi","wmv","flv","mpeg","mpg","3gp","3gpp"]);
@@ -794,9 +914,8 @@ const state = {
   wavBytes: null, wav: null, durationMs: 0,
   words: [], flagged: new Set(), selected: new Set(),
   provider: null, busy: false,
-  customCensorFile: null, customCensorURL: null,
-  customCensorDecoded: null, customCensorPromise: null,
-  customCensorResampled: new Map(), customCensorAudioContext: null,
+  customCensors: [], customCensorLoadPromise: null,
+  lastCustomCensorId: null, customCensorAudioContext: null,
   localTranscriber: null,
   localModelKey: null,
   localModelUsed: null,
@@ -880,7 +999,7 @@ function saveBlobLink(blob, filename, description) {
 }
 function setBusy(value, message="") {
   state.busy = value;
-  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn,E.customCensorInput,E.clearCustomCensor]) {
+  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn,E.customCensorInput,E.clearAllCustomCensors,E.youtubeImportButton,E.youtubeUrl,E.youtubeFormat,E.youtubeQuality,E.cobaltEndpoint]) {
     if (el) el.disabled = value;
   }
   E.fileInput.disabled = value;
@@ -907,6 +1026,44 @@ function refreshButtons() {
 }
 
 
+
+const MOBILE_LAYOUT = window.matchMedia("(max-width: 680px)");
+function setMobileSectionOpen(panelOrId, open) {
+  const panel = typeof panelOrId === "string" ? document.getElementById(panelOrId) : panelOrId;
+  if (!panel) return;
+  panel.classList.toggle("mobile-collapsed", !open);
+  const button = panel.querySelector(":scope > .panel-head .mobile-collapse-button");
+  if (button) { button.textContent = open ? "−" : "+"; button.setAttribute("aria-expanded", open ? "true" : "false"); }
+}
+function openMobileSection(id, shouldScroll = true) {
+  const panel = document.getElementById(id); if (!panel) return;
+  setMobileSectionOpen(panel, true);
+  document.querySelectorAll(".mobile-quick-nav button").forEach(button => button.classList.toggle("active", button.dataset.mobileTarget === id));
+  if (shouldScroll && MOBILE_LAYOUT.matches) panel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function setupMobileSections() {
+  const panels = [...document.querySelectorAll(".main > .panel[data-mobile-section]")];
+  for (const panel of panels) {
+    const head = panel.querySelector(":scope > .panel-head"); if (!head) continue;
+    const button = document.createElement("button"); button.type="button"; button.className="mobile-collapse-button"; button.setAttribute("aria-label","Expand or collapse section");
+    button.addEventListener("click", event => { event.stopPropagation(); setMobileSectionOpen(panel, panel.classList.contains("mobile-collapsed")); });
+    head.appendChild(button);
+    setMobileSectionOpen(panel, !(MOBILE_LAYOUT.matches && panel.dataset.mobileDefault === "closed"));
+  }
+  document.querySelectorAll(".mobile-quick-nav button").forEach(button => button.addEventListener("click", () => openMobileSection(button.dataset.mobileTarget)));
+  let scheduled=false;
+  const updateCurrent=()=>{scheduled=false;if(!MOBILE_LAYOUT.matches)return;const visible=panels.filter(panel=>!panel.classList.contains("hidden")).map(panel=>({panel,distance:Math.abs(panel.getBoundingClientRect().top-62)})).sort((a,b)=>a.distance-b.distance)[0]?.panel;if(!visible)return;document.querySelectorAll(".mobile-quick-nav button").forEach(button=>button.classList.toggle("active",button.dataset.mobileTarget===visible.id));};
+  window.addEventListener("scroll",()=>{if(!scheduled){scheduled=true;requestAnimationFrame(updateCurrent)}},{passive:true}); updateCurrent();
+}
+
+const YOUTUBE_HOSTS = new Set(["youtube.com","www.youtube.com","m.youtube.com","music.youtube.com","youtu.be","www.youtu.be"]);
+function setYouTubeProgress(percent,message){E.youtubeProgressBox.classList.remove("hidden");E.youtubeProgressBar.style.width=`${clamp(percent,0,100)}%`;E.youtubeProgressText.textContent=message;}
+function isYouTubeLink(value){try{const url=new URL(value);return (url.protocol==="https:"||url.protocol==="http:")&&YOUTUBE_HOSTS.has(url.hostname.toLowerCase())}catch{return false}}
+function safeCobaltMediaURL(value){const url=new URL(value,location.href);if(url.protocol!=="https:"&&url.protocol!=="http:")throw new Error("The YouTube server returned an unsafe media URL.");return url.href;}
+function ensureFilenameExtension(filename,wantedExtension){const clean=String(filename||"").replace(/[\\/:*?"<>|]+/g,"_").trim()||`youtube.${wantedExtension}`;return extension(clean)===wantedExtension?clean:clean.replace(/\.[^.]+$/,"")+"."+wantedExtension;}
+async function downloadYouTubeBlob(mediaURL,wantedMime){const response=await fetch(mediaURL,{credentials:"omit"});if(!response.ok)throw new Error(`The YouTube media download failed with HTTP ${response.status}.`);const total=Number(response.headers.get("content-length")||response.headers.get("estimated-content-length")||0);if(!response.body)return new Blob([await response.arrayBuffer()],{type:response.headers.get("content-type")||wantedMime});const reader=response.body.getReader(),chunks=[];let loaded=0;while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);loaded+=value.byteLength;const percent=total>0?32+loaded/total*62:Math.min(92,32+Math.log10(loaded+10)*9);setYouTubeProgress(percent,total>0?`Downloading media: ${formatBytes(loaded)} of ${formatBytes(total)}`:`Downloading media: ${formatBytes(loaded)}`)}return new Blob(chunks,{type:response.headers.get("content-type")||wantedMime});}
+async function importYouTubeLink(){if(state.busy)return;const sourceURL=E.youtubeUrl.value.trim(),endpoint=E.cobaltEndpoint.value.trim(),format=E.youtubeFormat.value==="mp3"?"mp3":"mp4";if(!isYouTubeLink(sourceURL)){status("Invalid YouTube link","Paste a YouTube video, music, or Shorts link.","error");openMobileSection("sourcePanel");return}if(!endpoint){status("YouTube server missing","Enter the self-hosted Cobalt API address.","error");return}localStorage.setItem("audioCensorCobaltEndpoint",endpoint);try{setBusy(true,"Importing the YouTube link…");setYouTubeProgress(5,"Sending the link to the YouTube server…");const request=format==="mp3"?{url:sourceURL,downloadMode:"audio",audioFormat:"mp3",audioBitrate:"320",filenameStyle:"basic",alwaysProxy:true,localProcessing:"disabled"}:{url:sourceURL,downloadMode:"auto",videoQuality:E.youtubeQuality.value||"1080",youtubeVideoContainer:"mp4",youtubeVideoCodec:"h264",filenameStyle:"basic",alwaysProxy:true,localProcessing:"disabled"};const response=await fetch(endpoint,{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json"},body:JSON.stringify(request)});const raw=await response.text();let result;try{result=JSON.parse(raw)}catch{throw new Error(`The YouTube server returned HTTP ${response.status} instead of JSON.`)}if(!response.ok)throw new Error(result?.error?.code||result?.error||`YouTube server HTTP ${response.status}`);if(result.status==="error")throw new Error(result.error?.code||"The YouTube server could not process this link.");if(result.status==="picker")throw new Error("This link contains multiple items. Use a single YouTube video link.");if(result.status==="local-processing")throw new Error("The Cobalt server returned local processing. Configure it to return a tunnel instead.");if(!["tunnel","redirect"].includes(result.status)||!result.url)throw new Error("The YouTube server returned an unsupported response.");setYouTubeProgress(30,"The link is ready. Starting the media download…");const wantedMime=format==="mp3"?"audio/mpeg":"video/mp4",blob=await downloadYouTubeBlob(safeCobaltMediaURL(result.url),wantedMime),filename=ensureFilenameExtension(result.filename,format),file=new File([blob],filename,{type:blob.type||wantedMime,lastModified:Date.now()});setYouTubeProgress(97,"Opening the imported media…");await chooseFile(file);setYouTubeProgress(100,"YouTube media imported.");status("YouTube media ready",`${filename} is ready to transcribe.`,"ok");log(`YouTube import finished: ${filename}.`);if(MOBILE_LAYOUT.matches){setMobileSectionOpen("sourcePanel",false);openMobileSection("transcriptionPanel")}setTimeout(()=>E.youtubeProgressBox.classList.add("hidden"),1200)}catch(error){const message=error?.message||String(error);status("YouTube import failed",message,"error");log(`Error: ${message}`);E.youtubeProgressBox.classList.add("hidden")}finally{setBusy(false)}}
+function updateYouTubeControls(){E.youtubeQualityLabel.classList.toggle("hidden",E.youtubeFormat.value==="mp3")}
 function ensureCustomCensorAudioContext() {
   if (!state.customCensorAudioContext) {
     const Context =
@@ -926,97 +1083,379 @@ function ensureCustomCensorAudioContext() {
   return state.customCensorAudioContext;
 }
 
-function clearCustomCensorAudio(writeLog = false) {
-  if (state.customCensorURL) {
-    URL.revokeObjectURL(state.customCensorURL);
-  }
-
-  state.customCensorFile = null;
-  state.customCensorURL = null;
-  state.customCensorDecoded = null;
-  state.customCensorPromise = null;
-  state.customCensorResampled.clear();
-
-  E.customCensorInput.value = "";
-  E.customCensorPreview.pause();
-  E.customCensorPreview.removeAttribute("src");
-  E.customCensorPreview.load();
-  E.customCensorPreviewWrap.classList.add("hidden");
-  E.customCensorName.textContent = "No file selected";
-
-  if (writeLog) {
-    log("Custom censor removed.");
-  }
+function customCensorSignature(file) {
+  return [
+    file.name,
+    file.size,
+    file.lastModified
+  ].join("\u0000");
 }
 
-async function loadCustomCensorAudio(file) {
-  clearCustomCensorAudio(false);
+function secureRandomIndex(length) {
+  if (length <= 1) {
+    return 0;
+  }
 
-  if (!file) {
+  if (!globalThis.crypto?.getRandomValues) {
+    return Math.floor(
+      Math.random() * length
+    );
+  }
+
+  const range = 0x100000000;
+  const limit =
+    Math.floor(range / length)
+    * length;
+
+  const value =
+    new Uint32Array(1);
+
+  do {
+    crypto.getRandomValues(value);
+  } while (value[0] >= limit);
+
+  return value[0] % length;
+}
+
+function chooseRandomCustomCensor() {
+  const choices =
+    state.customCensors;
+
+  if (!choices.length) {
+    return null;
+  }
+
+  let index =
+    secureRandomIndex(
+      choices.length
+    );
+
+  if (
+    choices.length > 1
+    && choices[index].id === state.lastCustomCensorId
+  ) {
+    const differentOffset =
+      1
+      + secureRandomIndex(
+          choices.length - 1
+        );
+
+    index =
+      (
+        index
+        + differentOffset
+      )
+      % choices.length;
+  }
+
+  const chosen =
+    choices[index];
+
+  state.lastCustomCensorId =
+    chosen.id;
+
+  return chosen;
+}
+
+function renderCustomCensorList() {
+  E.customCensorList.textContent = "";
+
+  const count =
+    state.customCensors.length;
+
+  E.customCensorCount.textContent =
+    `${count} sound${count === 1 ? "" : "s"} loaded`;
+
+  E.clearAllCustomCensors.disabled =
+    state.busy
+    || count === 0;
+
+  if (!count) {
+    const empty =
+      document.createElement("div");
+
+    empty.className =
+      "custom-censor-empty";
+
+    empty.textContent =
+      "Choose one or more audio files.";
+
+    E.customCensorList.appendChild(
+      empty
+    );
+
     return;
   }
 
-  state.customCensorFile = file;
-  state.customCensorURL = URL.createObjectURL(file);
-  E.customCensorPreview.src = state.customCensorURL;
-  E.customCensorName.textContent = file.name;
-  E.customCensorPreviewWrap.classList.remove("hidden");
+  for (
+    const item
+    of state.customCensors
+  ) {
+    const row =
+      document.createElement("div");
 
-  const activeFile = file;
+    row.className =
+      "custom-censor-item";
+
+    const copy =
+      document.createElement("div");
+
+    copy.className =
+      "custom-censor-item-copy";
+
+    const name =
+      document.createElement("strong");
+
+    name.textContent =
+      item.file.name;
+
+    const details =
+      document.createElement("span");
+
+    details.textContent =
+      `${formatBytes(item.file.size)} · ${formatTime(item.decoded.frameCount / item.decoded.sampleRate)}`;
+
+    copy.append(
+      name,
+      details
+    );
+
+    const remove =
+      document.createElement("button");
+
+    remove.type =
+      "button";
+
+    remove.className =
+      "button ghost small";
+
+    remove.textContent =
+      "Remove";
+
+    remove.addEventListener(
+      "click",
+      () =>
+        removeCustomCensorAudio(
+          item.id
+        )
+    );
+
+    const preview =
+      document.createElement("audio");
+
+    preview.controls =
+      true;
+
+    preview.preload =
+      "metadata";
+
+    preview.src =
+      item.url;
+
+    row.append(
+      copy,
+      remove,
+      preview
+    );
+
+    E.customCensorList.appendChild(
+      row
+    );
+  }
+}
+
+function removeCustomCensorAudio(
+  id,
+  writeLog = true
+) {
+  const index =
+    state.customCensors.findIndex(
+      item => item.id === id
+    );
+
+  if (index < 0) {
+    return;
+  }
+
+  const [
+    removed
+  ] =
+    state.customCensors.splice(
+      index,
+      1
+    );
+
+  URL.revokeObjectURL(
+    removed.url
+  );
+
+  if (
+    state.lastCustomCensorId === id
+  ) {
+    state.lastCustomCensorId =
+      null;
+  }
+
+  renderCustomCensorList();
+
+  if (writeLog) {
+    log(
+      `Removed custom censor: ${removed.file.name}.`
+    );
+  }
+}
+
+function clearCustomCensorAudio(
+  writeLog = false
+) {
+  for (
+    const item
+    of state.customCensors
+  ) {
+    URL.revokeObjectURL(
+      item.url
+    );
+  }
+
+  state.customCensors = [];
+  state.customCensorLoadPromise = null;
+  state.lastCustomCensorId = null;
+  E.customCensorInput.value = "";
+  renderCustomCensorList();
+
+  if (writeLog) {
+    log("All custom censors removed.");
+  }
+}
+
+async function loadCustomCensorAudio(files) {
+  const selectedFiles =
+    [
+      ...(files || [])
+    ];
+
+  E.customCensorInput.value = "";
+
+  if (!selectedFiles.length) {
+    return;
+  }
+
+  const existing =
+    new Set(
+      state.customCensors.map(
+        item => item.signature
+      )
+    );
+
+  const candidates =
+    selectedFiles.filter(
+      file =>
+        !existing.has(
+          customCensorSignature(file)
+        )
+    );
+
+  if (!candidates.length) {
+    log("Those custom censor files are already loaded.");
+    return;
+  }
+
   const promise = (async () => {
-    const context = ensureCustomCensorAudioContext();
-    const bytes = await file.arrayBuffer();
-    const buffer = await context.decodeAudioData(bytes.slice(0));
-    const channels = [];
+    let loaded = 0;
+    const context =
+      ensureCustomCensorAudioContext();
 
     for (
-      let channel = 0;
-      channel < buffer.numberOfChannels;
-      channel++
+      const file
+      of candidates
     ) {
-      channels.push(
-        new Float32Array(
-          buffer.getChannelData(channel)
-        )
+      try {
+        const bytes =
+          await file.arrayBuffer();
+
+        const buffer =
+          await context.decodeAudioData(
+            bytes.slice(0)
+          );
+
+        const channels = [];
+
+        for (
+          let channel = 0;
+          channel < buffer.numberOfChannels;
+          channel++
+        ) {
+          channels.push(
+            new Float32Array(
+              buffer.getChannelData(channel)
+            )
+          );
+        }
+
+        if (!channels.length || !buffer.length) {
+          throw new Error(
+            "The audio file is empty."
+          );
+        }
+
+        const item = {
+          id:
+            crypto.randomUUID?.()
+            || `${Date.now()}-${Math.random()}`,
+          signature:
+            customCensorSignature(file),
+          file,
+          url:
+            URL.createObjectURL(file),
+          decoded: {
+            channels,
+            sampleRate:
+              buffer.sampleRate,
+            frameCount:
+              buffer.length
+          },
+          resampled:
+            new Map()
+        };
+
+        state.customCensors.push(
+          item
+        );
+
+        existing.add(
+          item.signature
+        );
+
+        loaded++;
+        renderCustomCensorList();
+      } catch (error) {
+        log(
+          `Could not load ${file.name}: ${error?.message || error}`
+        );
+      }
+    }
+
+    if (loaded) {
+      log(
+        `${loaded} custom censor sound${loaded === 1 ? "" : "s"} added.`
       );
     }
-
-    if (!channels.length || !buffer.length) {
-      throw new Error("The custom censor audio is empty.");
-    }
-
-    if (state.customCensorFile !== activeFile) {
-      return;
-    }
-
-    state.customCensorDecoded = {
-      channels,
-      sampleRate: buffer.sampleRate,
-      frameCount: buffer.length
-    };
-
-    state.customCensorResampled.clear();
-    log(`Custom censor loaded: ${file.name}.`);
   })();
 
-  state.customCensorPromise = promise;
+  state.customCensorLoadPromise =
+    promise;
 
   try {
     await promise;
-  } catch (error) {
-    if (state.customCensorFile === activeFile) {
-      state.customCensorDecoded = null;
-      status(
-        "Custom censor could not load",
-        error?.message || String(error),
-        "error"
-      );
-      log(`Error: ${error?.message || String(error)}`);
-    }
   } finally {
-    if (state.customCensorPromise === promise) {
-      state.customCensorPromise = null;
+    if (
+      state.customCensorLoadPromise === promise
+    ) {
+      state.customCensorLoadPromise =
+        null;
     }
+
+    renderCustomCensorList();
   }
 }
 
@@ -1025,31 +1464,32 @@ async function ensureCustomCensorAudio() {
     return;
   }
 
-  if (!state.customCensorFile) {
-    throw new Error("Choose a custom censor audio file first.");
+  if (state.customCensorLoadPromise) {
+    await state.customCensorLoadPromise;
   }
 
-  if (state.customCensorPromise) {
-    await state.customCensorPromise;
-  }
-
-  if (!state.customCensorDecoded?.frameCount) {
+  if (!state.customCensors.length) {
     throw new Error(
-      "The custom censor audio could not be decoded. Try an MP3 or WAV file."
+      "Choose at least one custom censor audio file first."
     );
   }
 }
 
-function customCensorAtRate(sampleRate) {
+function customCensorAtRate(
+  entry,
+  sampleRate
+) {
   const cached =
-    state.customCensorResampled.get(sampleRate);
+    entry.resampled.get(
+      sampleRate
+    );
 
   if (cached) {
     return cached;
   }
 
   const source =
-    state.customCensorDecoded;
+    entry.decoded;
 
   if (!source?.frameCount) {
     return null;
@@ -1058,13 +1498,12 @@ function customCensorAtRate(sampleRate) {
   if (source.sampleRate === sampleRate) {
     const same = {
       channels:
-        source.channels.map(
-          channel => channel
-        ),
-      frameCount: source.frameCount
+        source.channels,
+      frameCount:
+        source.frameCount
     };
 
-    state.customCensorResampled.set(
+    entry.resampled.set(
       sampleRate,
       same
     );
@@ -1128,7 +1567,7 @@ function customCensorAtRate(sampleRate) {
     frameCount
   };
 
-  state.customCensorResampled.set(
+  entry.resampled.set(
     sampleRate,
     result
   );
@@ -2323,6 +2762,7 @@ async function transcribe() {
     status("Transcript ready",`${state.words.length} words recognized; ${state.flagged.size} were pre-selected.`,"ok");
     log("Transcription complete.");
     setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
+    if(MOBILE_LAYOUT.matches){setMobileSectionOpen("transcriptionPanel",false);setMobileSectionOpen("wordPanel",true);setMobileSectionOpen("stylePanel",true)}
     openModal();
   } catch (error) {
     const message = error.message || String(error);
@@ -2390,10 +2830,22 @@ function applyCensor(intervals) {
   const effect = effectChoice();
   const volume = clamp((Number(E.beepVolume.value)||0)/100,0,1);
   const amp = 32767 * volume;
-  const custom = effect === "custom" ? customCensorAtRate(sampleRate) : null;
   const fadeFrames = Math.max(1,Math.round(sampleRate*.008));
+  state.lastCustomCensorId = null;
 
   for (const [startMs,endMs] of intervals) {
+    const customEntry =
+      effect === "custom"
+        ? chooseRandomCustomCensor()
+        : null;
+
+    const custom =
+      customEntry
+        ? customCensorAtRate(
+            customEntry,
+            sampleRate
+          )
+        : null;
     const start = clamp(Math.floor(startMs*sampleRate/1000),0,frameCount);
     const end = clamp(Math.ceil(endMs*sampleRate/1000),0,frameCount);
     const length = end-start;
@@ -2554,6 +3006,7 @@ async function generate() {
     status("Finished",`${state.selected.size} words selected; ${intervals.length} merged censor intervals generated.`,"ok");
     log("Result generated.");
     setTimeout(()=>E.progressBox.classList.add("hidden"),1000);
+    setMobileSectionOpen("resultPanel",true);
     E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
   } catch (error) {
     status("Generation failed",error.message || String(error),"error");
@@ -2592,6 +3045,7 @@ async function chooseFile(file) {
   status("Ready to transcribe",`${file.name} is selected.`);
   log(`File selected: ${file.name}.`);
   refreshButtons();
+  if(MOBILE_LAYOUT.matches){setMobileSectionOpen("sourcePanel",false);openMobileSection("transcriptionPanel")}
 }
 async function reset(clearFile=true) {
   closeModal(); revokeResults();
@@ -2638,6 +3092,9 @@ E.fileInput.addEventListener("change",()=>chooseFile(E.fileInput.files?.[0]));
 for (const event of ["dragenter","dragover"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.add("drag")});
 for (const event of ["dragleave","drop"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.remove("drag")});
 E.dropZone.addEventListener("drop",e=>chooseFile(e.dataTransfer?.files?.[0]));
+E.youtubeImportButton.addEventListener("click",importYouTubeLink);
+E.youtubeFormat.addEventListener("change",updateYouTubeControls);
+E.youtubeUrl.addEventListener("keydown",event=>{if(event.key==="Enter")importYouTubeLink()});
 
 $$('input[name="provider"]').forEach(el=>el.addEventListener("change",providerUi));
 $$('input[name="preset"]').forEach(el=>el.addEventListener("change",()=>E.customBox.classList.toggle("hidden",presetChoice()!=="custom")));
@@ -2645,8 +3102,8 @@ $$('input[name="timing"]').forEach(el=>el.addEventListener("change",()=>E.timing
 $$('input[name="effect"]').forEach(el=>el.addEventListener("change",updateCensorEffectUI));
 E.coverage.addEventListener("input",()=>E.coverageOut.textContent=`${E.coverage.value}%`);
 E.beepVolume.addEventListener("input",()=>E.volumeOut.textContent=`${E.beepVolume.value}%`);
-E.customCensorInput.addEventListener("change",()=>loadCustomCensorAudio(E.customCensorInput.files?.[0]));
-E.clearCustomCensor.addEventListener("click",()=>clearCustomCensorAudio(true));
+E.customCensorInput.addEventListener("change",()=>loadCustomCensorAudio(E.customCensorInput.files));
+E.clearAllCustomCensors.addEventListener("click",()=>clearCustomCensorAudio(true));
 
 E.showKeyBtn.addEventListener("click",()=>{
   const show=E.apiKey.type==="password"; E.apiKey.type=show?"text":"password"; E.showKeyBtn.textContent=show?"Hide":"Show";
@@ -2669,9 +3126,11 @@ E.clearLogBtn.addEventListener("click",()=>E.log.textContent="");
 if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
 const remembered = localStorage.getItem("censorElevenLabsKey") || "";
 if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
-providerUi(); updateCensorEffectUI(); refreshButtons();
+const savedCobaltEndpoint=localStorage.getItem("audioCensorCobaltEndpoint");
+if(savedCobaltEndpoint)E.cobaltEndpoint.value=savedCobaltEndpoint;
+setupMobileSections(); renderCustomCensorList(); providerUi(); updateCensorEffectUI(); updateYouTubeControls(); refreshButtons();
 window.addEventListener("beforeunload",()=>{
-  if (state.customCensorURL) URL.revokeObjectURL(state.customCensorURL);
+  for (const item of state.customCensors) URL.revokeObjectURL(item.url);
 });
 log("Ready.");
 
