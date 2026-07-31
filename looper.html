@@ -88,7 +88,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <button class="button ghost small" id="resetButton" type="button">Reset</button>
     </div>
     <div id="protocolWarning" class="warning hidden" style="margin-bottom:12px">Open this through localhost or a hosted site. Browser audio tools may fail from file://.</div>
-    <input class="sr" id="fileInput" type="file" accept="audio/*,.wav,.mp3,.ogg,.oga,.flac,.m4a,.aac,.opus,.aif,.aiff">
+    <input class="sr" id="fileInput" type="file" accept=".wav,.mp3,.ogg,.oga,.flac,.m4a,.aac,.opus,.aif,.aiff,.wma,.webm">
     <button class="drop" id="dropZone" type="button">
       <span class="drop-icon">↑</span>
       <strong>Choose an audio file</strong>
@@ -1292,6 +1292,14 @@ const POWER_PRESETS=Object.freeze({
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
 function extension(name){const match=/\.([^.]+)$/.exec(name||"");return match?match[1].toLowerCase():"";}
+const SUPPORTED_AUDIO_EXTENSIONS=new Set(["wav","mp3","ogg","oga","flac","m4a","aac","opus","aif","aiff","wma","webm"]);
+const BLOCKED_MIDI_EXTENSIONS=new Set(["mid","midi","rmi","kar"]);
+function isSupportedAudioFile(file){
+  if(!file)return false;
+  const ext=extension(file.name);
+  if(BLOCKED_MIDI_EXTENSIONS.has(ext))return false;
+  return SUPPORTED_AUDIO_EXTENSIONS.has(ext);
+}
 function stem(name){return(name||"audio").replace(/\.[^.]+$/,"").replace(/[\\/:*?"<>|]+/g,"_").replace(/[ .]+$/,"")||"audio";}
 function formatBytes(bytes){const units=["B","KB","MB","GB"];let value=Number(bytes)||0,index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return`${value.toFixed(index?1:0)} ${units[index]}`;}
 function formatClock(seconds,short=false){
@@ -1984,6 +1992,14 @@ function reset(){
 
 function loadFile(file){
   if(!file)return;
+  if(!isSupportedAudioFile(file)){
+    const ext=extension(file.name);
+    const midi=BLOCKED_MIDI_EXTENSIONS.has(ext);
+    status(midi?"MIDI files are blocked":"Unsupported file",midi?"Choose a normal audio file such as WAV, MP3, OGG, FLAC, M4A, AAC, OPUS, or AIFF.":"Choose a supported audio file.","error");
+    log(`Rejected unsupported file: ${file.name}.`);
+    E.fileInput.value="";
+    return;
+  }
   reset();
   state.file=file;
   state.fileUrl=URL.createObjectURL(file);
