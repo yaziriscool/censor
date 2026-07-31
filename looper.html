@@ -1514,9 +1514,14 @@ const state={
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
+  ffmpegTask:Promise.resolve(),ffmpegExecCount:0,ffmpegRecoveryCount:0,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
   precisionRate:48000
 };
+
+const FFMPEG_EXEC_TIMEOUT_MS=120000;
+const FFMPEG_MAX_EXECS_PER_SESSION=7;
+const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
 
 const SETTINGS_KEY="videoGameMusicLooperSettingsV9",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV8";
 const DEFAULT_SETTINGS=Object.freeze({
@@ -1755,10 +1760,17 @@ function startWebAudioTracking(context,source,map,duration=0){
 function revokeTextUrl(){if(state.textUrl){URL.revokeObjectURL(state.textUrl);state.textUrl="";}}
 function invalidateMedia(){stopPlayback();state.mediaVersion++;}
 
-function terminateAnalysisWorker(){
+function terminateAnalysisWorker(preserveData=false){
+  const cancellation=new Error("Analysis worker was reset.");
+  for(const key of ["loadWait","detectWait","fineWait"]){
+    const waiter=state[key];
+    if(waiter){try{waiter.reject(cancellation);}catch{}state[key]=null;}
+  }
   if(state.analysisWorker){try{state.analysisWorker.postMessage({type:"dispose"});}catch{}try{state.analysisWorker.terminate();}catch{}}
-  state.analysisWorker=null;state.analysisSignature="";state.analysisRate=0;state.analysisFrames=0;state.analysisChannels=0;
-  state.loadWait=null;state.detectWait=null;state.fineWait=null;state.wavePeaks=null;
+  state.analysisWorker=null;state.analysisSignature="";
+  if(!preserveData){
+    state.analysisRate=0;state.analysisFrames=0;state.analysisChannels=0;state.wavePeaks=null;
+  }
 }
 
 function createAnalysisWorker(){
@@ -1813,8 +1825,17 @@ function createAnalysisWorker(){
 function waitForWorker(kind,send){
   return new Promise((resolve,reject)=>{
     const key=kind==="load"?"loadWait":(kind==="fine"?"fineWait":"detectWait");
-    state[key]={resolve,reject};
-    send();
+    const timeout=Math.max(1000,WORKER_TIMEOUT_MS[kind]||120000);
+    const timer=setTimeout(()=>{
+      if(state[key]===waiter)state[key]=null;
+      reject(new Error(`${kind==="fine"?"Full-detail":"Audio analysis"} worker timed out.`));
+    },timeout);
+    const waiter={
+      resolve:value=>{clearTimeout(timer);if(state[key]===waiter)state[key]=null;resolve(value);},
+      reject:error=>{clearTimeout(timer);if(state[key]===waiter)state[key]=null;reject(error);}
+    };
+    state[key]=waiter;
+    try{send();}catch(error){waiter.reject(error);}
   });
 }
 
@@ -2016,9 +2037,71 @@ async function loadFFmpegCoreCandidate(
   }
 }
 
+function disposeFFmpeg(reason="",announce=false){
+  const ffmpeg=state.ffmpeg;
+  const workerURL=state.ffmpegClassWorkerURL;
+  state.ffmpeg=null;
+  state.ffmpegLoaded=false;
+  state.ffmpegLoading=null;
+  state.ffmpegClassWorkerURL=null;
+  state.inputFsName=null;
+  state.ffmpegExecCount=0;
+  if(ffmpeg){try{ffmpeg.terminate();}catch{}}
+  if(workerURL){try{URL.revokeObjectURL(workerURL);}catch{}}
+  if(announce&&reason)log(reason);
+}
+
+function queueFFmpegTask(task){
+  const next=state.ffmpegTask.then(task,task);
+  state.ffmpegTask=next.catch(()=>{});
+  return next;
+}
+
+async function execFFmpegWithTimeout(ffmpeg,args,label,timeout=FFMPEG_EXEC_TIMEOUT_MS){
+  let timer=0;
+  try{
+    const timeoutPromise=new Promise((_,reject)=>{
+      timer=setTimeout(()=>reject(new Error(`${label} timed out.`)),timeout+5000);
+    });
+    const rc=await Promise.race([ffmpeg.exec(args,timeout),timeoutPromise]);
+    if(rc!==0)throw new Error(`${label} failed with code ${rc}.`);
+    return rc;
+  }finally{
+    if(timer)clearTimeout(timer);
+  }
+}
+
+async function runFFmpegJob(label,job,{retries=1,countExec=true}={}){
+  return queueFFmpegTask(async()=>{
+    let lastError=null;
+    for(let attempt=0;attempt<=retries;attempt++){
+      if(countExec&&state.ffmpegExecCount>=FFMPEG_MAX_EXECS_PER_SESSION){
+        disposeFFmpeg("Recycled the browser media engine before it could run out of memory.",true);
+      }
+      try{
+        const ffmpeg=await ensureFFmpeg();
+        const result=await job(ffmpeg);
+        if(countExec)state.ffmpegExecCount++;
+        return result;
+      }catch(error){
+        lastError=error instanceof Error?error:new Error(String(error));
+        state.ffmpegRecoveryCount++;
+        disposeFFmpeg();
+        if(attempt<retries){
+          log(`${label} hit a media-engine problem. Restarting it and retrying once.`);
+          await sleep(0);
+          continue;
+        }
+      }
+    }
+    throw lastError||new Error(`${label} failed.`);
+  });
+}
+
 async function ensureFFmpeg() {
   if (
     state.ffmpegLoaded
+    && state.ffmpeg
   ) {
     return state.ffmpeg;
   }
@@ -2130,16 +2213,19 @@ async function ensureFFmpeg() {
     state.ffmpegLoading = null;
   }
 }
-async function safeDelete(name) {
-  if (!state.ffmpeg || !name) return;
-  try { await state.ffmpeg.deleteFile(name); } catch {}
+async function deleteFileQuiet(ffmpeg,name){
+  if(!ffmpeg||!name)return;
+  try{await ffmpeg.deleteFile(name);}catch{}
+}
+async function safeDelete(name){
+  if(!name)return;
+  return runFFmpegJob("Temporary-file cleanup",async ffmpeg=>{await deleteFileQuiet(ffmpeg,name);return true;},{retries:0,countExec:false}).catch(()=>{});
 }
 
-
-async function ensureInputFile(){
+async function ensureInputFile(ffmpeg=null){
   if(state.inputFsName)return state.inputFsName;
   if(!state.file)throw new Error("Choose an audio file first.");
-  const ffmpeg=await ensureFFmpeg();
+  ffmpeg=ffmpeg||await ensureFFmpeg();
   const ext=extension(state.file.name)||"bin";
   const name=`looper_input_${Date.now().toString(36)}.${ext}`;
   setProgress(8,"Loading the selected file…");
@@ -2154,26 +2240,27 @@ async function ensureInputFile(){
 async function prepareAnalysis(settings){
   const signature=analysisSignature(settings);
   if(state.analysisWorker&&state.analysisSignature===signature&&state.analysisFrames>0)return;
-  const ffmpeg=await ensureFFmpeg();
-  const input=await ensureInputFile();
   const rate=settings.analysisSampleRate;
-  const output=`looper_analysis_${Date.now().toString(36)}.wav`;
-
   createAnalysisWorker();
   state.analysisSignature=signature;
   setProgress(15,`Making a ${rate.toLocaleString()} Hz analysis track…`);
 
-  const rc=await ffmpeg.exec([
-    "-i",input,"-vn","-map","0:a:0",
-    "-ar",String(rate),"-ac","2","-c:a","pcm_s16le",output
-  ]);
-  if(rc!==0)throw new Error("The browser media engine could not decode this audio.");
+  const data=await runFFmpegJob("Analysis-track decode",async ffmpeg=>{
+    const input=await ensureInputFile(ffmpeg);
+    const output=`looper_analysis_${Date.now().toString(36)}.wav`;
+    try{
+      await execFFmpegWithTimeout(ffmpeg,[
+        "-i",input,"-vn","-map","0:a:0",
+        "-ar",String(rate),"-ac","2","-c:a","pcm_s16le",output
+      ],"Analysis-track decode",180000);
+      return await ffmpeg.readFile(output);
+    }finally{
+      await deleteFileQuiet(ffmpeg,output);
+    }
+  });
 
   setProgress(38,"Sending the analysis track to the loop worker…");
-  const data=await ffmpeg.readFile(output);
-  await safeDelete(output);
   const pcm=parsePcmWav(data);
-
   await waitForWorker("load",()=>{
     state.analysisWorker.postMessage({
       type:"load",buffer:pcm.buffer,byteOffset:pcm.byteOffset,length:pcm.length,
@@ -2182,21 +2269,34 @@ async function prepareAnalysis(settings){
   });
   log(`Analysis track ready at ${rate.toLocaleString()} Hz.`);
 }
-
-async function extractPcmWindow(fromSeconds,toSeconds,sampleRate,label){
-  const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile();
-  const output=`looper_${label}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}.wav`;
-  const filter=`atrim=start=${filterNumber(fromSeconds)}:end=${filterNumber(toSeconds)},asetpts=PTS-STARTPTS`;
-  const rc=await ffmpeg.exec([
-    "-i",input,"-vn","-map","0:a:0","-af",filter,
-    "-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",output
-  ]);
-  if(rc!==0)throw new Error("The browser media engine could not read the full-detail loop boundary.");
-  const data=await ffmpeg.readFile(output);
-  await safeDelete(output);
-  return parsePcmWav(data);
+async function extractPcmPair(startFrom,startTo,endFrom,endTo,sampleRate,label){
+  return runFFmpegJob("Full-detail boundary extraction",async ffmpeg=>{
+    const input=await ensureInputFile(ffmpeg);
+    const token=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+    const startOutput=`looper_${label}_start_${token}.wav`;
+    const endOutput=`looper_${label}_end_${token}.wav`;
+    const startDuration=Math.max(2/sampleRate,startTo-startFrom);
+    const endDuration=Math.max(2/sampleRate,endTo-endFrom);
+    try{
+      await execFFmpegWithTimeout(ffmpeg,[
+        "-ss",filterNumber(startFrom),"-i",input,
+        "-ss",filterNumber(endFrom),"-i",input,
+        "-map","0:a:0","-t",filterNumber(startDuration),"-vn","-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",startOutput,
+        "-map","1:a:0","-t",filterNumber(endDuration),"-vn","-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",endOutput
+      ],"Full-detail boundary extraction",120000);
+      const [startData,endData]=await Promise.all([
+        ffmpeg.readFile(startOutput),
+        ffmpeg.readFile(endOutput)
+      ]);
+      return{startPcm:parsePcmWav(startData),endPcm:parsePcmWav(endData)};
+    }finally{
+      await Promise.all([
+        deleteFileQuiet(ffmpeg,startOutput),
+        deleteFileQuiet(ffmpeg,endOutput)
+      ]);
+    }
+  });
 }
-
 async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTotal=1){
   const coarseStart=coarse.start/state.analysisRate,coarseEnd=coarse.end/state.analysisRate;
   const rate=settings.precisionSampleRate;
@@ -2214,9 +2314,7 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   const endTo=Math.min(duration,coarseEnd+marginAfter);
 
   setProgress(80+12*candidateIndex/candidateTotal,`Reading candidate ${candidateIndex+1} of ${candidateTotal}…`);
-  const startPcm=await extractPcmWindow(startFrom,startTo,rate,"start");
-  setProgress(82+12*candidateIndex/candidateTotal,`Reading candidate ${candidateIndex+1} of ${candidateTotal}…`);
-  const endPcm=await extractPcmWindow(endFrom,endTo,rate,"end");
+  const {startPcm,endPcm}=await extractPcmPair(startFrom,startTo,endFrom,endTo,rate,`candidate_${candidateIndex+1}`);
 
   const startCenter=Math.round((coarseStart-startFrom)*rate);
   const endCenter=Math.round((coarseEnd-endFrom)*rate);
@@ -2267,8 +2365,7 @@ async function runDetection(options){
 }
 
 function reset(){
-  const oldInput=state.inputFsName;
-  stopPlayback();terminateAnalysisWorker();revokeTextUrl();
+  stopPlayback();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
@@ -2277,7 +2374,6 @@ function reset(){
   E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
   E.channelsSide.textContent="—";E.modeSide.textContent="—";E.playbackPosition.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
   status("Ready","Choose an audio file.");
-  if(oldInput)safeDelete(oldInput);
 }
 
 function loadFile(file){
@@ -2311,7 +2407,7 @@ function loadFile(file){
 
 async function findLoop(){
   if(state.busy||!state.file)return;
-  invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");
+  invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");state.result=null;
   const settings=readSettings();
   const maxMinimum=state.duration?Math.max(3,state.duration-.25):600;
   settings.minimumLoop=clamp(settings.minimumLoop,3,maxMinimum);
@@ -2336,12 +2432,34 @@ async function findLoop(){
       unique.push(candidate);
     }
 
+    // The coarse decode can leave ffmpeg.wasm with a large grown heap. Start the
+    // precision stage in a clean worker, then recycle it periodically below.
+    disposeFFmpeg("Recycled the media engine before full-detail verification.",true);
+
     const requestedCount=Math.min(settings.fullDetailCandidates,unique.length),verified=[];
-    let checked=0;
+    let checked=0,analysisRecoveryUsed=false;
     const verifyNext=async()=>{
       const index=checked++;
-      try{verified.push(await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount)));}
-      catch(error){log(`Candidate ${index+1} full-detail check failed: ${error.message||error}`);}
+      try{
+        verified.push(await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount)));
+      }catch(error){
+        const message=error?.message||String(error);
+        const workerProblem=/worker|timed out|disposed|reset/i.test(message);
+        if(workerProblem&&!analysisRecoveryUsed){
+          analysisRecoveryUsed=true;
+          log(`Candidate ${index+1} lost the analysis worker. Rebuilding it and retrying that candidate once.`);
+          try{
+            terminateAnalysisWorker();
+            await prepareAnalysis(settings);
+            disposeFFmpeg("Recycled the media engine after rebuilding the analysis worker.",true);
+            verified.push(await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount)));
+            return;
+          }catch(retryError){
+            log(`Candidate ${index+1} recovery failed: ${retryError.message||retryError}`);
+          }
+        }
+        log(`Candidate ${index+1} full-detail check failed: ${message}`);
+      }
     };
     while(checked<requestedCount)await verifyNext();
 
@@ -2356,7 +2474,7 @@ async function findLoop(){
       sortVerified();
     }
 
-    if(!verified.length)throw new Error("The full-detail loop checks could not finish.");
+    if(!verified.length)throw new Error("The full-detail checks failed after automatic media-engine recovery. Try the search again; the engine has already been reset.");
     state.result=verified[0];
     showResult();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
@@ -2369,6 +2487,10 @@ async function findLoop(){
     log(`Error: ${error.message||error}`);
     E.progressBox.classList.add("hidden");
   }finally{
+    // Both workers hold large WebAssembly/PCM heaps. Releasing them after every
+    // search prevents one long session from poisoning later searches or exports.
+    terminateAnalysisWorker(!!state.result);
+    disposeFFmpeg();
     setBusy(false);
   }
 }
@@ -2480,30 +2602,34 @@ function seamFilter(start,end){
 
 async function renderWav(kind){
   if(!state.result||!state.file)throw new Error("Find a loop first.");
-  const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile(),{start,end}=currentTimes();
+  const {start,end}=currentTimes();
   const output=`looper_${kind}_${Date.now().toString(36)}.wav`;
   let args;
-  if(kind==="loop"){
-    args=["-i",input,"-vn","-map","0:a:0","-af",
-      `atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS`,
-      "-c:a","pcm_s16le",output];
-  }else if(kind==="preview"){
-    const repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
-    args=["-i",input,"-vn","-filter_complex",previewFilter(start,end,repeats),"-map","[out]","-c:a","pcm_s16le",output];
-  }else if(kind==="seam"){
-    args=["-i",input,"-vn","-filter_complex",seamFilter(start,end),"-map","[out]","-c:a","pcm_s16le",output];
-  }else{
-    throw new Error("Unknown output type.");
-  }
+  return runFFmpegJob(`WAV ${kind} render`,async ffmpeg=>{
+    const input=await ensureInputFile(ffmpeg);
+    if(kind==="loop"){
+      args=["-i",input,"-vn","-map","0:a:0","-af",
+        `atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS`,
+        "-c:a","pcm_s16le",output];
+    }else if(kind==="preview"){
+      const repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
+      args=["-i",input,"-vn","-filter_complex",previewFilter(start,end,repeats),"-map","[out]","-c:a","pcm_s16le",output];
+    }else if(kind==="seam"){
+      args=["-i",input,"-vn","-filter_complex",seamFilter(start,end),"-map","[out]","-c:a","pcm_s16le",output];
+    }else{
+      throw new Error("Unknown output type.");
+    }
 
-  setProgress(20,kind==="preview"?"Building the Roblox preview…":kind==="seam"?"Building the seam preview…":"Building the exact loop…");
-  const rc=await ffmpeg.exec(args);
-  if(rc!==0)throw new Error("The browser media engine could not create the WAV.");
-  const data=await ffmpeg.readFile(output);
-  await safeDelete(output);
-  return new Blob([data],{type:"audio/wav"});
+    setProgress(20,kind==="preview"?"Building the Roblox preview…":kind==="seam"?"Building the seam preview…":"Building the exact loop…");
+    try{
+      await execFFmpegWithTimeout(ffmpeg,args,`WAV ${kind} render`,180000);
+      const data=await ffmpeg.readFile(output);
+      return new Blob([data],{type:"audio/wav"});
+    }finally{
+      await deleteFileQuiet(ffmpeg,output);
+    }
+  });
 }
-
 function triggerDownload(blob,name){
   const url=URL.createObjectURL(blob),anchor=document.createElement("a");
   anchor.href=url;anchor.download=name;anchor.style.display="none";document.body.appendChild(anchor);anchor.click();anchor.remove();
@@ -2522,6 +2648,7 @@ async function downloadGenerated(kind,button){
   }catch(error){
     status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
   }finally{
+    disposeFFmpeg();
     button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");
   }
 }
@@ -2546,6 +2673,7 @@ async function playGenerated(kind){
   }catch(error){
     stopPlayback();status("Playback failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
   }finally{
+    disposeFFmpeg();
     setBusy(false);E.progressBox.classList.add("hidden");
   }
 }
@@ -2617,12 +2745,11 @@ window.addEventListener("resize",drawWaveform);
 window.addEventListener("beforeunload",()=>{
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  if(state.ffmpeg){try{state.ffmpeg.terminate();}catch{}}
-  if(state.ffmpegClassWorkerURL)URL.revokeObjectURL(state.ffmpegClassWorkerURL);
+  disposeFFmpeg();
 });
 
 E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
-E.cpuBadge.textContent="Feedback-calibrated analyzer";
+E.cpuBadge.textContent="Resource-safe Maximum + Deep";
 loadSettings();
 reset();
 })();
