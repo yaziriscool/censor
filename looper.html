@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0a">
 <meta name="color-scheme" content="dark">
-<title>Video Game Music Looper — Learning Edition</title>
+<title>Video Game Music Looper — Feedback Calibrated</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
@@ -60,11 +60,8 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 .status-dot{width:10px;height:10px;border-radius:50%;background:var(--yellow-dim);box-shadow:0 0 0 5px rgba(250,226,157,.05)}.status-dot.busy{background:var(--yellow);animation:pulse 1.1s ease-in-out infinite}.status-dot.error{background:var(--error)}.status-dot.ok{background:var(--ok)}@keyframes pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
 .status-message{min-height:42px;margin:0 0 12px;color:var(--dim);font-size:.76rem;line-height:1.5}.side-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px}.side-stats div{min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel2)}.side-stats span,.side-stats strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.side-stats span{color:var(--faint);font-size:.61rem;text-transform:uppercase;letter-spacing:.06em}.side-stats strong{margin-top:3px;color:var(--yellow);font-size:.76rem}.log-head{display:flex;justify-content:space-between;align-items:center;padding-top:11px;border-top:1px solid var(--border);color:var(--dim);font-size:.7rem;font-weight:850}.text-btn{padding:3px;background:transparent;color:var(--yellow-dim);cursor:pointer;font-size:.72rem;font-weight:850}.text-btn:hover{color:var(--yellow)}.log{min-height:190px;max-height:calc(100vh - 360px);margin:7px 0 0;overflow:auto;padding:10px;border:1px solid var(--border);border-radius:9px;background:#090908;color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.67rem;line-height:1.52;white-space:pre-wrap;word-break:break-word}
 .warning{padding:10px 11px;border:1px solid rgba(232,132,111,.45);border-radius:9px;background:rgba(232,132,111,.065);color:#efad9f;font-size:.73rem;line-height:1.45}.mobile{display:none}
-
-.solution-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:15px 0 8px}.solution-head strong{font-size:.84rem;color:var(--yellow)}.solution-head span{color:var(--dim);font-size:.69rem}.solution-list{display:grid;gap:8px}.solution-card{padding:11px;border:1px solid var(--border);border-radius:11px;background:var(--panel2);transition:border-color .12s,background .12s}.solution-card.active{border-color:var(--yellow-dim);background:rgba(250,226,157,.075)}.solution-card.ai-pick{box-shadow:inset 3px 0 0 var(--yellow)}.solution-card.disliked{opacity:.66}.solution-card.new-challenger{animation:newCandidate .34s ease-out}@keyframes newCandidate{from{transform:translateY(5px);opacity:.35}to{transform:none;opacity:1}}.solution-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.solution-title{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}.solution-title strong{font-size:.8rem}.solution-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border:1px solid var(--border2);border-radius:999px;color:var(--yellow-dim);font-size:.61rem;font-weight:850}.solution-region{margin-top:5px;color:var(--yellow);font:800 .74rem/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.solution-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}.solution-meta div{min-width:0;padding:6px;border:1px solid var(--border);border-radius:7px;background:#121210}.solution-meta span,.solution-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.solution-meta span{color:var(--faint);font-size:.56rem;text-transform:uppercase;letter-spacing:.05em}.solution-meta strong{margin-top:2px;color:var(--text);font-size:.68rem}.solution-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rating-button{min-width:42px}.rating-button.selected-like{border-color:var(--ok);color:var(--ok);background:rgba(183,221,155,.08)}.rating-button.selected-dislike{border-color:var(--error);color:var(--error);background:rgba(232,132,111,.08)}.learning-box{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:#0e0e0d}.learning-copy{min-width:0}.learning-copy strong,.learning-copy span{display:block}.learning-copy strong{font-size:.76rem;color:var(--yellow)}.learning-copy span{margin-top:3px;color:var(--dim);font-size:.66rem;line-height:1.4}.learning-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}.disabled-link{pointer-events:none;opacity:.43}.saved-result-note{margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--dim);font-size:.68rem}.data-count{color:var(--yellow)!important}
-
 @media(max-width:900px){.grid{grid-template-columns:1fr}.aside{order:-1}.sticky{position:static;max-height:none}.log{max-height:210px}}
-@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid,.settings-grid{grid-template-columns:1fr}.stats,.solution-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.learning-box{align-items:stretch;flex-direction:column}.learning-actions{justify-content:flex-start}.settings-head{align-items:stretch;flex-direction:column}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
+@media(max-width:680px){.shell{width:calc(100% - 18px)}header{display:block;padding-top:25px}.badges{justify-content:flex-start;margin-top:12px}.grid{padding-bottom:calc(100px + var(--safe-bottom))}.panel{padding:13px;border-radius:12px}.drop{min-height:155px;padding:17px 10px}.two,.adjust-grid,.settings-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-head{align-items:stretch;flex-direction:column}.aside{display:none}.mobile{position:fixed;z-index:250;inset:auto 0 0;display:flex;min-height:74px;align-items:center;justify-content:space-between;gap:9px;padding:10px max(10px,env(safe-area-inset-right)) calc(10px + var(--safe-bottom)) max(10px,env(safe-area-inset-left));border-top:1px solid var(--border2);background:rgba(20,20,18,.96);box-shadow:0 -15px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px)}.mobile span{min-width:0;overflow:hidden;color:var(--dim);font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.mobile .button{min-width:130px;flex:0 0 auto}}
 @media(max-width:430px){.segmented{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.file-card{flex-wrap:wrap}.file-copy{flex-basis:calc(100% - 55px)}.file-card .button{width:100%}.download{flex-wrap:wrap}.download a{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
@@ -80,7 +77,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
   <div class="badges">
     <span class="badge">Runs locally</span>
     <span class="badge">No fades</span>
-    <span class="badge" id="cpuBadge">Learning loop analyzer</span>
+    <span class="badge" id="cpuBadge">Feedback-calibrated engine</span>
   </div>
 </header>
 <main class="shell grid">
@@ -194,13 +191,13 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <div class="settings-group">
           <p class="settings-title">Deep analysis</p>
           <div class="settings-grid">
-            <label><span class="label">Lag candidates</span><input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="96" step="1" value="32"></label>
+            <label><span class="label">Lag candidates</span><input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="96" step="1" value="44"></label>
             <label><span class="label">Repeat check window</span><input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="30" step="0.5" value="8"></label>
             <label><span class="label">Minimum repeat coverage</span><input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.4"></label>
             <label><span class="label">Lag fine search</span><input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="220"></label>
             <label><span class="label">Speed-ramp crossing penalty</span><input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46"></label>
             <label><span class="label">Settled-speed bonus</span><input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14"></label>
-            <label><span class="label">Solutions to check</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="4" max="12" step="1" value="10"></label>
+            <label><span class="label">Full-detail candidates</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="6" step="1" value="5"></label>
             <label><span class="label">Direct repeat floor</span><input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58"></label>
           </div>
         </div>
@@ -229,26 +226,6 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <div><span>Length</span><strong id="lengthStat">0:00.000</strong></div>
       <div><span>Confidence</span><strong id="confidenceStat">—</strong></div>
     </div>
-
-    <div class="solution-head">
-      <strong>Loop solutions</strong>
-      <span id="solutionSummary">0 solutions</span>
-    </div>
-    <div class="solution-list" id="solutionList"></div>
-
-    <div class="learning-box">
-      <div class="learning-copy">
-        <strong>Local neural ranker</strong>
-        <span id="learningStatus">No ratings yet.</span>
-      </div>
-      <div class="learning-actions">
-        <button class="button secondary small" id="newSolutionBatchButton" type="button">Find more</button>
-        <button class="button ghost small" id="downloadLearningDataButton" type="button">Download data</button>
-        <button class="button ghost small" id="resetLearningDataButton" type="button">Reset data</button>
-      </div>
-    </div>
-    <div class="saved-result-note hidden" id="savedResultNote">Saved result restored. Choose the same audio file to play or download it.</div>
-
     <div class="wave-wrap"><canvas id="waveCanvas" width="1200" height="310"></canvas></div>
     <div class="playback-row"><span>Playback position</span><strong id="playbackPosition">—</strong></div>
     <div class="transport">
@@ -570,8 +547,8 @@ function pushTop(list,item,limit){
   if(item.score<=list[0].score)return;list[0]=item;let i=0;while(i+1<list.length&&list[i].score>list[i+1].score){const t=list[i];list[i]=list[i+1];list[i+1]=t;i++;}
 }
 function coarseSearch(bundle,candidates,options,duration){
-  const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="deep"?4:(quality==="maximum"?7:(quality==="fast"?4:5)),embeddings=[];
-  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="deep"?10:(quality==="maximum"?28:(quality==="fast"?12:20));
+  const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="deep"?6:(quality==="maximum"?7:(quality==="fast"?4:5)),embeddings=[];
+  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="deep"?18:(quality==="maximum"?28:(quality==="fast"?12:20));
   const flowSeconds=clamp(Number(options.instrumentFlowSeconds)||12,3,30),flowBins=quality==="deep"?20:(quality==="deep"?6:(quality==="maximum"?16:(quality==="fast"?8:12))),tempoBins=quality==="deep"?20:(quality==="deep"?6:(quality==="maximum"?16:(quality==="fast"?8:12)));
   for(let i=0;i<candidates.length;i++){
     const frame=candidates[i];
@@ -952,7 +929,7 @@ function deepAnalyze(bundle,candidates,coarsePool,options){
     let nearest=null,nearestDistance=Infinity;
     for(const pair of coarsePool){const lag=candidates[pair.j]-candidates[pair.i],distance=Math.abs(lag-item.lag);if(distance<nearestDistance){nearestDistance=distance;nearest=pair;}}
     const seed01=nearest?clamp((nearest.score+.35)/1.7,0,1):.5;
-    const score=.72*deep.score+.10*deep.aligned+.06*deep.lower+.05*deep.tempo+.04*deep.coverage+.03*seed01;
+    const score=.60*deep.score+.13*deep.aligned+.10*deep.lower+.08*deep.harmonic+.05*deep.timbre+.03*deep.tempo+.05*deep.coverage+.03*seed01-.07*deep.ramp;
     results.push({...nearest,score,startFrame:deep.startFrame,endFrame:deep.endFrame,deepScore:deep.score,deepAligned:deep.aligned,deepLower:deep.lower,deepHarmonic:deep.harmonic,deepTimbre:deep.timbre,deepRhythm:deep.rhythm,deepTempo:deep.tempo,deepStability:deep.stability,deepRamp:deep.ramp,deepCoverage:deep.coverage,deepBoundary:deep.boundary,deepDirection:deep.direction});
     if(index%3===0)postProgress(60+14*index/Math.max(1,lags.length),"Deep-checking the repeating section…");
   }
@@ -967,6 +944,42 @@ function alignedSegmentSimilarity(bundle,a,b,c,d,mode="musical"){
   let product=0,aa=0,bb=0;const stride=Math.max(1,Math.floor(length/800));
   for(let k=0;k<length;k+=stride){const x=a+k,y=c+k,rowX=clamp(x,0,bundle.frames-1)*bundle.dims,rowY=clamp(y,0,bundle.frames-1)*bundle.dims;for(let dim=from;dim<to;dim++){const vx=bundle.data[rowX+dim],vy=bundle.data[rowY+dim];product+=vx*vy;aa+=vx*vx;bb+=vy*vy;}}
   return product/(Math.sqrt(aa*bb)+1e-12);
+}
+
+
+function feedbackCalibratedScore(values){
+  const deep=clamp(Number(values.deep??.5),0,1);
+  const instrument=clamp(Number(values.instrument??deep),0,1);
+  const harmonic=clamp(Number(values.harmonic??instrument),0,1);
+  const phase=clamp(Number(values.phase??.5),0,1);
+  const waveform=clamp(Number(values.waveform??.5),0,1);
+  const seam=clamp(Number(values.seam??.5),0,1);
+  const repeat=clamp(Number(values.repeat??.5),0,1);
+  const coverage=clamp(Number(values.coverage??.5),0,1);
+  const early=clamp(Number(values.early??.5),0,1);
+
+  // Frozen linear calibration made from the supplied like/dislike export.
+  // It is deliberately blended with hard continuity checks instead of being
+  // allowed to replace the actual audio math.
+  let z=-.30750244;
+  z+=.16953312*((deep-.57463107)/.15771047);
+  z+=.16953312*((instrument-.57463107)/.15771047);
+  z+=.28388889*((harmonic-.58762079)/.16970989);
+  z+=.07405679*((phase-.59600699)/.13503407);
+  z+=.28679973*((waveform-.37303280)/.21622154);
+  z+=.58581524*((seam-.22077259)/.24674219);
+  z+=.30258846*((coverage-.64963086)/.43354965);
+  z+=.31233878*((early-.41269815)/.24069423);
+
+  let calibrated=1/(1+Math.exp(-clamp(z,-20,20)));
+  const bottleneck=Math.min(Math.max(instrument,harmonic),phase,waveform,seam);
+  const continuity=Math.sqrt(Math.max(0,waveform*seam));
+  calibrated=.82*calibrated+.10*bottleneck+.08*continuity;
+
+  if(seam<.13&&waveform<.30)calibrated*=.72;
+  if(coverage<.35&&repeat<.45)calibrated*=.78;
+  if(Math.max(instrument,harmonic)<.42)calibrated*=.82;
+  return clamp(calibrated,0,1);
 }
 
 function confidence(result,evidence,options,marginScore=.55){
@@ -1013,74 +1026,6 @@ function makeWavePeaks(channels,width=1200){
   return peaks;
 }
 
-function profileModelForward(model,values){
-  if(!model||!Array.isArray(model.w1)||!Array.isArray(model.w2)||!Array.isArray(model.b1))return .5;
-  const hidden=[];
-  for(let h=0;h<model.w1.length;h++){
-    let sum=Number(model.b1[h])||0,row=model.w1[h]||[];
-    for(let i=0;i<Math.min(values.length,row.length);i++)sum+=(Number(row[i])||0)*values[i];
-    hidden[h]=Math.tanh(sum);
-  }
-  let output=Number(model.b2)||0;
-  for(let h=0;h<Math.min(hidden.length,model.w2.length);h++)output+=(Number(model.w2[h])||0)*hidden[h];
-  return output>=0?1/(1+Math.exp(-output)):Math.exp(output)/(1+Math.exp(output));
-}
-function vectorCosine(a,b){
-  if(!Array.isArray(a)||!Array.isArray(b))return 0;
-  let dot=0,aa=0,bb=0;
-  for(let i=0;i<Math.min(a.length,b.length);i++){const x=Number(a[i])||0,y=Number(b[i])||0;dot+=x*y;aa+=x*x;bb+=y*y;}
-  return dot/(Math.sqrt(aa*bb)+1e-9);
-}
-function regionNovelty(start,end,regions,duration){
-  if(!Array.isArray(regions)||!regions.length)return 1;
-  const length=Math.max(.001,end-start),scale=Math.max(1,duration);
-  let best=Infinity;
-  for(const region of regions){
-    const otherStart=Number(region.start)||0,otherEnd=Number(region.end)||otherStart,otherLength=Math.max(.001,otherEnd-otherStart);
-    const startDistance=Math.abs(start-otherStart)/Math.max(1,Math.min(10,scale*.08));
-    const lengthDistance=Math.abs(length-otherLength)/Math.max(.25,Math.max(length,otherLength));
-    const endDistance=Math.abs(end-otherEnd)/Math.max(1,Math.min(10,scale*.08));
-    best=Math.min(best,.48*startDistance+.34*lengthDistance+.18*endDistance);
-  }
-  return clamp(best,0,1);
-}
-function learnedPairAdjustment(pair,options,bundle,duration){
-  const profile=options.learningProfile;
-  const start=Math.max(0,(pair.startFrame||0)/bundle.frameRate),end=Math.max(start,(pair.endFrame||0)/bundle.frameRate),length=end-start,
-    settled=bundle.settledSpeedStart>=0?bundle.settledSpeedStart/bundle.frameRate:-1,afterSettled=settled>=0?clamp(.5+(start-settled)/Math.max(2,Math.min(12,duration*.08)),0,1):.5,
-    similarity01=value=>clamp(((Number(value)||0)+1)/2,0,1),quality01=(value,fallback=.5)=>clamp(Number.isFinite(Number(value))?Number(value):fallback,0,1);
-  const values=[
-    clamp(((Number(pair.score)||0)+.35)/1.7,0,1),quality01(pair.confidence,.5),quality01(pair.deepAligned,similarity01(pair.instrumentFlow)),
-    quality01(pair.deepLower,quality01(pair.deepAligned,.5)),similarity01(pair.instrumentFlow),similarity01(pair.harmonicFlow??pair.instrumentFlow),
-    similarity01(pair.timbreFlow??pair.deepTimbre),similarity01(pair.phaseAlignment??pair.rhythm),.5,.5,
-    quality01(pair.deepTempo,quality01(pair.tempoSimilarity,.65)),(Number(pair.repeatCoverage)||0)>0?similarity01(pair.repeatConsistency):quality01(pair.deepCoverage,.5),
-    quality01(pair.deepStability,quality01(pair.tempoStability,.55)),1-quality01(pair.deepRamp,quality01(pair.rampRisk,0)),quality01(pair.deepMargin,.55),
-    1-clamp(start/Math.max(1,duration),0,1),clamp(length/Math.max(1,duration)*2.2,0,1),afterSettled
-  ].map(value=>clamp(value,0,1)*2-1);
-
-  let preference=0;
-  if(profile&&profile.count){
-    let dot=0,norm=0;
-    for(let index=0;index<Math.min(values.length,profile.weights?.length||0);index++){
-      const weight=Number(profile.weights[index])||0;dot+=weight*values[index];norm+=Math.abs(weight);
-    }
-    const linear=norm?dot/norm:0;
-    const model=(profileModelForward(profile.model,values)-.5)*2;
-    const liked=vectorCosine(values,profile.likedCenter);
-    const disliked=vectorCosine(values,profile.dislikedCenter);
-    preference=.34*linear+.42*model+.22*liked-.26*disliked;
-  }
-
-  const novelty=regionNovelty(start,end,options.excludeRegions,duration);
-  const duplicatePenalty=novelty<.14?(1.20*(1-novelty/.14)):0;
-  const noveltyBonus=(Number(options.searchMode)==="more"||options.searchMode==="more")?(.055*novelty):0;
-  const round=Math.max(0,Number(options.explorationRound)||0),seed=Number(options.searchSeed)||0;
-  const phase=(pair.startFrame||0)*.017+(pair.endFrame||0)*.011+round*1.618+seed*.000001;
-  const jitter=round?Math.sin(phase)*Math.min(.026,.004+.0035*Math.sqrt(round)):0;
-  const strength=clamp(Number(profile?.strength)||0,0,.42);
-  return strength*preference+noveltyBonus+jitter-duplicatePenalty;
-}
-
 function detect(channels,sampleRate,requested){
   const started=now();let options={...requested,useVocals:requested.vocalMode==="vocal"};
   postProgress(3,"Starting analysis…");const fullBundle=buildFeatures(channels,sampleRate,{...options,useVocals:true});
@@ -1101,10 +1046,9 @@ function detect(channels,sampleRate,requested){
     const repeat=repeatContentEvidence(bundle,pair.startFrame,pair.endFrame,minimumCoverage);
     pair.repeatConsistency=repeat.score;pair.repeatCoverage=repeat.coverage;pair.repeatMusical=repeat.musical;pair.repeatHarmonic=repeat.harmonic;pair.repeatTimbre=repeat.timbre;pair.repeatRhythm=repeat.rhythm;
     if(repeat.coverage>=minimumCoverage)pair.score+=repeatWeight*repeat.score*repeat.coverage;else pair.score-=.05*(minimumCoverage-repeat.coverage)/minimumCoverage;
-    pair.score+=learnedPairAdjustment(pair,options,bundle,duration);
   }
   searchPool.sort((a,b)=>b.score-a.score);
-  const refineCount=options.power==="deep"?Math.min(12,clamp(Math.round(options.coarsePairsToRefine||18),1,64)):clamp(Math.round(options.coarsePairsToRefine||18),1,64),coarse=searchPool.slice(0,refineCount),results=[];
+  const refineCount=options.power==="deep"?Math.min(8,clamp(Math.round(options.coarsePairsToRefine||24),1,64)):clamp(Math.round(options.coarsePairsToRefine||18),1,64),coarse=searchPool.slice(0,refineCount),results=[];
   for(let index=0;index<coarse.length;index++){
     const pair=coarse[index],startSeconds=pair.startFrame/bundle.frameRate,endSeconds=pair.endFrame/bundle.frameRate,initialStart=Math.round(startSeconds*sampleRate),initialEnd=Math.round(endSeconds*sampleRate);
     const lowOptions=options.power==="deep"?{...options,refineRadiusMs:Math.min(120,Number(options.refineRadiusMs)||180),refineStepMs:Math.max(4,Number(options.refineStepMs)||2),maxPeriodCorrectionMs:Math.min(10,Number(options.maxPeriodCorrectionMs)||15),periodCorrectionStepMs:Math.max(1,Number(options.periodCorrectionStepMs)||.25),seamSharedSearchMs:Math.min(2,Number(options.seamSharedSearchMs)||5),seamPeriodSearchMs:Math.min(.25,Number(options.seamPeriodSearchMs)||.6),beatDriftCorrectionMs:0}:options;
@@ -1112,10 +1056,15 @@ function detect(channels,sampleRate,requested){
     if(options.power!=="deep"){
       const shifted=shiftEarliest(refined,bundle,sampleRate,options);if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,options,pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate)||shifted;else refined=shifted;
     }else refined={...refined,shifted:0};
-    const length=(refined.end-refined.start)/sampleRate,correctionPenalty=.22*clamp(Math.abs(refined.periodCorrection||0)/60,0,1),phase01=clamp(((refined.phaseAlignment??pair.rhythm)+1)/2,0,1),flow01=clamp((pair.instrumentFlow+1)/2,0,1),deep01=clamp(pair.deepScore??.5,0,1);
-    const rank=pair.score+.24*deep01+.12*(pair.deepAligned??.5)+.08*(pair.deepLower??.5)+.09*refined.waveform+.18*Math.exp(-.55*Math.max(0,refined.seam))+.11*phase01+.11*flow01+.06*clamp((pair.repeatConsistency+1)/2,0,1)*(pair.repeatCoverage||0)+.05*(pair.deepTempo??pair.tempoPath??.5)+.04*(pair.deepStability??pair.tempoStability??.5)-.08*(pair.deepRamp??pair.rampRisk??0)-.05*Math.min(Math.max(refined.seam,0),6)+.025*length/duration-.025*(refined.start/sampleRate)/duration-correctionPenalty;
+    const length=(refined.end-refined.start)/sampleRate,correctionPenalty=.22*clamp(Math.abs(refined.periodCorrection||0)/60,0,1),phase01=clamp(((refined.phaseAlignment??pair.rhythm)+1)/2,0,1),flow01=clamp((pair.instrumentFlow+1)/2,0,1),harmonic01=clamp(((pair.harmonicFlow??pair.instrumentFlow??0)+1)/2,0,1),deep01=clamp(pair.deepScore??.5,0,1);
+    const wave01=clamp((refined.waveform+1)/2,0,1),seam01=Math.exp(-.52*Math.max(0,refined.seam)),repeat01=clamp((pair.repeatConsistency+1)/2,0,1),coverage01=clamp(Math.max(pair.deepCoverage??0,pair.repeatCoverage??0),0,1);
+    let early01=clamp(1-(refined.start/sampleRate)/Math.max(duration,1e-6),0,1);
+    if(bundle.settledSpeedStart>=0&&bundle.settledSpeedStrength>.15&&refined.start/sampleRate<bundle.settledSpeedStart/bundle.frameRate)early01*=.30;
+    const feedbackScore=feedbackCalibratedScore({deep:pair.deepAligned??deep01,instrument:flow01,harmonic:harmonic01,phase:phase01,waveform:wave01,seam:seam01,repeat:repeat01,coverage:coverage01,early:options.preferFirst?early01:.5});
+    const continuityPenalty=(seam01<.13&&wave01<.30?.16:0)+(coverage01<.30&&repeat01<.45?.10:0);
+    const rank=pair.score+.24*deep01+.12*(pair.deepAligned??.5)+.08*(pair.deepLower??.5)+.09*refined.waveform+.18*Math.exp(-.55*Math.max(0,refined.seam))+.11*phase01+.11*flow01+.06*repeat01*(pair.repeatCoverage||0)+.05*(pair.deepTempo??pair.tempoPath??.5)+.04*(pair.deepStability??pair.tempoStability??.5)-.08*(pair.deepRamp??pair.rampRisk??0)-.05*Math.min(Math.max(refined.seam,0),6)+.025*length/duration-.025*(refined.start/sampleRate)/duration-correctionPenalty+.36*(feedbackScore-.5)-continuityPenalty;
     const conf=confidence(refined,pair,options);
-    results.push({...refined,...pair,musical:pair.musical,rank,confidence:conf.value,confidenceLabel:conf.label});
+    results.push({...refined,...pair,musical:pair.musical,rank,feedbackScore,confidence:conf.value,confidenceLabel:conf.label});
     postProgress(74+22*(index+1)/Math.max(1,coarse.length),"Refining "+(index+1)+" of "+coarse.length+"…");
   }
   if(!results.length)throw new Error("The loop points could not be refined.");
@@ -1127,8 +1076,8 @@ function detect(channels,sampleRate,requested){
   results.sort((a,b)=>b.rank-a.rank);
   const margin=results.length>1?clamp(.5+(results[0].rank-results[1].rank)*2.7,.5,1):.84;
   for(const item of results){item.deepMargin=Math.max(item.deepMargin??.5,margin);const conf=confidence(item,item,options,item.deepMargin);item.confidence=conf.value;item.confidenceLabel=conf.label;}
-  const serialize=item=>({start:item.start,end:item.end,confidence:item.confidence,confidenceLabel:item.confidenceLabel,seam:item.seam,waveform:item.waveform,phaseAlignment:item.phaseAlignment,rhythm:item.rhythm,harmonicFlow:item.harmonicFlow,timbreFlow:item.timbreFlow,trajectoryFlow:item.trajectoryFlow,instrumentFlow:item.instrumentFlow,flowAgreement:item.flowAgreement,repeatConsistency:item.repeatConsistency,repeatCoverage:item.repeatCoverage,repeatMusical:item.repeatMusical,repeatHarmonic:item.repeatHarmonic,tempoPath:item.tempoPath,tempoSimilarity:item.tempoSimilarity,tempoStability:item.tempoStability,rampRisk:item.rampRisk,localBeatSeconds:item.localBeatSeconds,deepScore:item.deepScore,deepAligned:item.deepAligned,deepLower:item.deepLower,deepHarmonic:item.deepHarmonic,deepTimbre:item.deepTimbre,deepRhythm:item.deepRhythm,deepTempo:item.deepTempo,deepStability:item.deepStability,deepRamp:item.deepRamp,deepCoverage:item.deepCoverage,deepBoundary:item.deepBoundary,deepMargin:item.deepMargin,settledSpeedStartSeconds:bundle.settledSpeedStart>=0?bundle.settledSpeedStart/bundle.frameRate:-1,settledSpeedStrength:bundle.settledSpeedStrength||0,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence});
-  const output=serialize(results[0]);output.alternatives=results.slice(1,24).map(serialize);output.elapsed=(now()-started)/1000;postProgress(100,"Loop found.");return output;
+  const serialize=item=>({start:item.start,end:item.end,confidence:item.confidence,confidenceLabel:item.confidenceLabel,seam:item.seam,waveform:item.waveform,phaseAlignment:item.phaseAlignment,rhythm:item.rhythm,harmonicFlow:item.harmonicFlow,timbreFlow:item.timbreFlow,trajectoryFlow:item.trajectoryFlow,instrumentFlow:item.instrumentFlow,flowAgreement:item.flowAgreement,repeatConsistency:item.repeatConsistency,repeatCoverage:item.repeatCoverage,repeatMusical:item.repeatMusical,repeatHarmonic:item.repeatHarmonic,tempoPath:item.tempoPath,tempoSimilarity:item.tempoSimilarity,tempoStability:item.tempoStability,rampRisk:item.rampRisk,localBeatSeconds:item.localBeatSeconds,deepScore:item.deepScore,deepAligned:item.deepAligned,deepLower:item.deepLower,deepHarmonic:item.deepHarmonic,deepTimbre:item.deepTimbre,deepRhythm:item.deepRhythm,deepTempo:item.deepTempo,deepStability:item.deepStability,deepRamp:item.deepRamp,deepCoverage:item.deepCoverage,deepBoundary:item.deepBoundary,deepMargin:item.deepMargin,feedbackScore:item.feedbackScore,settledSpeedStartSeconds:bundle.settledSpeedStart>=0?bundle.settledSpeedStart/bundle.frameRate:-1,settledSpeedStrength:bundle.settledSpeedStrength||0,mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence});
+  const output=serialize(results[0]);output.alternatives=results.slice(1,6).map(serialize);output.elapsed=(now()-started)/1000;postProgress(100,"Loop found.");return output;
 }
 
 
@@ -1317,6 +1266,7 @@ onmessage=event=>{
 (() => {
 "use strict";
 
+const APP_BUILD="feedback-calibrated-no-neural-v1";
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 
@@ -1348,45 +1298,74 @@ const E={
   findAgainButton:$("#findAgainButton"),statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),
   durationSide:$("#durationSide"),sampleRateSide:$("#sampleRateSide"),channelsSide:$("#channelsSide"),modeSide:$("#modeSide"),
   clearLogButton:$("#clearLogButton"),log:$("#log"),mobileText:$("#mobileText"),mobileButton:$("#mobileButton"),
-  cpuBadge:$("#cpuBadge"),solutionList:$("#solutionList"),solutionSummary:$("#solutionSummary"),learningStatus:$("#learningStatus"),
-  newSolutionBatchButton:$("#newSolutionBatchButton"),downloadLearningDataButton:$("#downloadLearningDataButton"),resetLearningDataButton:$("#resetLearningDataButton"),savedResultNote:$("#savedResultNote")
+  cpuBadge:$("#cpuBadge")
 };
 E.runtimeBadge=E.cpuBadge;
 
 const state={
-  file:null,fileUrl:"",duration:0,busy:false,result:null,solutions:[],activeCandidateId:"",wavePeaks:null,
+  file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
-  precisionRate:48000,learning:null,currentSessionId:"",savedSession:null,restoredWithoutFile:false,saveTimer:0,sessionPersistenceEnabled:true,visibleCandidateIds:[],aiPickCandidateId:"",solutionRound:0,trainingToken:0,lastNewCandidateId:"",rawCandidates:[],verifiedCandidates:[],rejectedCandidates:[],searchHistory:[],candidateArchive:[],trackGeneration:0
+  precisionRate:48000
 };
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV8",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV7";
-const LEARNING_KEY="videoGameMusicLooperLearningV3",LEGACY_LEARNING_KEY="videoGameMusicLooperLearningV2";
-const APP_VERSION="neural-feedback-3";
-const VISIBLE_SOLUTION_LIMIT=4;
+const SETTINGS_KEY="videoGameMusicLooperSettingsV7",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV6";
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
-  analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,
-  maxCandidates:1500,coarsePairsToRefine:18,autoVocalThreshold:.50,precisionSampleRate:48000,
-  refineRadiusMs:180,refineStepMs:2,refineMatchMs:420,maxPeriodCorrectionMs:15,
-  periodCorrectionStepMs:.25,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
+  analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,
+  maxCandidates:520,coarsePairsToRefine:24,autoVocalThreshold:.50,precisionSampleRate:48000,
+  refineRadiusMs:180,refineStepMs:1.5,refineMatchMs:420,maxPeriodCorrectionMs:15,
+  periodCorrectionStepMs:.125,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
   tempoWindowSeconds:8,tempoTolerancePercent:8,tempoRampPenalty:.16,beatPhaseContextSeconds:3.5,beatPhaseWeight:.18,
   instrumentFlowSeconds:12,instrumentFlowWeight:.30,instrumentFlowMinimum:.62,tempoPathWeight:.10,
   repeatContentWeight:.24,repeatMinimumCoverage:.55,beatDriftCorrectionMs:18,beatDriftMinGain:.035,
-  deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,speedRampCrossingPenalty:.46,settledSpeedBonus:.14,fullDetailCandidates:10,deepSimilarityFloor:.58,
+  deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,speedRampCrossingPenalty:.46,settledSpeedBonus:.14,fullDetailCandidates:5,deepSimilarityFloor:.58,
   earliestMusicalThreshold:.72,earliestVocalThreshold:.58
 });
 const POWER_PRESETS=Object.freeze({
   fast:{analysisSampleRate:11025,hopLength:512,matchWindowSeconds:4.2,boundaryContextSeconds:1.5,maxCandidates:650,coarsePairsToRefine:10,refineStepMs:4,periodCorrectionStepMs:.5,instrumentFlowSeconds:8,instrumentFlowWeight:.24},
   strong:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,maxCandidates:1500,coarsePairsToRefine:18,refineStepMs:2,periodCorrectionStepMs:.25,instrumentFlowSeconds:12,instrumentFlowWeight:.30},
   maximum:{analysisSampleRate:22050,hopLength:384,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:2200,coarsePairsToRefine:28,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:16,instrumentFlowWeight:.36},
-  deep:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,maxCandidates:520,coarsePairsToRefine:24,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:12,instrumentFlowWeight:.30,deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,fullDetailCandidates:10}
+  deep:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,maxCandidates:520,coarsePairsToRefine:24,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:12,instrumentFlowWeight:.30,deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,fullDetailCandidates:5}
 });
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
 function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+
+function feedbackCalibratedScore(values){
+  const deep=clamp(Number(values.deep??.5),0,1);
+  const instrument=clamp(Number(values.instrument??deep),0,1);
+  const harmonic=clamp(Number(values.harmonic??instrument),0,1);
+  const phase=clamp(Number(values.phase??.5),0,1);
+  const waveform=clamp(Number(values.waveform??.5),0,1);
+  const seam=clamp(Number(values.seam??.5),0,1);
+  const repeat=clamp(Number(values.repeat??.5),0,1);
+  const coverage=clamp(Number(values.coverage??.5),0,1);
+  const early=clamp(Number(values.early??.5),0,1);
+
+  let z=-.30750244;
+  z+=.16953312*((deep-.57463107)/.15771047);
+  z+=.16953312*((instrument-.57463107)/.15771047);
+  z+=.28388889*((harmonic-.58762079)/.16970989);
+  z+=.07405679*((phase-.59600699)/.13503407);
+  z+=.28679973*((waveform-.37303280)/.21622154);
+  z+=.58581524*((seam-.22077259)/.24674219);
+  z+=.30258846*((coverage-.64963086)/.43354965);
+  z+=.31233878*((early-.41269815)/.24069423);
+
+  let calibrated=1/(1+Math.exp(-clamp(z,-20,20)));
+  const bottleneck=Math.min(Math.max(instrument,harmonic),phase,waveform,seam);
+  const continuity=Math.sqrt(Math.max(0,waveform*seam));
+  calibrated=.82*calibrated+.10*bottleneck+.08*continuity;
+
+  if(seam<.13&&waveform<.30)calibrated*=.72;
+  if(coverage<.35&&repeat<.45)calibrated*=.78;
+  if(Math.max(instrument,harmonic)<.42)calibrated*=.82;
+  return clamp(calibrated,0,1);
+}
+
 function extension(name){const match=/\.([^.]+)$/.exec(name||"");return match?match[1].toLowerCase():"";}
 const SUPPORTED_AUDIO_EXTENSIONS=new Set(["wav","mp3","ogg","oga","flac","m4a","aac","opus","aif","aiff","wma","webm"]);
 const BLOCKED_MIDI_EXTENSIONS=new Set(["mid","midi","rmi","kar"]);
@@ -1461,7 +1440,7 @@ function readSettings(){
     deepLagSearchMs:finiteNumber(E.deepLagSearchMs,DEFAULT_SETTINGS.deepLagSearchMs,20,1000),
     speedRampCrossingPenalty:finiteNumber(E.speedRampCrossingPenalty,DEFAULT_SETTINGS.speedRampCrossingPenalty,0,1),
     settledSpeedBonus:finiteNumber(E.settledSpeedBonus,DEFAULT_SETTINGS.settledSpeedBonus,0,.5),
-    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,4,12)),
+    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,1,6)),
     deepSimilarityFloor:finiteNumber(E.deepSimilarityFloor,DEFAULT_SETTINGS.deepSimilarityFloor,.25,.95),
     earliestMusicalThreshold:finiteNumber(E.earliestMusicalThreshold,DEFAULT_SETTINGS.earliestMusicalThreshold,0,1),
     earliestVocalThreshold:finiteNumber(E.earliestVocalThreshold,DEFAULT_SETTINGS.earliestVocalThreshold,0,1)
@@ -1493,7 +1472,7 @@ function loadSettings(){
     const current=localStorage.getItem(SETTINGS_KEY),older=current?null:localStorage.getItem(LEGACY_SETTINGS_KEY);
     legacy=!current&&!!older;saved=JSON.parse(current||older||"null");
   }catch{}
-  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",maxCandidates:520,coarsePairsToRefine:24,beatDriftCorrectionMs:18,beatDriftMinGain:.035,deepLagCandidates:44,deepLagSearchMs:220,fullDetailCandidates:10};
+  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",maxCandidates:520,coarsePairsToRefine:24,beatDriftCorrectionMs:18,beatDriftMinGain:.035,deepLagCandidates:44,deepLagSearchMs:220,fullDetailCandidates:5};
   writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
 }
 function resetSettingsDefaults(){
@@ -1515,408 +1494,9 @@ function analysisSignature(settings){
   return String(settings.analysisSampleRate);
 }
 
-
-const FEATURE_NAMES=Object.freeze([
-  "base_rank","confidence","deep_alignment","weakest_repeat","instrument_flow","harmonic_flow",
-  "timbre_flow","phase_alignment","waveform_match","hard_seam","tempo_match","repeat_match",
-  "tempo_stability","ramp_safety","candidate_margin","early_position","loop_coverage","settled_speed_section"
-]);
-const NEURAL_INPUTS=FEATURE_NAMES.length,NEURAL_HIDDEN=12;
-
-function seededRandomFactory(seed=0x71c3a95d){
-  let value=seed>>>0;
-  return()=>{value^=value<<13;value^=value>>>17;value^=value<<5;return(value>>>0)/4294967296;};
-}
-function createNeuralModel(){
-  const random=seededRandomFactory(),w1=Array.from({length:NEURAL_HIDDEN},()=>Array.from({length:NEURAL_INPUTS},()=>((random()-.5)*.10))),
-    b1=Array(NEURAL_HIDDEN).fill(0),w2=Array.from({length:NEURAL_HIDDEN},()=>((random()-.5)*.10));
-  return{version:2,inputSize:NEURAL_INPUTS,hiddenSize:NEURAL_HIDDEN,w1,b1,w2,b2:0,feedbackCount:0,trainingExamples:0,loss:null,trainedAt:null};
-}
-function defaultLearningData(){return{version:3,updatedAt:new Date().toISOString(),feedback:[],events:[],sessions:[],model:createNeuralModel()};}
-function validModel(model){
-  return model&&model.inputSize===NEURAL_INPUTS&&model.hiddenSize===NEURAL_HIDDEN&&Array.isArray(model.w1)&&model.w1.length===NEURAL_HIDDEN&&Array.isArray(model.w2)&&model.w2.length===NEURAL_HIDDEN;
-}
-function migrateLearningData(data){
-  if(!data||typeof data!=="object")return defaultLearningData();
-  if(!Array.isArray(data.feedback))data.feedback=[];
-  if(!Array.isArray(data.events))data.events=[];
-  if(!Array.isArray(data.sessions))data.sessions=[];
-  if(!validModel(data.model))data.model=createNeuralModel();
-  data.version=3;
-  return data;
-}
-function loadLearningData(){
-  let data=null;
-  try{
-    const current=localStorage.getItem(LEARNING_KEY),legacy=current?null:localStorage.getItem(LEGACY_LEARNING_KEY);
-    data=JSON.parse(current||legacy||"null");
-  }catch{}
-  state.learning=migrateLearningData(data);
-  saveLearningData();
-  updateLearningUi();
-}
-function saveLearningData(){
-  if(!state.learning)return;
-  state.learning.updatedAt=new Date().toISOString();
-  state.learning.sessions=state.learning.sessions.slice(-40);
-  state.learning.feedback=state.learning.feedback.slice(-2000);
-  state.learning.events=state.learning.events.slice(-5000);
-  try{localStorage.setItem(LEARNING_KEY,JSON.stringify(state.learning));}
-  catch(error){
-    state.learning.sessions=state.learning.sessions.slice(-18);
-    state.learning.events=state.learning.events.slice(-1500);
-    try{localStorage.setItem(LEARNING_KEY,JSON.stringify(state.learning));}catch{}
-    log(`Browser storage warning: ${error.message||error}`);
-  }
-}
-function sigmoid(value){return value>=0?1/(1+Math.exp(-value)):Math.exp(value)/(1+Math.exp(value));}
-function neuralForward(model,features){
-  const hidden=new Float64Array(NEURAL_HIDDEN);
-  for(let h=0;h<NEURAL_HIDDEN;h++){
-    let sum=Number(model.b1[h])||0;
-    for(let i=0;i<NEURAL_INPUTS;i++)sum+=(Number(model.w1[h][i])||0)*features[i];
-    hidden[h]=Math.tanh(sum);
-  }
-  let output=Number(model.b2)||0;
-  for(let h=0;h<NEURAL_HIDDEN;h++)output+=(Number(model.w2[h])||0)*hidden[h];
-  return{hidden,value:sigmoid(output)};
-}
-function cloneModel(model){return validModel(model)?JSON.parse(JSON.stringify(model)):createNeuralModel();}
-function balancedTrainingExamples(){
-  const direct=(state.learning?.feedback||[]).filter(item=>Array.isArray(item.features)&&item.features.length===NEURAL_INPUTS&&(item.label===0||item.label===1)).slice(-1200);
-  const groups=new Map();
-  for(const item of direct){
-    const key=item.trackKey||item.sessionId||item.track||"all";
-    if(!groups.has(key))groups.set(key,{likes:[],dislikes:[]});
-    (item.label===1?groups.get(key).likes:groups.get(key).dislikes).push(item);
-  }
-  const pairwise=[];
-  for(const group of groups.values())for(const like of group.likes.slice(-12))for(const dislike of group.dislikes.slice(-12)){
-    const difference=like.features.map((value,index)=>clamp((Number(value)||0)-(Number(dislike.features[index])||0),-1,1));
-    pairwise.push({features:difference,label:1,weight:1.35});
-    pairwise.push({features:difference.map(value=>-value),label:0,weight:1.35});
-  }
-  return direct.map(item=>({...item,weight:1})).concat(pairwise.slice(-1200));
-}
-async function trainNeuralModel(){
-  if(!state.learning)return;
-  const token=++state.trainingToken,examples=balancedTrainingExamples(),model=cloneModel(state.learning.model);
-  if(!examples.length){state.learning.model=createNeuralModel();saveLearningData();updateLearningUi();return;}
-  const likes=examples.filter(item=>item.label===1).length,dislikes=examples.length-likes;
-  const classWeight={1:examples.length/(2*Math.max(1,likes)),0:examples.length/(2*Math.max(1,dislikes))};
-  const steps=Math.min(5200,Math.max(900,examples.length*42)),rate=.018/Math.sqrt(1+examples.length/90),decay=.00028;
-  let loss=0;
-  for(let step=0;step<steps;step++){
-    if(token!==state.trainingToken)return;
-    const example=examples[(step*29+Math.floor(step/examples.length)*11)%examples.length],x=example.features,label=example.label,
-      sampleWeight=(example.weight||1)*classWeight[label],forward=neuralForward(model,x),error=clamp((forward.value-label)*sampleWeight,-2,2),oldW2=model.w2.slice();
-    loss+=-(label*Math.log(Math.max(1e-7,forward.value))+(1-label)*Math.log(Math.max(1e-7,1-forward.value)));
-    for(let h=0;h<NEURAL_HIDDEN;h++)model.w2[h]-=rate*(error*forward.hidden[h]+decay*model.w2[h]);
-    model.b2-=rate*error;
-    for(let h=0;h<NEURAL_HIDDEN;h++){
-      const hiddenGradient=error*oldW2[h]*(1-forward.hidden[h]*forward.hidden[h]);
-      for(let i=0;i<NEURAL_INPUTS;i++)model.w1[h][i]-=rate*(hiddenGradient*x[i]+decay*model.w1[h][i]);
-      model.b1[h]-=rate*hiddenGradient;
-    }
-    if(step&&step%240===0)await sleep(0);
-  }
-  model.feedbackCount=(state.learning.feedback||[]).length;model.trainingExamples=examples.length;model.loss=loss/steps;model.trainedAt=new Date().toISOString();
-  state.learning.model=model;saveLearningData();updateLearningUi();
-}
-function quality01(value,fallback=.5){return clamp(Number.isFinite(Number(value))?Number(value):fallback,0,1);}
-function similarity01(value,fallback=0){return clamp(((Number.isFinite(Number(value))?Number(value):fallback)+1)/2,0,1);}
-function candidateBaseScore(candidate){return clamp(((Number(candidate.fullDetailRank)||0)+.25)/1.65,0,1);}
-function candidateFeatureVector(candidate){
-  const duration=Math.max(state.duration,Number(candidate.endSeconds)||0,1),start=Math.max(0,Number(candidate.startSeconds)||0),end=Math.max(start,Number(candidate.endSeconds)||start),length=end-start;
-  const settled=Number(candidate.settledSpeedStartSeconds),afterSettled=settled>=0?clamp(.5+(start-settled)/Math.max(2,Math.min(12,duration*.08)),0,1):.5;
-  const seamSafe=Math.exp(-.52*Math.max(0,Number(candidate.seam)||0));
-  const values=[
-    candidateBaseScore(candidate),quality01(candidate.confidence),quality01(candidate.deepAligned,similarity01(candidate.instrumentFlow)),
-    quality01(candidate.deepLower,quality01(candidate.deepAligned,.5)),similarity01(candidate.instrumentFlow),similarity01(candidate.harmonicFlow,candidate.instrumentFlow||0),
-    similarity01(candidate.timbreFlow??candidate.deepTimbre,candidate.instrumentFlow||0),similarity01(candidate.phaseAlignment,candidate.rhythm||0),
-    similarity01(candidate.waveform),seamSafe,quality01(candidate.deepTempo,quality01(candidate.tempoSimilarity,.65)),
-    (Number(candidate.repeatCoverage)||0)>0?similarity01(candidate.repeatConsistency):quality01(candidate.deepCoverage,.5),
-    quality01(candidate.deepStability,quality01(candidate.tempoStability,.55)),1-quality01(candidate.deepRamp,quality01(candidate.rampRisk,0)),
-    quality01(candidate.deepMargin,.55),1-clamp(start/duration,0,1),clamp(length/duration*2.2,0,1),afterSettled
-  ];
-  return values.map(value=>clamp(value,0,1)*2-1);
-}
-function currentTrackKey(){
-  const fileName=state.file?.name||state.savedSession?.fileName||"audio",fileSize=state.file?.size??state.savedSession?.fileSize??0;
-  return `${fileName}|${fileSize}|${Math.round((state.duration||0)*1000)}`;
-}
-function candidateFingerprint(candidate){
-  const rate=Number(candidate.sampleRate)||state.precisionRate||48000;
-  return `${Math.round((Number(candidate.startSeconds)||0)*rate)}:${Math.round((Number(candidate.endSeconds)||0)*rate)}@${rate}`;
-}
-function ensureCandidateId(candidate,index=0){
-  candidate.fingerprint=candidate.fingerprint||candidateFingerprint(candidate);
-  candidate.candidateId=candidate.candidateId||candidate.fingerprint;
-  if(!Number.isFinite(candidate.solutionNumber))candidate.solutionNumber=index+1;
-  return candidate.candidateId;
-}
-function feedbackKey(candidate){return `${currentTrackKey()}|${candidateFingerprint(candidate)}`;}
-function syncStoredRatings(){
-  const latest=new Map();
-  for(const item of state.learning?.feedback||[])latest.set(item.key,item);
-  for(let index=0;index<state.solutions.length;index++){
-    const candidate=state.solutions[index];ensureCandidateId(candidate,index);
-    let item=latest.get(feedbackKey(candidate));
-    if(!item)item=(state.learning?.feedback||[]).slice().reverse().find(entry=>entry.candidateId===candidate.candidateId||(Math.abs((Number(entry.start)||-99)-candidate.startSeconds)<.00005&&Math.abs((Number(entry.end)||-99)-candidate.endSeconds)<.00005));
-    candidate.userRating=item?(item.label===1?1:-1):(candidate.userRating===1||candidate.userRating===-1?candidate.userRating:0);
-  }
-}
-function learningBlend(){
-  const feedback=state.learning?.feedback||[],likes=feedback.filter(item=>item.label===1).length,dislikes=feedback.filter(item=>item.label===0).length,balanced=Math.min(likes,dislikes);
-  if(balanced)return Math.min(.58,.14+.075*Math.log2(balanced+1));
-  return feedback.length?Math.min(.12,.025*feedback.length):0;
-}
-function scoreCandidateWithLearning(candidate){
-  const base=candidateBaseScore(candidate),model=state.learning?.model,prediction=validModel(model)?neuralForward(model,candidateFeatureVector(candidate)).value:.5,blend=learningBlend();
-  candidate.neuralScore=prediction;candidate.baseScore=base;candidate.learningScore=(1-blend)*base+blend*prediction;
-  return candidate.learningScore;
-}
-function candidateSeamMetrics(candidate){
-  return{
-    seamQuality:Math.exp(-.52*Math.max(0,Number(candidate.seam)||0)),
-    phase:similarity01(candidate.phaseAlignment,candidate.rhythm||0),wave:similarity01(candidate.waveform),
-    instrument:similarity01(candidate.instrumentFlow),deep:quality01(candidate.deepAligned,.5),lower:quality01(candidate.deepLower,.5)
-  };
-}
-function filterSeamlessCandidates(candidates,settings){
-  const source=candidates.filter(candidate=>Number(candidate.endSeconds)-Number(candidate.startSeconds)>=Math.max(2.99,Number(settings.minimumLoop)-.012));
-  if(!source.length)return[];
-  source.sort((a,b)=>(Number(b.fullDetailRank)||0)-(Number(a.fullDetailRank)||0));
-  const best=candidateSeamMetrics(source[0]),accepted=[];
-  for(const candidate of source){
-    const metrics=candidateSeamMetrics(candidate),seam=Number(candidate.seam)||0;
-    const absolute=seam<=6.2&&metrics.seamQuality>=.46&&metrics.phase>=.56&&metrics.wave>=.52&&metrics.instrument>=.51&&metrics.lower>=.40;
-    const relative=metrics.seamQuality>=Math.max(.43,best.seamQuality-.23)&&metrics.phase>=Math.max(.54,best.phase-.20)&&metrics.wave>=Math.max(.50,best.wave-.22)&&metrics.instrument>=Math.max(.49,best.instrument-.22)&&metrics.lower>=Math.max(.38,best.lower-.24);
-    const pass=absolute&&relative;
-    candidate.seamVerified=!!pass;candidate.seamQuality=metrics.seamQuality;
-    if(pass&&candidateDiverseEnough(candidate,accepted))accepted.push(candidate);
-  }
-  if(!accepted.length){source[0].seamVerified=true;accepted.push(source[0]);}
-  return accepted;
-}
-function rerankSolutions(){
-  syncStoredRatings();
-  for(let index=0;index<state.solutions.length;index++){ensureCandidateId(state.solutions[index],index);scoreCandidateWithLearning(state.solutions[index]);}
-  const eligible=state.solutions.filter(candidate=>candidate.userRating!==-1);
-  const pick=(eligible.length?eligible:state.solutions).slice().sort((a,b)=>(b.learningScore-a.learningScore)||((b.fullDetailRank||0)-(a.fullDetailRank||0)))[0];
-  state.aiPickCandidateId=pick?.candidateId||"";
-}
-function candidateDiverseEnough(candidate,chosen){
-  const length=candidate.endSeconds-candidate.startSeconds;
-  for(const other of chosen){
-    const otherLength=other.endSeconds-other.startSeconds,startDistance=Math.abs(candidate.startSeconds-other.startSeconds),lengthDistance=Math.abs(length-otherLength)/Math.max(.001,Math.max(length,otherLength));
-    if(startDistance<.10&&lengthDistance<.008)return false;
-  }
-  return true;
-}
-function rankedAvailableCandidates(excluded=new Set()){
-  return state.solutions.filter(candidate=>!excluded.has(candidate.candidateId)&&candidate.userRating!==-1&&candidate.seamVerified!==false)
-    .slice().sort((a,b)=>(b.learningScore-a.learningScore)||((b.fullDetailRank||0)-(a.fullDetailRank||0)));
-}
-function initializeVisibleSolutions(){
-  rerankSolutions();
-  const chosen=[],liked=state.solutions.filter(candidate=>candidate.userRating===1).sort((a,b)=>(b.learningScore-a.learningScore));
-  for(const candidate of liked){if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
-  for(const candidate of rankedAvailableCandidates(new Set(chosen.map(item=>item.candidateId)))){
-    if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;
-    if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);
-  }
-  state.visibleCandidateIds=chosen.map(candidate=>candidate.candidateId);
-  if(!state.activeCandidateId||!state.visibleCandidateIds.includes(state.activeCandidateId))state.activeCandidateId=state.visibleCandidateIds[0]||state.aiPickCandidateId||state.solutions[0]?.candidateId||"";
-}
-function rotateVisibleSolutions({ratedId="",label=0,force=false}={}){
-  rerankSolutions();
-  let ids=state.visibleCandidateIds.filter(id=>state.solutions.some(candidate=>candidate.candidateId===id));
-  const ratedIndex=ids.indexOf(ratedId);
-  if(label===-1&&ratedIndex>=0)ids.splice(ratedIndex,1);
-  const visibleCandidates=()=>ids.map(id=>state.solutions.find(candidate=>candidate.candidateId===id)).filter(Boolean);
-  const excluded=new Set(ids),reserve=rankedAvailableCandidates(excluded);
-  let replacement=null;
-  if((force||label===1)&&reserve.length){
-    const removable=ids.map((id,index)=>({id,index,candidate:state.solutions.find(item=>item.candidateId===id)}))
-      .filter(item=>item.candidate&&item.id!==ratedId&&item.id!==state.activeCandidateId&&item.candidate.userRating!==1)
-      .sort((a,b)=>(a.candidate.learningScore||0)-(b.candidate.learningScore||0))[0];
-    if(removable){replacement=reserve.find(candidate=>candidateDiverseEnough(candidate,visibleCandidates().filter(item=>item.candidateId!==removable.id)));if(replacement)ids[removable.index]=replacement.candidateId;}
-  }
-  while(ids.length<VISIBLE_SOLUTION_LIMIT){
-    const next=rankedAvailableCandidates(new Set(ids)).find(candidate=>candidateDiverseEnough(candidate,visibleCandidates()));
-    if(!next)break;ids.push(next.candidateId);replacement=next;
-  }
-  state.visibleCandidateIds=ids;
-  state.lastNewCandidateId=replacement?.candidateId||"";
-  if(!ids.includes(state.activeCandidateId))state.activeCandidateId=ids[0]||state.aiPickCandidateId||"";
-  return replacement;
-}
-function updateLearningUi(){
-  if(!E.learningStatus)return;
-  const feedback=state.learning?.feedback||[],likes=feedback.filter(item=>item.label===1).length,dislikes=feedback.filter(item=>item.label===0).length,sessions=state.learning?.sessions?.length||0,blend=Math.round(learningBlend()*100),pool=state.solutions.length;
-  E.learningStatus.innerHTML=feedback.length?`<span class="data-count">${likes} liked · ${dislikes} disliked</span> · ${pool} checked · search influence ${blend}%`:`No ratings yet · ${sessions} saved result${sessions===1?"":"s"}.`;
-}
-function cloneExportData(value,depth=0){
-  if(depth>6)return null;
-  if(value===null||typeof value==="string"||typeof value==="boolean")return value;
-  if(typeof value==="number")return Number.isFinite(value)?value:null;
-  if(Array.isArray(value))return value.map(item=>cloneExportData(item,depth+1));
-  if(ArrayBuffer.isView(value))return Array.from(value,item=>cloneExportData(item,depth+1));
-  if(value&&typeof value==="object"){
-    const copy={};for(const[key,item]of Object.entries(value)){if(key==="alternatives")continue;const cloned=cloneExportData(item,depth+1);if(cloned!==undefined)copy[key]=cloned;}return copy;
-  }
-  return undefined;
-}
-function primitiveCandidate(candidate){
-  const copy={};
-  for(const[key,value]of Object.entries(candidate||{})){
-    if(["alternatives"].includes(key))continue;
-    if(typeof value==="number"&&Number.isFinite(value))copy[key]=value;
-    else if(typeof value==="string"||typeof value==="boolean"||value===null)copy[key]=value;
-  }
-  copy.learningFeatures=candidateFeatureVector(candidate);
-  return copy;
-}
-function quantizePeaks(peaks){return peaks?Array.from(peaks,value=>Math.round(clamp(value,-1,1)*32767)):[];}
-function restorePeaks(values){return Array.isArray(values)?Float32Array.from(values,value=>clamp(Number(value)||0,-32767,32767)/32767):null;}
-function makeSessionSnapshot(){
-  if(!state.solutions.length)return null;
-  const previous=state.savedSession||{},id=state.currentSessionId||previous.id||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
-  state.currentSessionId=id;
-  return{
-    id,version:3,createdAt:previous.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),
-    fileName:state.file?.name||previous.fileName||"audio",fileSize:state.file?.size??previous.fileSize??0,
-    duration:state.duration,analysisRate:state.analysisRate,analysisFrames:state.analysisFrames,precisionRate:state.precisionRate,
-    activeCandidateId:state.activeCandidateId||state.result?.candidateId||"",visibleCandidateIds:state.visibleCandidateIds.slice(),aiPickCandidateId:state.aiPickCandidateId,solutionRound:state.solutionRound,
-    wavePeaks:quantizePeaks(state.wavePeaks),candidates:state.solutions.map(primitiveCandidate),
-    rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),searchHistory:cloneExportData(state.searchHistory),candidateArchive:cloneExportData(state.candidateArchive),settings:readSettings()
-  };
-}
-function saveCurrentSession(){
-  if(!state.learning||!state.sessionPersistenceEnabled)return;
-  const snapshot=makeSessionSnapshot();if(!snapshot)return;
-  const index=state.learning.sessions.findIndex(item=>item.id===snapshot.id);
-  if(index>=0)state.learning.sessions[index]=snapshot;else state.learning.sessions.push(snapshot);
-  state.savedSession=snapshot;saveLearningData();updateLearningUi();
-}
-function scheduleSessionSave(){
-  if(state.saveTimer)clearTimeout(state.saveTimer);
-  state.saveTimer=setTimeout(()=>{state.saveTimer=0;saveCurrentSession();},180);
-}
-function sessionMatchesFile(session,file){return!!(session&&file&&session.fileName===file.name&&Number(session.fileSize||0)===Number(file.size||0));}
-function restoreSession(session,withFile=false){
-  state.sessionPersistenceEnabled=true;
-  if(!session||!Array.isArray(session.candidates)||!session.candidates.length)return false;
-  state.savedSession=session;state.currentSessionId=session.id||"";state.duration=Number(session.duration)||0;
-  state.analysisRate=Number(session.analysisRate)||0;state.analysisFrames=Number(session.analysisFrames)||0;state.precisionRate=Number(session.precisionRate)||48000;
-  state.wavePeaks=restorePeaks(session.wavePeaks);state.solutions=session.candidates.map((candidate,index)=>({...candidate,candidateId:candidate.candidateId||candidate.fingerprint||`saved-${index}`,solutionNumber:candidate.solutionNumber||index+1}));
-  state.rawCandidates=Array.isArray(session.rawCandidates)?session.rawCandidates:[];state.verifiedCandidates=Array.isArray(session.verifiedCandidates)?session.verifiedCandidates:[];state.rejectedCandidates=Array.isArray(session.rejectedCandidates)?session.rejectedCandidates:[];state.searchHistory=Array.isArray(session.searchHistory)?session.searchHistory:[];state.candidateArchive=Array.isArray(session.candidateArchive)?session.candidateArchive:[];for(const candidate of state.solutions)candidate.trackKey=currentTrackKey();
-  rerankSolutions();
-  state.visibleCandidateIds=Array.isArray(session.visibleCandidateIds)?session.visibleCandidateIds.filter(id=>state.solutions.some(item=>item.candidateId===id)):[];
-  if(!state.visibleCandidateIds.length)initializeVisibleSolutions();
-  state.activeCandidateId=session.activeCandidateId&&state.solutions.some(item=>item.candidateId===session.activeCandidateId)?session.activeCandidateId:state.visibleCandidateIds[0]||state.aiPickCandidateId;
-  state.result=state.solutions.find(item=>item.candidateId===state.activeCandidateId)||state.solutions[0];state.solutionRound=Number(session.solutionRound)||0;
-  state.restoredWithoutFile=!withFile;
-  E.durationSide.textContent=formatClock(state.duration,true);E.modeSide.textContent=state.result.mode||"—";
-  showResult(false);E.savedResultNote.classList.toggle("hidden",withFile);
-  if(!withFile)status("Saved result restored","Choose the same audio file to play or download it.","ok");
-  else status("Saved result ready","The saved solutions are connected to the selected audio.","ok");
-  return true;
-}
-function restoreLastSession(){
-  const sessions=state.learning?.sessions||[];
-  if(sessions.length)restoreSession(sessions[sessions.length-1],false);
-}
-function renderSolutions(){
-  if(!E.solutionList)return;
-  rerankSolutions();E.solutionList.textContent="";
-  const display=state.visibleCandidateIds.map(id=>state.solutions.find(candidate=>candidate.candidateId===id)).filter(Boolean);
-  display.forEach(candidate=>{
-    const card=document.createElement("div"),active=candidate.candidateId===state.activeCandidateId,length=Math.max(0,candidate.endSeconds-candidate.startSeconds);
-    card.className=`solution-card${active?" active":""}${candidate.candidateId===state.aiPickCandidateId?" ai-pick":""}${candidate.userRating===-1?" disliked":""}${candidate.candidateId===state.lastNewCandidateId?" new-challenger":""}`;
-    const liked=candidate.userRating===1,disliked=candidate.userRating===-1;
-    card.innerHTML=`<div class="solution-top"><div class="solution-title"><strong>Solution ${candidate.solutionNumber||"—"}</strong>${candidate.candidateId===state.aiPickCandidateId?'<span class="solution-tag">AI pick</span>':''}${active?'<span class="solution-tag">Selected</span>':''}${candidate.seamVerified?'<span class="solution-tag">Seam checked</span>':''}</div><span class="solution-tag">${candidate.confidenceLabel||"Low"} ${Math.round((candidate.confidence||0)*100)}%</span></div>
-      <div class="solution-region">${formatRoblox(candidate.startSeconds)}, ${formatRoblox(candidate.endSeconds)}</div>
-      <div class="solution-meta"><div><span>Start</span><strong>${formatClock(candidate.startSeconds)}</strong></div><div><span>End</span><strong>${formatClock(candidate.endSeconds)}</strong></div><div><span>Length</span><strong>${formatClock(length)}</strong></div><div><span>Learned</span><strong>${Math.round((candidate.learningScore||0)*100)}%</strong></div></div>
-      <div class="solution-actions"><button class="button ${active?"secondary":"ghost"} small" data-solution-action="use" data-candidate-id="${candidate.candidateId}" type="button">${active?"Using":"Use"}</button><button class="button ghost small" data-solution-action="seam" data-candidate-id="${candidate.candidateId}" type="button" ${state.file?"":"disabled"}>Play seam</button><button class="button ghost small" data-solution-action="loop" data-candidate-id="${candidate.candidateId}" type="button" ${state.file?"":"disabled"}>Play loop</button><button class="button ghost small rating-button${liked?" selected-like":""}" data-solution-action="like" data-candidate-id="${candidate.candidateId}" type="button" title="Like only this solution">👍</button><button class="button ghost small rating-button${disliked?" selected-dislike":""}" data-solution-action="dislike" data-candidate-id="${candidate.candidateId}" type="button" title="Dislike only this solution">👎</button></div>`;
-    E.solutionList.appendChild(card);
-  });
-  E.solutionSummary.textContent=`${display.length} shown · ${state.solutions.length} seam-checked · ${state.learning?.feedback?.length||0} ratings`;
-  state.lastNewCandidateId="";updateLearningUi();
-}
-function activateCandidate(candidateId,save=true){
-  const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
-  state.activeCandidateId=candidateId;state.result=candidate;
-  E.startInput.value=candidate.startSeconds.toFixed(6);E.endInput.value=candidate.endSeconds.toFixed(6);
-  updateResult(false);renderSolutions();if(save)scheduleSessionSave();
-}
-async function rateCandidate(candidateId,label){
-  if(!state.learning||state.busy)return;
-  state.sessionPersistenceEnabled=true;
-  setBusy(true,"Updating the local ranker…");
-  try{
-    const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
-    const key=feedbackKey(candidate),index=state.learning.feedback.findIndex(item=>item.key===key),same=candidate.userRating===label;
-    if(index>=0)state.learning.feedback.splice(index,1);
-    candidate.userRating=same?0:label;
-    const event={eventId:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,action:same?"remove":(label===1?"like":"dislike"),key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,candidateFingerprint:candidateFingerprint(candidate),features:candidateFeatureVector(candidate),candidate:primitiveCandidate(candidate),timestamp:new Date().toISOString()};
-    state.learning.events.push(event);
-    if(!same)state.learning.feedback.push({key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,label:label===1?1:0,rating:label,features:candidateFeatureVector(candidate),track:state.file?.name||state.savedSession?.fileName||"audio",start:candidate.startSeconds,end:candidate.endSeconds,confidence:candidate.confidence,timestamp:new Date().toISOString()});
-    status("Learning",same?"Removing that rating…":"Training from that exact solution…","busy");
-    await trainNeuralModel();rerankSolutions();
-    renderSolutions();scheduleSessionSave();
-    status("Feedback learned",same?"Rating removed.":label===1?"Liked. Find more will search toward similar strong loops.":"Disliked. Find more will avoid similar loop choices.","ok");
-  }finally{setBusy(false);}
-}
-function showNextSolutionBatch(){return findMoreSolutions();}
-function buildDetectorLearningProfile(){
-  const feedback=(state.learning?.feedback||[]).filter(item=>Array.isArray(item.features)&&item.features.length===NEURAL_INPUTS),
-    likes=feedback.filter(item=>item.label===1),dislikes=feedback.filter(item=>item.label===0);
-  if(!feedback.length)return null;
-  const mean=items=>items.length?FEATURE_NAMES.map((_,index)=>items.reduce((sum,item)=>sum+(Number(item.features[index])||0),0)/items.length):null;
-  const likedCenter=mean(likes),dislikedCenter=mean(dislikes),weights=FEATURE_NAMES.map((_,index)=>{
-    if(likedCenter&&dislikedCenter)return clamp(likedCenter[index]-dislikedCenter[index],-1,1);
-    if(likedCenter)return clamp(likedCenter[index]*.72,-.8,.8);
-    return clamp(-dislikedCenter[index]*.72,-.8,.8);
-  });
-  const balanced=Math.min(likes.length,dislikes.length),oneSided=Math.max(likes.length,dislikes.length);
-  const strength=balanced?Math.min(.38,.12+.075*Math.log2(balanced+1)):Math.min(.20,.06+.045*Math.log2(oneSided+1));
-  return{
-    count:feedback.length,likes:likes.length,dislikes:dislikes.length,strength,weights,
-    likedCenter,dislikedCenter,model:validModel(state.learning?.model)?cloneModel(state.learning.model):null
-  };
-}
-function exportLearningData(){
-  if(!state.learning)return;
-  saveCurrentSession();
-  const payload={
-    app:"Video Game Music Looper",appVersion:APP_VERSION,exportedAt:new Date().toISOString(),
-    runtime:{userAgent:navigator.userAgent,language:navigator.language,hardwareConcurrency:navigator.hardwareConcurrency||null,deviceMemory:navigator.deviceMemory||null,crossOriginIsolated:!!self.crossOriginIsolated},
-    algorithm:{featureNames:FEATURE_NAMES,hiddenUnits:NEURAL_HIDDEN,visibleSolutionLimit:VISIBLE_SOLUTION_LIMIT,defaults:DEFAULT_SETTINGS,powerPresets:POWER_PRESETS},
-    settings:readSettings(),learning:state.learning,
-    current:{trackKey:currentTrackKey(),file:state.file?{name:state.file.name,size:state.file.size,type:state.file.type,lastModified:state.file.lastModified}:state.savedSession?{name:state.savedSession.fileName,size:state.savedSession.fileSize}:null,
-      sessionId:state.currentSessionId,duration:state.duration,analysisRate:state.analysisRate,analysisFrames:state.analysisFrames,precisionRate:state.precisionRate,
-      activeCandidateId:state.activeCandidateId,aiPickCandidateId:state.aiPickCandidateId,visibleCandidateIds:state.visibleCandidateIds.slice(),solutionRound:state.solutionRound,
-      candidatePool:state.solutions.map(candidate=>({...primitiveCandidate(candidate),learningFeatures:candidateFeatureVector(candidate)})),
-      rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),searchHistory:cloneExportData(state.searchHistory),candidateArchive:cloneExportData(state.candidateArchive),
-      waveformPeaks:quantizePeaks(state.wavePeaks),log:E.log.textContent}
-  };
-  triggerDownload(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`video_game_music_looper_TOTAL_data_${new Date().toISOString().replace(/[:.]/g,"-")}.json`);
-  status("Data exported","The complete looper data JSON was downloaded.","ok");
-}
-function resetLearningData(){
-  if(!confirm("Reset all likes, dislikes, learned weights, rating history, and saved loop results?"))return;
-  try{localStorage.removeItem(LEARNING_KEY);localStorage.removeItem(LEGACY_LEARNING_KEY);localStorage.removeItem("videoGameMusicLooperLearningV1");}catch{}
-  state.learning=defaultLearningData();state.savedSession=null;state.currentSessionId="";state.sessionPersistenceEnabled=false;state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;state.searchHistory=[];state.candidateArchive=[];state.rawCandidates=[];state.verifiedCandidates=[];state.rejectedCandidates=[];
-  for(const candidate of state.solutions)candidate.userRating=0;
-  initializeVisibleSolutions();renderSolutions();saveLearningData();
-  status("Learning data reset","Ratings, learned weights, history, and saved results were cleared.","ok");log("Learning data reset.");
-}
-
 function setBusy(value,message=""){
   state.busy=value;
-  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview,E.newSolutionBatchButton,E.downloadLearningDataButton,E.resetLearningDataButton,...$$(`[data-solution-action]`)]){
+  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview]){
     if(element)element.disabled=value;
   }
   E.findButton.disabled=value||!state.file;
@@ -2448,13 +2028,21 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   endSeconds=clamp(endSeconds,startSeconds+2/rate,duration);
 
   const seamQuality=Math.exp(-.52*Math.max(0,fine.seam)),phaseQuality=clamp((fine.phaseAlignment+1)/2,0,1),waveQuality=clamp((fine.waveform+1)/2,0,1);
-  const instrumentQuality=clamp(((coarse.instrumentFlow??coarse.rhythm??0)+1)/2,0,1),harmonicQuality=clamp(((coarse.harmonicFlow??coarse.instrumentFlow??0)+1)/2,0,1);
+  const instrumentQuality=clamp(((coarse.instrumentFlow??coarse.rhythm??0)+1)/2,0,1),harmonicQuality=clamp(((coarse.harmonicFlow??coarse.instrumentFlow??0)+1)/2,0,1),timbreQuality=clamp(((coarse.timbreFlow??coarse.instrumentFlow??0)+1)/2,0,1);
   const tempoQuality=clamp(coarse.deepTempo??(.55*(coarse.tempoSimilarity??.75)+.45*(coarse.tempoPath??.75)),0,1),repeatQuality=(coarse.repeatCoverage??0)>0?clamp(((coarse.repeatConsistency??0)+1)/2,0,1):clamp(coarse.deepCoverage??.55,0,1);
-  const deepAligned=clamp(coarse.deepAligned??instrumentQuality,0,1),deepLower=clamp(coarse.deepLower??deepAligned,0,1),deepCoverage=clamp(coarse.deepCoverage??repeatQuality,0,1),marginQuality=clamp(coarse.deepMargin??.55,0,1),deepRamp=clamp(coarse.deepRamp??coarse.rampRisk??0,0,1);
-  const evidence=.19*deepAligned+.09*deepLower+.07*deepCoverage+.09*tempoQuality+.12*instrumentQuality+.07*harmonicQuality+.11*waveQuality+.15*seamQuality+.14*phaseQuality+.05*repeatQuality+.04*marginQuality-.05*deepRamp;
-  const weakest=Math.min(deepLower,instrumentQuality,seamQuality,phaseQuality);
-  const confidenceValue=clamp(.08+.80*evidence+.12*weakest,0,.99),confidenceLabel=confidenceValue>=.78?"High":(confidenceValue>=.60?"Medium":"Low");
-  const fullDetailRank=.24*deepAligned+.10*deepLower+.12*instrumentQuality+.08*harmonicQuality+.13*waveQuality+.17*seamQuality+.14*phaseQuality+.06*tempoQuality+.04*repeatQuality+.02*marginQuality-.06*deepRamp;
+  const deepAligned=clamp(coarse.deepAligned??instrumentQuality,0,1),deepLower=clamp(coarse.deepLower??deepAligned,0,1),deepCoverage=clamp(coarse.deepCoverage??repeatQuality,0,1),coverageQuality=clamp(Math.max(deepCoverage,coarse.repeatCoverage??0),0,1),marginQuality=clamp(coarse.deepMargin??.55,0,1),deepRamp=clamp(coarse.deepRamp??coarse.rampRisk??0,0,1);
+  let earlyQuality=clamp(1-startSeconds/Math.max(duration,1e-6),0,1);
+  if(coarse.settledSpeedStartSeconds>=0&&coarse.settledSpeedStrength>.15&&startSeconds<coarse.settledSpeedStartSeconds)earlyQuality*=.30;
+  const feedbackScore=feedbackCalibratedScore({deep:deepAligned,instrument:instrumentQuality,harmonic:harmonicQuality,phase:phaseQuality,waveform:waveQuality,seam:seamQuality,repeat:repeatQuality,coverage:coverageQuality,early:settings.preferFirst?earlyQuality:.5});
+  const evidence=.17*deepAligned+.08*deepLower+.06*deepCoverage+.07*tempoQuality+.11*instrumentQuality+.08*harmonicQuality+.03*timbreQuality+.12*waveQuality+.17*seamQuality+.14*phaseQuality+.04*repeatQuality+.03*marginQuality-.05*deepRamp;
+  const weakest=Math.min(deepLower,Math.max(instrumentQuality,harmonicQuality),seamQuality,phaseQuality,waveQuality);
+  const physicalConfidence=clamp(.08+.78*evidence+.14*weakest,0,.99);
+  let confidenceValue=clamp(.62*physicalConfidence+.38*feedbackScore,0,.99);
+  if(seamQuality<.13&&waveQuality<.30)confidenceValue=Math.min(confidenceValue,.56);
+  if(coverageQuality<.30&&repeatQuality<.45)confidenceValue=Math.min(confidenceValue,.60);
+  const confidenceLabel=confidenceValue>=.78?"High":(confidenceValue>=.60?"Medium":"Low");
+  const verificationPenalty=(seamQuality<.13&&waveQuality<.30?.18:0)+(coverageQuality<.30&&repeatQuality<.45?.12:0)+(Math.max(instrumentQuality,harmonicQuality)<.42?.10:0);
+  const fullDetailRank=.20*deepAligned+.08*deepLower+.10*instrumentQuality+.09*harmonicQuality+.03*timbreQuality+.13*waveQuality+.18*seamQuality+.14*phaseQuality+.04*tempoQuality+.03*repeatQuality+.02*coverageQuality+.02*marginQuality-.05*deepRamp+.42*feedbackScore-verificationPenalty;
 
   log(`Full-detail correction: start ${fine.startDelta>=0?"+":""}${(fine.startDelta*1000/rate).toFixed(3)} ms, end ${fine.endDelta>=0?"+":""}${(fine.endDelta*1000/rate).toFixed(3)} ms.`);
   log(`Hard-seam score: ${fine.seam.toFixed(4)}.`);
@@ -2462,141 +2050,31 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   return{
     ...coarse,startSeconds,endSeconds,sampleRate:rate,
     seam:fine.seam,waveform:fine.waveform,phaseAlignment:fine.phaseAlignment,periodCorrection:fine.periodCorrectionMs,
-    confidence:confidenceValue,confidenceLabel,fullDetailRank
+    confidence:confidenceValue,confidenceLabel,fullDetailRank,feedbackScore
   };
 }
 
 async function runDetection(options){
+
   return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
 }
-function hashText(value){
-  let hash=2166136261>>>0;
-  for(const char of String(value)){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619);}
-  return hash>>>0;
-}
-function candidateNearExisting(startSeconds,endSeconds,candidates=state.solutions){
-  const length=endSeconds-startSeconds;
-  return candidates.some(candidate=>{
-    const otherLength=candidate.endSeconds-candidate.startSeconds;
-    return Math.abs(candidate.startSeconds-startSeconds)<.075&&Math.abs(candidate.endSeconds-endSeconds)<.075||
-      (Math.abs(candidate.startSeconds-startSeconds)<.15&&Math.abs(otherLength-length)/Math.max(.001,Math.max(otherLength,length))<.006);
-  });
-}
-function collectCoarseCandidates(coarse){
-  const candidates=[coarse,...(Array.isArray(coarse?.alternatives)?coarse.alternatives:[])],unique=[];
-  for(const candidate of candidates){
-    const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate;
-    if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)continue;
-    if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.075&&Math.abs(item.end/state.analysisRate-end)<.075))continue;
-    unique.push(candidate);
-  }
-  return unique;
-}
-function stampCandidate(candidate,index=0){
-  candidate.trackKey=currentTrackKey();
-  candidate.solutionNumber=Number.isFinite(candidate.solutionNumber)?candidate.solutionNumber:index+1;
-  ensureCandidateId(candidate,index);
-  return candidate;
-}
-function mergeNewSolutions(newCandidates){
-  const added=[];
-  for(const candidate of newCandidates){
-    if(candidateNearExisting(candidate.startSeconds,candidate.endSeconds))continue;
-    stampCandidate(candidate,state.solutions.length+added.length);
-    state.solutions.push(candidate);added.push(candidate);
-  }
-  state.candidateArchive.push(...added.map(candidate=>({...primitiveCandidate(candidate),trackKey:currentTrackKey(),addedAt:new Date().toISOString(),searchRound:state.solutionRound})));
-  return added;
-}
-function visibleBatchFromNew(added){
-  rerankSolutions();
-  const liked=state.solutions.filter(candidate=>candidate.userRating===1&&candidate.seamVerified!==false).sort((a,b)=>b.learningScore-a.learningScore),chosen=[];
-  for(const candidate of liked){if(chosen.length>=2)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
-  const fresh=added.slice().sort((a,b)=>(b.learningScore-a.learningScore)||((b.fullDetailRank||0)-(a.fullDetailRank||0)));
-  for(const candidate of fresh){if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
-  for(const candidate of rankedAvailableCandidates(new Set(chosen.map(item=>item.candidateId)))){if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
-  state.visibleCandidateIds=chosen.map(candidate=>candidate.candidateId);
-  if(!state.visibleCandidateIds.includes(state.activeCandidateId))state.activeCandidateId=state.visibleCandidateIds[0]||state.aiPickCandidateId||"";
-  state.lastNewCandidateId=fresh[0]?.candidateId||"";
-}
-async function analyzeCandidateBatch(settings,historyLabel){
-  const coarse=await runDetection(settings),unique=collectCoarseCandidates(coarse),unseen=unique.filter(candidate=>{
-    const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate;
-    return !candidateNearExisting(start,end);
-  });
-  const detailCount=Math.min(Math.max(4,settings.fullDetailCandidates),unseen.length),verified=[];
-  for(let index=0;index<detailCount;index++){
-    try{verified.push(await refineAtFullDetail(unseen[index],settings,index,detailCount));}
-    catch(error){log(`${historyLabel} candidate ${index+1} full-detail check failed: ${error.message||error}`);}
-  }
-  const seamless=filterSeamlessCandidates(verified,settings),rejected=verified.filter(candidate=>candidate.seamVerified===false);
-  state.searchHistory.push({
-    id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,trackKey:currentTrackKey(),label:historyLabel,
-    timestamp:new Date().toISOString(),settings:cloneExportData(settings),raw:cloneExportData(unique),verified:cloneExportData(verified),
-    seamless:cloneExportData(seamless),rejected:cloneExportData(rejected)
-  });
-  state.searchHistory=state.searchHistory.slice(-80);
-  state.rawCandidates.push(...cloneExportData(unique));state.verifiedCandidates.push(...cloneExportData(verified));state.rejectedCandidates.push(...cloneExportData(rejected));
-  return seamless;
-}
-async function findMoreSolutions(){
-  if(state.busy)return;
-  if(!state.file){status("Choose audio","Select the audio file before finding more solutions.","error");return;}
-  if(!state.solutions.length){await findLoop();return;}
-  invalidateMedia();
-  const base=readSettings(),previousActive=state.activeCandidateId,addedTotal=[];
-  state.solutionRound++;
-  try{
-    setBusy(true,"Training and searching for new solutions…");
-    if((state.learning?.feedback||[]).length)await trainNeuralModel();
-    const profile=buildDetectorLearningProfile();
-    await prepareAnalysis(base);
-    for(let attempt=0;attempt<3&&addedTotal.length<VISIBLE_SOLUTION_LIMIT;attempt++){
-      const round=state.solutionRound+attempt;
-      const settings={...base,
-        learningProfile:profile,searchMode:"more",explorationRound:round,
-        searchSeed:hashText(`${currentTrackKey()}|${round}|${state.learning?.events?.length||0}|${attempt}`),
-        excludeRegions:state.solutions.map(candidate=>({start:candidate.startSeconds,end:candidate.endSeconds,rating:candidate.userRating||0})),
-        coarsePairsToRefine:Math.min(64,base.coarsePairsToRefine+10+attempt*8),
-        deepLagCandidates:Math.min(96,base.deepLagCandidates+12+attempt*10),
-        fullDetailCandidates:Math.min(12,Math.max(base.fullDetailCandidates,8+attempt*2)),
-        maxCandidates:Math.min(4000,base.maxCandidates+attempt*240)
-      };
-      setProgress(40+attempt*12,`Learned search pass ${attempt+1}…`);
-      const fresh=await analyzeCandidateBatch(settings,`learned-pass-${round}-${attempt+1}`);
-      const added=mergeNewSolutions(fresh);
-      addedTotal.push(...added);
-      if(!added.length)log(`Learned search pass ${attempt+1} found no new seam-safe region; widening the search.`);
-    }
-    if(!addedTotal.length)throw new Error("No different seam-safe solution was found yet. Add more ratings or increase Maximum candidates, then try again.");
-    rerankSolutions();visibleBatchFromNew(addedTotal);
-    const active=state.solutions.find(candidate=>candidate.candidateId===previousActive&&candidate.userRating===1)||state.solutions.find(candidate=>candidate.candidateId===state.visibleCandidateIds[0])||addedTotal[0];
-    state.activeCandidateId=active.candidateId;state.result=active;
-    E.startInput.value=active.startSeconds.toFixed(6);E.endInput.value=active.endSeconds.toFixed(6);
-    updateResult(false);renderSolutions();saveCurrentSession();
-    status("New learned solutions",`${addedTotal.length} different seam-checked solution${addedTotal.length===1?"":"s"} added.`,"ok");
-    log(`Find more added ${addedTotal.length} new solution${addedTotal.length===1?"":"s"}; the neural profile influenced the search.`);
-  }catch(error){status("Find more failed",error.message||String(error),"error");log(`Find more error: ${error.message||error}`);}
-  finally{setBusy(false);E.progressBox.classList.add("hidden");}
-}
 
-function reset(options={}){
-  const oldInput=state.inputFsName,preservedSession=options.preserveSavedSession?state.savedSession:null;
+function reset(){
+  const oldInput=state.inputFsName;
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.solutions=[];state.rawCandidates=[];state.verifiedCandidates=[];state.rejectedCandidates=[];state.searchHistory=[];state.candidateArchive=[];state.activeCandidateId="";state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;state.lastNewCandidateId="";state.inputFsName=null;state.mediaVersion++;state.trackGeneration++;state.precisionRate=readSettings().precisionSampleRate;
-  state.currentSessionId="";state.savedSession=preservedSession;state.restoredWithoutFile=false;
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();
-  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");E.solutionList.textContent="";E.savedResultNote.classList.add("hidden");
+  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");
   E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
   E.channelsSide.textContent="—";E.modeSide.textContent="—";E.playbackPosition.textContent="—";E.waveCanvas.getContext("2d").clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);
-  status("Ready","Choose an audio file.");updateLearningUi();
+  status("Ready","Choose an audio file.");
   if(oldInput)safeDelete(oldInput);
 }
+
 function loadFile(file){
   if(!file)return;
-  const matchingSession=(state.learning?.sessions||[]).slice().reverse().find(session=>sessionMatchesFile(session,file))||(state.savedSession&&sessionMatchesFile(state.savedSession,file)?state.savedSession:null);
   if(!isSupportedAudioFile(file)){
     const ext=extension(file.name);
     const midi=BLOCKED_MIDI_EXTENSIONS.has(ext);
@@ -2605,7 +2083,7 @@ function loadFile(file){
     E.fileInput.value="";
     return;
   }
-  reset({preserveSavedSession:!!matchingSession});
+  reset();
   state.file=file;
   state.fileUrl=URL.createObjectURL(file);
   E.fileName.textContent=file.name;
@@ -2622,15 +2100,12 @@ function loadFile(file){
     E.fileMeta.textContent=`${formatBytes(file.size)}${state.duration?` · ${formatClock(state.duration,true)}`:""}`;
   };
   E.sourcePlayer.onerror=()=>{E.fileMeta.textContent=formatBytes(file.size);};
-  if(matchingSession){restoreSession(matchingSession,true);renderSolutions();}
 }
 
 async function findLoop(){
   if(state.busy||!state.file)return;
   invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");
   const settings=readSettings();
-  settings.learningProfile=buildDetectorLearningProfile();
-  settings.explorationRound=state.solutionRound;
   const maxMinimum=state.duration?Math.max(3,state.duration-.25):600;
   settings.minimumLoop=clamp(settings.minimumLoop,3,maxMinimum);
   E.minimumLoop.value=String(Math.round(settings.minimumLoop*1000)/1000);
@@ -2641,28 +2116,45 @@ async function findLoop(){
     setBusy(true,"Preparing the analysis track…");
     await prepareAnalysis(settings);
     setProgress(42,"Starting loop detection…");
-    const coarse=await runDetection(settings),unique=collectCoarseCandidates(coarse);
-    state.rawCandidates=cloneExportData(unique);
-    const detailCount=Math.min(settings.fullDetailCandidates,unique.length),verified=[];
-    for(let index=0;index<detailCount;index++){
-      try{verified.push(await refineAtFullDetail(unique[index],settings,index,detailCount));}
-      catch(error){log(`Candidate ${index+1} full-detail check failed: ${error.message||error}`);}
+    const coarse=await runDetection(settings);
+    const candidates=[coarse,...(Array.isArray(coarse.alternatives)?coarse.alternatives:[])];
+    const unique=[],families=[];
+    for(const candidate of candidates){
+      const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate,length=end-start;
+      if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.08&&Math.abs(item.end/state.analysisRate-end)<.08))continue;
+      let family=families.find(item=>Math.abs(item.length-length)<.40&&(Math.abs(item.start-start)<1.35||Math.min(item.end,end)-Math.max(item.start,start)>.82*Math.min(item.length,length)));
+      if(!family){family={start,end,length,count:0};families.push(family);}
+      if(family.count>=2)continue;
+      family.count++;
+      unique.push(candidate);
     }
+
+    const requestedCount=Math.min(settings.fullDetailCandidates,unique.length),verified=[];
+    let checked=0;
+    const verifyNext=async()=>{
+      const index=checked++;
+      try{verified.push(await refineAtFullDetail(unique[index],settings,index,Math.min(6,unique.length)));}
+      catch(error){log(`Candidate ${index+1} full-detail check failed: ${error.message||error}`);}
+    };
+    while(checked<requestedCount)await verifyNext();
+
+    const sortVerified=()=>verified.sort((a,b)=>(b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence));
+    sortVerified();
+    while(checked<Math.min(6,unique.length)){
+      const top=verified[0],second=verified[1];
+      const margin=top&&second?(top.fullDetailRank-second.fullDetailRank):1;
+      const uncertain=!top||top.confidence<.74||(top.feedbackScore??0)<.58||margin<.055;
+      if(!uncertain)break;
+      await verifyNext();
+      sortVerified();
+    }
+
     if(!verified.length)throw new Error("The full-detail loop checks could not finish.");
-    state.verifiedCandidates=cloneExportData(verified);
-    const seamless=filterSeamlessCandidates(verified,settings);
-    state.rejectedCandidates=cloneExportData(verified.filter(candidate=>candidate.seamVerified===false));
-    state.searchHistory=[{id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,trackKey:currentTrackKey(),label:"initial",timestamp:new Date().toISOString(),settings:cloneExportData(settings),raw:cloneExportData(unique),verified:cloneExportData(verified),seamless:cloneExportData(seamless),rejected:cloneExportData(state.rejectedCandidates)}];
-    if(!seamless.length)throw new Error("No candidate passed the hard-seam and beat-phase checks.");
-    state.currentSessionId=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
-    state.savedSession=null;state.sessionPersistenceEnabled=true;state.solutionRound=0;
-    state.solutions=seamless.map((candidate,index)=>stampCandidate({...candidate,solutionNumber:index+1,userRating:0},index));state.candidateArchive=state.solutions.map(candidate=>({...primitiveCandidate(candidate),trackKey:currentTrackKey(),addedAt:new Date().toISOString(),searchRound:0}));
-    for(let index=0;index<state.solutions.length;index++)ensureCandidateId(state.solutions[index],index);
-    initializeVisibleSolutions();state.result=state.solutions.find(item=>item.candidateId===state.activeCandidateId)||state.solutions[0];state.activeCandidateId=state.result.candidateId;
-    showResult();saveCurrentSession();
+    state.result=verified[0];
+    showResult();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
-    log(`Deep repeat match: ${Math.round((state.result.deepAligned??0)*100)}%; ${state.solutions.length} full-detail solutions checked.`);
-    status("Loop found",`${state.solutions.length} seam-checked solutions are ready. Rate them, then use Find more for a new learned search.`,"ok");
+    log(`Deep repeat match: ${Math.round((state.result.deepAligned??0)*100)}%; feedback calibration: ${Math.round((state.result.feedbackScore??0)*100)}%; full-detail candidates checked: ${verified.length}.`);
+    status("Loop found",`Deep analysis checked ${verified.length} full-detail candidate${verified.length===1?"":"s"}.`,"ok");
     log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
@@ -2674,18 +2166,14 @@ async function findLoop(){
   }
 }
 
-function showResult(scroll=true){
+function showResult(){
   if(!state.result)return;
   E.modeSide.textContent=state.result.mode;
   E.startInput.value=state.result.startSeconds.toFixed(6);
   E.endInput.value=state.result.endSeconds.toFixed(6);
-  updateResult(false);renderSolutions();
+  updateResult(false);
   E.resultPanel.classList.remove("hidden");
-  const mediaReady=!!state.file;
-  for(const button of [E.playSeamButton,E.playLoopButton,E.stopButton])button.disabled=!mediaReady;
-  for(const link of [E.downloadLoop,E.downloadPreview])link.classList.toggle("disabled-link",!mediaReady);
-  E.savedResultNote.classList.toggle("hidden",mediaReady||!state.restoredWithoutFile);
-  if(scroll)E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
+  E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function currentTimes(){
@@ -2695,12 +2183,12 @@ function currentTimes(){
 
 function updateTextDownload(){
   revokeTextUrl();
-  if(!state.result)return;
+  if(!state.result||!state.file)return;
   const {start,end}=currentTimes(),region=`${formatRoblox(start)}, ${formatRoblox(end)}`;
   const blob=new Blob([region],{type:"text/plain;charset=utf-8"});
   state.textUrl=URL.createObjectURL(blob);
   E.downloadText.href=state.textUrl;
-  const base=stem(state.file?.name||state.savedSession?.fileName||"audio");
+  const base=stem(state.file.name);
   E.downloadText.download=`${base}_ROBLOX_LOOP_REGION.txt`;
   E.txtName.textContent=E.downloadText.download;
   E.loopName.textContent=`${base}_loop_exact.wav`;
@@ -2717,8 +2205,6 @@ function updateResult(invalidate=true){
   start=Math.round(clamp(start,0,Math.max(0,duration-2/rate))*rate)/rate;
   end=Math.round(clamp(end,start+2/rate,duration)*rate)/rate;
   state.result.startSeconds=start;state.result.endSeconds=end;state.result.sampleRate=rate;
-  const selectedCandidate=state.solutions.find(item=>item.candidateId===state.activeCandidateId);
-  if(selectedCandidate&&selectedCandidate!==state.result){selectedCandidate.startSeconds=start;selectedCandidate.endSeconds=end;selectedCandidate.sampleRate=rate;}
   const length=end-start;
   E.startInput.value=start.toFixed(6);E.endInput.value=end.toFixed(6);
   E.regionValue.textContent=`${formatRoblox(start)}, ${formatRoblox(end)}`;
@@ -2728,7 +2214,6 @@ function updateResult(invalidate=true){
   if(invalidate)invalidateMedia();
   updateTextDownload();
   drawWaveform();
-  if(invalidate){renderSolutions();scheduleSessionSave();}
 }
 
 function drawWaveform(){
@@ -2788,7 +2273,6 @@ function seamFilter(start,end){
 
 async function renderWav(kind){
   if(!state.result||!state.file)throw new Error("Find a loop first.");
-  if(state.result.trackKey&&state.result.trackKey!==currentTrackKey())throw new Error("These loop points belong to a different audio file. Run Find loop for the selected file.");
   const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile(),{start,end}=currentTimes();
   const output=`looper_${kind}_${Date.now().toString(36)}.wav`;
   let args;
@@ -2881,18 +2365,6 @@ E.startInput.addEventListener("change",()=>updateResult());
 E.endInput.addEventListener("change",()=>updateResult());
 E.previewRepeats.addEventListener("change",()=>{E.previewRepeats.value=String(clamp(Math.round(Number(E.previewRepeats.value)||3),1,50));invalidateMedia();saveSettings();});
 E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
-E.newSolutionBatchButton.addEventListener("click",showNextSolutionBatch);
-E.downloadLearningDataButton.addEventListener("click",exportLearningData);
-E.resetLearningDataButton.addEventListener("click",resetLearningData);
-E.solutionList.addEventListener("click",async event=>{
-  const button=event.target.closest("button[data-solution-action]");if(!button||state.busy)return;
-  const action=button.dataset.solutionAction,candidateId=button.dataset.candidateId;
-  if(action==="like"){await rateCandidate(candidateId,1);return;}
-  if(action==="dislike"){await rateCandidate(candidateId,-1);return;}
-  activateCandidate(candidateId);
-  if(action==="seam")await playGenerated("seam");
-  else if(action==="loop")await playGenerated("loop");
-});
 
 for(const input of $$('input[name="power"]')){
   input.addEventListener("change",()=>applyPowerPreset(input.value));
@@ -2936,7 +2408,6 @@ for(const button of $$("[data-adjust]")){
 
 window.addEventListener("resize",drawWaveform);
 window.addEventListener("beforeunload",()=>{
-  saveCurrentSession();
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   if(state.ffmpeg){try{state.ffmpeg.terminate();}catch{}}
@@ -2944,11 +2415,9 @@ window.addEventListener("beforeunload",()=>{
 });
 
 E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
-E.cpuBadge.textContent="Learning loop analyzer";
+E.cpuBadge.textContent="Feedback-calibrated analyzer";
 loadSettings();
-loadLearningData();
 reset();
-restoreLastSession();
 })();
 
 </script>
