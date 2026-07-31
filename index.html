@@ -339,6 +339,27 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation-duration:.001ms!important; transition-duration:.001ms!important; scroll-behavior:auto!important; }
 }
+
+.custom-censor-box{
+  margin-top:10px;padding:11px;border:1px solid var(--border);
+  border-radius:10px;background:var(--panel2)
+}
+.custom-censor-box input[type=file]{padding:8px}
+.custom-censor-preview{margin-top:10px}
+.custom-censor-preview audio{width:100%}
+.custom-censor-meta{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-top:8px
+}
+.custom-censor-meta strong{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--yellow);font-size:.73rem
+}
+@media(max-width:680px){
+  .custom-censor-meta{align-items:stretch;flex-direction:column}
+  .custom-censor-meta .button{width:100%}
+}
+
 </style>
 </head>
 
@@ -544,12 +565,33 @@ biatch=bitch</textarea>
       <div class="segmented">
         <label><input type="radio" name="effect" value="beep" checked><span>Beep</span></label>
         <label><input type="radio" name="effect" value="mute"><span>Silence</span></label>
+        <label><input type="radio" name="effect" value="custom"><span>Custom</span></label>
       </div>
       <label class="range setting-extra" id="volumeRow">
-        <span>Beep volume</span>
+        <span id="volumeLabel">Beep volume</span>
         <input id="beepVolume" type="range" min="0" max="100" step="1" value="42">
         <output id="volumeOut">42%</output>
       </label>
+      <div class="custom-censor-box setting-extra hidden" id="customCensorBox">
+        <label class="label" for="customCensorInput">Custom censor audio</label>
+        <input
+          class="text"
+          id="customCensorInput"
+          type="file"
+          accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,.aiff,.aif"
+        >
+        <div class="custom-censor-preview hidden" id="customCensorPreviewWrap">
+          <audio id="customCensorPreview" controls preload="metadata"></audio>
+          <div class="custom-censor-meta">
+            <strong id="customCensorName">No file selected</strong>
+            <button class="button ghost small" id="clearCustomCensor" type="button">Remove</button>
+          </div>
+        </div>
+        <p class="note">
+          The sound stays in the browser. It restarts for every censor,
+          loops when it is shorter, and is trimmed when it is longer.
+        </p>
+      </div>
     </div>
   </article>
 
@@ -666,7 +708,11 @@ const E = {
   coverage: $("#coverage"), coverageOut: $("#coverageOut"),
   padBefore: $("#padBefore"), padAfter: $("#padAfter"),
   timingBox: $("#timingBox"), timingCustom: $("#timingCustom"),
-  volumeRow: $("#volumeRow"), beepVolume: $("#beepVolume"), volumeOut: $("#volumeOut"),
+  volumeRow: $("#volumeRow"), volumeLabel: $("#volumeLabel"),
+  beepVolume: $("#beepVolume"), volumeOut: $("#volumeOut"),
+  customCensorBox: $("#customCensorBox"), customCensorInput: $("#customCensorInput"),
+  customCensorPreviewWrap: $("#customCensorPreviewWrap"), customCensorPreview: $("#customCensorPreview"),
+  customCensorName: $("#customCensorName"), clearCustomCensor: $("#clearCustomCensor"),
   outputFormat: $("#outputFormat"), reportCheck: $("#reportCheck"),
   strictWholeWord: $("#strictWholeWord"), generateBtn: $("#generateBtn"),
   resultPanel: $("#resultPanel"), resultPreview: $("#resultPreview"),
@@ -748,6 +794,9 @@ const state = {
   wavBytes: null, wav: null, durationMs: 0,
   words: [], flagged: new Set(), selected: new Set(),
   provider: null, busy: false,
+  customCensorFile: null, customCensorURL: null,
+  customCensorDecoded: null, customCensorPromise: null,
+  customCensorResampled: new Map(), customCensorAudioContext: null,
   localTranscriber: null,
   localModelKey: null,
   localModelUsed: null,
@@ -831,7 +880,7 @@ function saveBlobLink(blob, filename, description) {
 }
 function setBusy(value, message="") {
   state.busy = value;
-  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn]) {
+  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn,E.customCensorInput,E.clearCustomCensor]) {
     if (el) el.disabled = value;
   }
   E.fileInput.disabled = value;
@@ -855,6 +904,293 @@ function refreshButtons() {
     E.mobileBtn.disabled = state.busy || !state.file;
     E.mobileText.textContent = state.file ? state.file.name : "No media selected";
   }
+}
+
+
+function ensureCustomCensorAudioContext() {
+  if (!state.customCensorAudioContext) {
+    const Context =
+      window.AudioContext
+      || window.webkitAudioContext;
+
+    if (!Context) {
+      throw new Error(
+        "This browser cannot decode custom censor audio."
+      );
+    }
+
+    state.customCensorAudioContext =
+      new Context();
+  }
+
+  return state.customCensorAudioContext;
+}
+
+function clearCustomCensorAudio(writeLog = false) {
+  if (state.customCensorURL) {
+    URL.revokeObjectURL(state.customCensorURL);
+  }
+
+  state.customCensorFile = null;
+  state.customCensorURL = null;
+  state.customCensorDecoded = null;
+  state.customCensorPromise = null;
+  state.customCensorResampled.clear();
+
+  E.customCensorInput.value = "";
+  E.customCensorPreview.pause();
+  E.customCensorPreview.removeAttribute("src");
+  E.customCensorPreview.load();
+  E.customCensorPreviewWrap.classList.add("hidden");
+  E.customCensorName.textContent = "No file selected";
+
+  if (writeLog) {
+    log("Custom censor removed.");
+  }
+}
+
+async function loadCustomCensorAudio(file) {
+  clearCustomCensorAudio(false);
+
+  if (!file) {
+    return;
+  }
+
+  state.customCensorFile = file;
+  state.customCensorURL = URL.createObjectURL(file);
+  E.customCensorPreview.src = state.customCensorURL;
+  E.customCensorName.textContent = file.name;
+  E.customCensorPreviewWrap.classList.remove("hidden");
+
+  const activeFile = file;
+  const promise = (async () => {
+    const context = ensureCustomCensorAudioContext();
+    const bytes = await file.arrayBuffer();
+    const buffer = await context.decodeAudioData(bytes.slice(0));
+    const channels = [];
+
+    for (
+      let channel = 0;
+      channel < buffer.numberOfChannels;
+      channel++
+    ) {
+      channels.push(
+        new Float32Array(
+          buffer.getChannelData(channel)
+        )
+      );
+    }
+
+    if (!channels.length || !buffer.length) {
+      throw new Error("The custom censor audio is empty.");
+    }
+
+    if (state.customCensorFile !== activeFile) {
+      return;
+    }
+
+    state.customCensorDecoded = {
+      channels,
+      sampleRate: buffer.sampleRate,
+      frameCount: buffer.length
+    };
+
+    state.customCensorResampled.clear();
+    log(`Custom censor loaded: ${file.name}.`);
+  })();
+
+  state.customCensorPromise = promise;
+
+  try {
+    await promise;
+  } catch (error) {
+    if (state.customCensorFile === activeFile) {
+      state.customCensorDecoded = null;
+      status(
+        "Custom censor could not load",
+        error?.message || String(error),
+        "error"
+      );
+      log(`Error: ${error?.message || String(error)}`);
+    }
+  } finally {
+    if (state.customCensorPromise === promise) {
+      state.customCensorPromise = null;
+    }
+  }
+}
+
+async function ensureCustomCensorAudio() {
+  if (effectChoice() !== "custom") {
+    return;
+  }
+
+  if (!state.customCensorFile) {
+    throw new Error("Choose a custom censor audio file first.");
+  }
+
+  if (state.customCensorPromise) {
+    await state.customCensorPromise;
+  }
+
+  if (!state.customCensorDecoded?.frameCount) {
+    throw new Error(
+      "The custom censor audio could not be decoded. Try an MP3 or WAV file."
+    );
+  }
+}
+
+function customCensorAtRate(sampleRate) {
+  const cached =
+    state.customCensorResampled.get(sampleRate);
+
+  if (cached) {
+    return cached;
+  }
+
+  const source =
+    state.customCensorDecoded;
+
+  if (!source?.frameCount) {
+    return null;
+  }
+
+  if (source.sampleRate === sampleRate) {
+    const same = {
+      channels:
+        source.channels.map(
+          channel => channel
+        ),
+      frameCount: source.frameCount
+    };
+
+    state.customCensorResampled.set(
+      sampleRate,
+      same
+    );
+
+    return same;
+  }
+
+  const frameCount =
+    Math.max(
+      1,
+      Math.round(
+        source.frameCount
+        * sampleRate
+        / source.sampleRate
+      )
+    );
+
+  const ratio =
+    source.sampleRate
+    / sampleRate;
+
+  const channels =
+    source.channels.map(
+      input => {
+        const output =
+          new Float32Array(
+            frameCount
+          );
+
+        for (
+          let frame = 0;
+          frame < frameCount;
+          frame++
+        ) {
+          const position =
+            frame * ratio;
+
+          const left =
+            Math.floor(position);
+
+          const right =
+            Math.min(
+              input.length - 1,
+              left + 1
+            );
+
+          const amount =
+            position - left;
+
+          output[frame] =
+            input[left] * (1 - amount)
+            + input[right] * amount;
+        }
+
+        return output;
+      }
+    );
+
+  const result = {
+    channels,
+    frameCount
+  };
+
+  state.customCensorResampled.set(
+    sampleRate,
+    result
+  );
+
+  return result;
+}
+
+function customCensorSample(
+  custom,
+  frame,
+  outputChannel,
+  outputChannels
+) {
+  if (
+    !custom?.frameCount
+    || !custom.channels.length
+  ) {
+    return 0;
+  }
+
+  const sourceFrame =
+    frame % custom.frameCount;
+
+  if (
+    outputChannels === 1
+    && custom.channels.length > 1
+  ) {
+    let total = 0;
+
+    for (
+      const channel
+      of custom.channels
+    ) {
+      total += channel[sourceFrame];
+    }
+
+    return total / custom.channels.length;
+  }
+
+  const channel =
+    custom.channels[
+      outputChannel
+      % custom.channels.length
+    ];
+
+  return channel[sourceFrame];
+}
+
+function updateCensorEffectUI() {
+  const effect = effectChoice();
+  E.volumeRow.classList.toggle(
+    "hidden",
+    effect === "mute"
+  );
+  E.customCensorBox.classList.toggle(
+    "hidden",
+    effect !== "custom"
+  );
+  E.volumeLabel.textContent =
+    effect === "beep"
+      ? "Beep volume"
+      : "Custom volume";
 }
 
 /* -------------------------------------------------------------------------
@@ -2051,8 +2387,11 @@ function closeModal() { E.pickerModal.classList.add("hidden"); document.body.sty
 function applyCensor(intervals) {
   const {samples,channels,sampleRate,frameCount} = state.wav;
   const out = new Int16Array(samples);
-  const effect = effectChoice(), volume = clamp((Number(E.beepVolume.value)||0)/100,0,1);
-  const amp = 32767 * volume, fadeFrames = Math.max(1,Math.round(sampleRate*.008));
+  const effect = effectChoice();
+  const volume = clamp((Number(E.beepVolume.value)||0)/100,0,1);
+  const amp = 32767 * volume;
+  const custom = effect === "custom" ? customCensorAtRate(sampleRate) : null;
+  const fadeFrames = Math.max(1,Math.round(sampleRate*.008));
 
   for (const [startMs,endMs] of intervals) {
     const start = clamp(Math.floor(startMs*sampleRate/1000),0,frameCount);
@@ -2061,16 +2400,37 @@ function applyCensor(intervals) {
     if (length<=0) continue;
 
     for (let f=0;f<length;f++) {
-      let value = 0;
-      if (effect === "beep") {
-        let env = 1;
-        if (f<fadeFrames) env = f/fadeFrames;
-        if (length-1-f<fadeFrames) env = Math.min(env,(length-1-f)/fadeFrames);
-        value = Math.round(Math.sin(2*Math.PI*1000*f/sampleRate)*amp*clamp(env,0,1));
+      const edgeIn = clamp(f/fadeFrames,0,1);
+      const edgeOut = clamp((length-1-f)/fadeFrames,0,1);
+      const mix = Math.min(edgeIn,edgeOut);
+
+      for (let c=0;c<channels;c++) {
+        const index = (start+f)*channels+c;
+        const original = out[index];
+
+        let replacement = 0;
+        if (effect === "beep") {
+          replacement =
+            Math.sin(2*Math.PI*1000*f/sampleRate)
+            * amp;
+        } else if (effect === "custom" && custom) {
+          replacement =
+            customCensorSample(custom,f,c,channels)
+            * 32767
+            * volume;
+        }
+
+        out[index] = Math.round(
+          clamp(
+            original*(1-mix) + replacement*mix,
+            -32768,
+            32767
+          )
+        );
       }
-      for (let c=0;c<channels;c++) out[(start+f)*channels+c] = value;
     }
   }
+
   return out;
 }
 async function encodeAudio(wav, format) {
@@ -2154,6 +2514,12 @@ async function generate() {
     setBusy(true,"Applying censorship and creating playback media…");
     setProgress(8,"Calculating word ranges and merged censor intervals…");
     const intervals = censorIntervals();
+
+    if (intervals.length && effectChoice() === "custom") {
+      setProgress(12,"Loading the custom censor sound…");
+      await ensureCustomCensorAudio();
+    }
+
     const censoredSamples = applyCensor(intervals);
     const wav = wavBlob(censoredSamples,state.wav.sampleRate,state.wav.channels);
 
@@ -2276,9 +2642,11 @@ E.dropZone.addEventListener("drop",e=>chooseFile(e.dataTransfer?.files?.[0]));
 $$('input[name="provider"]').forEach(el=>el.addEventListener("change",providerUi));
 $$('input[name="preset"]').forEach(el=>el.addEventListener("change",()=>E.customBox.classList.toggle("hidden",presetChoice()!=="custom")));
 $$('input[name="timing"]').forEach(el=>el.addEventListener("change",()=>E.timingBox.classList.toggle("hidden",$('input[name="timing"]:checked')?.value!=="custom")));
-$$('input[name="effect"]').forEach(el=>el.addEventListener("change",()=>E.volumeRow.classList.toggle("hidden",effectChoice()!=="beep")));
+$$('input[name="effect"]').forEach(el=>el.addEventListener("change",updateCensorEffectUI));
 E.coverage.addEventListener("input",()=>E.coverageOut.textContent=`${E.coverage.value}%`);
 E.beepVolume.addEventListener("input",()=>E.volumeOut.textContent=`${E.beepVolume.value}%`);
+E.customCensorInput.addEventListener("change",()=>loadCustomCensorAudio(E.customCensorInput.files?.[0]));
+E.clearCustomCensor.addEventListener("click",()=>clearCustomCensorAudio(true));
 
 E.showKeyBtn.addEventListener("click",()=>{
   const show=E.apiKey.type==="password"; E.apiKey.type=show?"text":"password"; E.showKeyBtn.textContent=show?"Hide":"Show";
@@ -2301,7 +2669,10 @@ E.clearLogBtn.addEventListener("click",()=>E.log.textContent="");
 if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
 const remembered = localStorage.getItem("censorElevenLabsKey") || "";
 if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
-providerUi(); refreshButtons();
+providerUi(); updateCensorEffectUI(); refreshButtons();
+window.addEventListener("beforeunload",()=>{
+  if (state.customCensorURL) URL.revokeObjectURL(state.customCensorURL);
+});
 log("Ready.");
 
 })();
