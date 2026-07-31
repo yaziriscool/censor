@@ -242,7 +242,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <span id="learningStatus">No ratings yet.</span>
       </div>
       <div class="learning-actions">
-        <button class="button secondary small" id="newSolutionBatchButton" type="button">New solutions</button>
+        <button class="button secondary small" id="newSolutionBatchButton" type="button">Find more</button>
         <button class="button ghost small" id="downloadLearningDataButton" type="button">Download data</button>
         <button class="button ghost small" id="resetLearningDataButton" type="button">Reset data</button>
       </div>
@@ -1013,9 +1013,39 @@ function makeWavePeaks(channels,width=1200){
   return peaks;
 }
 
+function profileModelForward(model,values){
+  if(!model||!Array.isArray(model.w1)||!Array.isArray(model.w2)||!Array.isArray(model.b1))return .5;
+  const hidden=[];
+  for(let h=0;h<model.w1.length;h++){
+    let sum=Number(model.b1[h])||0,row=model.w1[h]||[];
+    for(let i=0;i<Math.min(values.length,row.length);i++)sum+=(Number(row[i])||0)*values[i];
+    hidden[h]=Math.tanh(sum);
+  }
+  let output=Number(model.b2)||0;
+  for(let h=0;h<Math.min(hidden.length,model.w2.length);h++)output+=(Number(model.w2[h])||0)*hidden[h];
+  return output>=0?1/(1+Math.exp(-output)):Math.exp(output)/(1+Math.exp(output));
+}
+function vectorCosine(a,b){
+  if(!Array.isArray(a)||!Array.isArray(b))return 0;
+  let dot=0,aa=0,bb=0;
+  for(let i=0;i<Math.min(a.length,b.length);i++){const x=Number(a[i])||0,y=Number(b[i])||0;dot+=x*y;aa+=x*x;bb+=y*y;}
+  return dot/(Math.sqrt(aa*bb)+1e-9);
+}
+function regionNovelty(start,end,regions,duration){
+  if(!Array.isArray(regions)||!regions.length)return 1;
+  const length=Math.max(.001,end-start),scale=Math.max(1,duration);
+  let best=Infinity;
+  for(const region of regions){
+    const otherStart=Number(region.start)||0,otherEnd=Number(region.end)||otherStart,otherLength=Math.max(.001,otherEnd-otherStart);
+    const startDistance=Math.abs(start-otherStart)/Math.max(1,Math.min(10,scale*.08));
+    const lengthDistance=Math.abs(length-otherLength)/Math.max(.25,Math.max(length,otherLength));
+    const endDistance=Math.abs(end-otherEnd)/Math.max(1,Math.min(10,scale*.08));
+    best=Math.min(best,.48*startDistance+.34*lengthDistance+.18*endDistance);
+  }
+  return clamp(best,0,1);
+}
 function learnedPairAdjustment(pair,options,bundle,duration){
   const profile=options.learningProfile;
-  if(!profile||!Array.isArray(profile.weights)||!profile.count)return 0;
   const start=Math.max(0,(pair.startFrame||0)/bundle.frameRate),end=Math.max(start,(pair.endFrame||0)/bundle.frameRate),length=end-start,
     settled=bundle.settledSpeedStart>=0?bundle.settledSpeedStart/bundle.frameRate:-1,afterSettled=settled>=0?clamp(.5+(start-settled)/Math.max(2,Math.min(12,duration*.08)),0,1):.5,
     similarity01=value=>clamp(((Number(value)||0)+1)/2,0,1),quality01=(value,fallback=.5)=>clamp(Number.isFinite(Number(value))?Number(value):fallback,0,1);
@@ -1027,10 +1057,28 @@ function learnedPairAdjustment(pair,options,bundle,duration){
     quality01(pair.deepStability,quality01(pair.tempoStability,.55)),1-quality01(pair.deepRamp,quality01(pair.rampRisk,0)),quality01(pair.deepMargin,.55),
     1-clamp(start/Math.max(1,duration),0,1),clamp(length/Math.max(1,duration)*2.2,0,1),afterSettled
   ].map(value=>clamp(value,0,1)*2-1);
-  let dot=0,norm=0;
-  for(let index=0;index<Math.min(values.length,profile.weights.length);index++){const weight=Number(profile.weights[index])||0;dot+=weight*values[index];norm+=Math.abs(weight);}
-  const learned=norm?dot/norm:0,round=Math.max(0,Number(options.explorationRound)||0),jitter=round?Math.sin((pair.startFrame||0)*.017+(pair.endFrame||0)*.011+round*1.618)*Math.min(.012,.0025*round):0;
-  return clamp(Number(profile.strength)||0,0,.25)*learned+jitter;
+
+  let preference=0;
+  if(profile&&profile.count){
+    let dot=0,norm=0;
+    for(let index=0;index<Math.min(values.length,profile.weights?.length||0);index++){
+      const weight=Number(profile.weights[index])||0;dot+=weight*values[index];norm+=Math.abs(weight);
+    }
+    const linear=norm?dot/norm:0;
+    const model=(profileModelForward(profile.model,values)-.5)*2;
+    const liked=vectorCosine(values,profile.likedCenter);
+    const disliked=vectorCosine(values,profile.dislikedCenter);
+    preference=.34*linear+.42*model+.22*liked-.26*disliked;
+  }
+
+  const novelty=regionNovelty(start,end,options.excludeRegions,duration);
+  const duplicatePenalty=novelty<.14?(1.20*(1-novelty/.14)):0;
+  const noveltyBonus=(Number(options.searchMode)==="more"||options.searchMode==="more")?(.055*novelty):0;
+  const round=Math.max(0,Number(options.explorationRound)||0),seed=Number(options.searchSeed)||0;
+  const phase=(pair.startFrame||0)*.017+(pair.endFrame||0)*.011+round*1.618+seed*.000001;
+  const jitter=round?Math.sin(phase)*Math.min(.026,.004+.0035*Math.sqrt(round)):0;
+  const strength=clamp(Number(profile?.strength)||0,0,.42);
+  return strength*preference+noveltyBonus+jitter-duplicatePenalty;
 }
 
 function detect(channels,sampleRate,requested){
@@ -1311,12 +1359,12 @@ const state={
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
-  precisionRate:48000,learning:null,currentSessionId:"",savedSession:null,restoredWithoutFile:false,saveTimer:0,sessionPersistenceEnabled:true,visibleCandidateIds:[],aiPickCandidateId:"",solutionRound:0,trainingToken:0,lastNewCandidateId:"",rawCandidates:[],verifiedCandidates:[],rejectedCandidates:[]
+  precisionRate:48000,learning:null,currentSessionId:"",savedSession:null,restoredWithoutFile:false,saveTimer:0,sessionPersistenceEnabled:true,visibleCandidateIds:[],aiPickCandidateId:"",solutionRound:0,trainingToken:0,lastNewCandidateId:"",rawCandidates:[],verifiedCandidates:[],rejectedCandidates:[],searchHistory:[],candidateArchive:[],trackGeneration:0
 };
 
 const SETTINGS_KEY="videoGameMusicLooperSettingsV8",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV7";
-const LEARNING_KEY="videoGameMusicLooperLearningV2",LEGACY_LEARNING_KEY="videoGameMusicLooperLearningV1";
-const APP_VERSION="neural-feedback-2";
+const LEARNING_KEY="videoGameMusicLooperLearningV3",LEGACY_LEARNING_KEY="videoGameMusicLooperLearningV2";
+const APP_VERSION="neural-feedback-3";
 const VISIBLE_SOLUTION_LIMIT=4;
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
@@ -1484,7 +1532,7 @@ function createNeuralModel(){
     b1=Array(NEURAL_HIDDEN).fill(0),w2=Array.from({length:NEURAL_HIDDEN},()=>((random()-.5)*.10));
   return{version:2,inputSize:NEURAL_INPUTS,hiddenSize:NEURAL_HIDDEN,w1,b1,w2,b2:0,feedbackCount:0,trainingExamples:0,loss:null,trainedAt:null};
 }
-function defaultLearningData(){return{version:2,updatedAt:new Date().toISOString(),feedback:[],events:[],sessions:[],model:createNeuralModel()};}
+function defaultLearningData(){return{version:3,updatedAt:new Date().toISOString(),feedback:[],events:[],sessions:[],model:createNeuralModel()};}
 function validModel(model){
   return model&&model.inputSize===NEURAL_INPUTS&&model.hiddenSize===NEURAL_HIDDEN&&Array.isArray(model.w1)&&model.w1.length===NEURAL_HIDDEN&&Array.isArray(model.w2)&&model.w2.length===NEURAL_HIDDEN;
 }
@@ -1494,7 +1542,7 @@ function migrateLearningData(data){
   if(!Array.isArray(data.events))data.events=[];
   if(!Array.isArray(data.sessions))data.sessions=[];
   if(!validModel(data.model))data.model=createNeuralModel();
-  data.version=2;
+  data.version=3;
   return data;
 }
 function loadLearningData(){
@@ -1639,14 +1687,16 @@ function filterSeamlessCandidates(candidates,settings){
   const source=candidates.filter(candidate=>Number(candidate.endSeconds)-Number(candidate.startSeconds)>=Math.max(2.99,Number(settings.minimumLoop)-.012));
   if(!source.length)return[];
   source.sort((a,b)=>(Number(b.fullDetailRank)||0)-(Number(a.fullDetailRank)||0));
-  const anchor=source[0],best=candidateSeamMetrics(anchor),anchorLength=anchor.endSeconds-anchor.startSeconds,accepted=[];
+  const best=candidateSeamMetrics(source[0]),accepted=[];
   for(const candidate of source){
-    const metrics=candidateSeamMetrics(candidate),length=candidate.endSeconds-candidate.startSeconds,ratio=Math.max(length,anchorLength)/Math.max(.001,Math.min(length,anchorLength)),nearest=Math.max(1,Math.round(ratio)),family=Math.abs(ratio-nearest)<=.035&&nearest<=4;
-    const pass=family&&metrics.seamQuality>=Math.max(.48,best.seamQuality-.18)&&metrics.phase>=Math.max(.57,best.phase-.16)&&metrics.wave>=Math.max(.54,best.wave-.18)&&metrics.instrument>=Math.max(.53,best.instrument-.17)&&metrics.lower>=Math.max(.42,best.lower-.20);
+    const metrics=candidateSeamMetrics(candidate),seam=Number(candidate.seam)||0;
+    const absolute=seam<=6.2&&metrics.seamQuality>=.46&&metrics.phase>=.56&&metrics.wave>=.52&&metrics.instrument>=.51&&metrics.lower>=.40;
+    const relative=metrics.seamQuality>=Math.max(.43,best.seamQuality-.23)&&metrics.phase>=Math.max(.54,best.phase-.20)&&metrics.wave>=Math.max(.50,best.wave-.22)&&metrics.instrument>=Math.max(.49,best.instrument-.22)&&metrics.lower>=Math.max(.38,best.lower-.24);
+    const pass=absolute&&relative;
     candidate.seamVerified=!!pass;candidate.seamQuality=metrics.seamQuality;
-    if(pass)accepted.push(candidate);
+    if(pass&&candidateDiverseEnough(candidate,accepted))accepted.push(candidate);
   }
-  if(!accepted.length){anchor.seamVerified=true;accepted.push(anchor);}
+  if(!accepted.length){source[0].seamVerified=true;accepted.push(source[0]);}
   return accepted;
 }
 function rerankSolutions(){
@@ -1705,7 +1755,7 @@ function rotateVisibleSolutions({ratedId="",label=0,force=false}={}){
 function updateLearningUi(){
   if(!E.learningStatus)return;
   const feedback=state.learning?.feedback||[],likes=feedback.filter(item=>item.label===1).length,dislikes=feedback.filter(item=>item.label===0).length,sessions=state.learning?.sessions?.length||0,blend=Math.round(learningBlend()*100),pool=state.solutions.length;
-  E.learningStatus.innerHTML=feedback.length?`<span class="data-count">${likes} liked · ${dislikes} disliked</span> · ${pool} checked · learning weight ${blend}%`:`No ratings yet · ${sessions} saved result${sessions===1?"":"s"}.`;
+  E.learningStatus.innerHTML=feedback.length?`<span class="data-count">${likes} liked · ${dislikes} disliked</span> · ${pool} checked · search influence ${blend}%`:`No ratings yet · ${sessions} saved result${sessions===1?"":"s"}.`;
 }
 function cloneExportData(value,depth=0){
   if(depth>6)return null;
@@ -1735,12 +1785,12 @@ function makeSessionSnapshot(){
   const previous=state.savedSession||{},id=state.currentSessionId||previous.id||`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
   state.currentSessionId=id;
   return{
-    id,version:2,createdAt:previous.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),
+    id,version:3,createdAt:previous.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),
     fileName:state.file?.name||previous.fileName||"audio",fileSize:state.file?.size??previous.fileSize??0,
     duration:state.duration,analysisRate:state.analysisRate,analysisFrames:state.analysisFrames,precisionRate:state.precisionRate,
     activeCandidateId:state.activeCandidateId||state.result?.candidateId||"",visibleCandidateIds:state.visibleCandidateIds.slice(),aiPickCandidateId:state.aiPickCandidateId,solutionRound:state.solutionRound,
     wavePeaks:quantizePeaks(state.wavePeaks),candidates:state.solutions.map(primitiveCandidate),
-    rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),settings:readSettings()
+    rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),searchHistory:cloneExportData(state.searchHistory),candidateArchive:cloneExportData(state.candidateArchive),settings:readSettings()
   };
 }
 function saveCurrentSession(){
@@ -1761,7 +1811,7 @@ function restoreSession(session,withFile=false){
   state.savedSession=session;state.currentSessionId=session.id||"";state.duration=Number(session.duration)||0;
   state.analysisRate=Number(session.analysisRate)||0;state.analysisFrames=Number(session.analysisFrames)||0;state.precisionRate=Number(session.precisionRate)||48000;
   state.wavePeaks=restorePeaks(session.wavePeaks);state.solutions=session.candidates.map((candidate,index)=>({...candidate,candidateId:candidate.candidateId||candidate.fingerprint||`saved-${index}`,solutionNumber:candidate.solutionNumber||index+1}));
-  state.rawCandidates=Array.isArray(session.rawCandidates)?session.rawCandidates:[];state.verifiedCandidates=Array.isArray(session.verifiedCandidates)?session.verifiedCandidates:[];state.rejectedCandidates=Array.isArray(session.rejectedCandidates)?session.rejectedCandidates:[];
+  state.rawCandidates=Array.isArray(session.rawCandidates)?session.rawCandidates:[];state.verifiedCandidates=Array.isArray(session.verifiedCandidates)?session.verifiedCandidates:[];state.rejectedCandidates=Array.isArray(session.rejectedCandidates)?session.rejectedCandidates:[];state.searchHistory=Array.isArray(session.searchHistory)?session.searchHistory:[];state.candidateArchive=Array.isArray(session.candidateArchive)?session.candidateArchive:[];for(const candidate of state.solutions)candidate.trackKey=currentTrackKey();
   rerankSolutions();
   state.visibleCandidateIds=Array.isArray(session.visibleCandidateIds)?session.visibleCandidateIds.filter(id=>state.solutions.some(item=>item.candidateId===id)):[];
   if(!state.visibleCandidateIds.length)initializeVisibleSolutions();
@@ -1806,41 +1856,36 @@ async function rateCandidate(candidateId,label){
   state.sessionPersistenceEnabled=true;
   setBusy(true,"Updating the local ranker…");
   try{
-  const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
-  const key=feedbackKey(candidate),index=state.learning.feedback.findIndex(item=>item.key===key),same=candidate.userRating===label;
-  if(index>=0)state.learning.feedback.splice(index,1);
-  candidate.userRating=same?0:label;
-  const event={eventId:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,action:same?"remove":(label===1?"like":"dislike"),key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,candidateFingerprint:candidateFingerprint(candidate),features:candidateFeatureVector(candidate),candidate:primitiveCandidate(candidate),timestamp:new Date().toISOString()};
-  state.learning.events.push(event);
-  if(!same){
-    state.learning.feedback.push({key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,label:label===1?1:0,rating:label,features:candidateFeatureVector(candidate),track:state.file?.name||state.savedSession?.fileName||"audio",start:candidate.startSeconds,end:candidate.endSeconds,confidence:candidate.confidence,timestamp:new Date().toISOString()});
-  }
-  status("Learning",same?"Removing that rating…":"Updating the local ranker…","busy");
-  await trainNeuralModel();rerankSolutions();
-  const replacement=same?null:rotateVisibleSolutions({ratedId:candidateId,label,force:label===1});
-  if(!state.visibleCandidateIds.length)initializeVisibleSolutions();
-  const active=state.solutions.find(item=>item.candidateId===state.activeCandidateId);if(active){state.result=active;E.startInput.value=active.startSeconds.toFixed(6);E.endInput.value=active.endSeconds.toFixed(6);updateResult(false);}
-  renderSolutions();scheduleSessionSave();
-  status("Feedback learned",same?"Rating removed.":replacement?"The model learned and added a new seam-checked solution.":label===1?"This solution was liked.":"This solution was disliked.","ok");
+    const candidate=state.solutions.find(item=>item.candidateId===candidateId);if(!candidate)return;
+    const key=feedbackKey(candidate),index=state.learning.feedback.findIndex(item=>item.key===key),same=candidate.userRating===label;
+    if(index>=0)state.learning.feedback.splice(index,1);
+    candidate.userRating=same?0:label;
+    const event={eventId:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,action:same?"remove":(label===1?"like":"dislike"),key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,candidateFingerprint:candidateFingerprint(candidate),features:candidateFeatureVector(candidate),candidate:primitiveCandidate(candidate),timestamp:new Date().toISOString()};
+    state.learning.events.push(event);
+    if(!same)state.learning.feedback.push({key,trackKey:currentTrackKey(),sessionId:state.currentSessionId||"",candidateId,label:label===1?1:0,rating:label,features:candidateFeatureVector(candidate),track:state.file?.name||state.savedSession?.fileName||"audio",start:candidate.startSeconds,end:candidate.endSeconds,confidence:candidate.confidence,timestamp:new Date().toISOString()});
+    status("Learning",same?"Removing that rating…":"Training from that exact solution…","busy");
+    await trainNeuralModel();rerankSolutions();
+    renderSolutions();scheduleSessionSave();
+    status("Feedback learned",same?"Rating removed.":label===1?"Liked. Find more will search toward similar strong loops.":"Disliked. Find more will avoid similar loop choices.","ok");
   }finally{setBusy(false);}
 }
-function showNextSolutionBatch(){
-  if(!state.solutions.length)return;
-  state.solutionRound++;
-  const before=state.visibleCandidateIds.join("|");
-  rotateVisibleSolutions({force:true});
-  if(before===state.visibleCandidateIds.join("|")){
-    const ranked=rankedAvailableCandidates(),offset=(state.solutionRound*VISIBLE_SOLUTION_LIMIT)%Math.max(1,ranked.length),rotated=ranked.slice(offset).concat(ranked.slice(0,offset));
-    state.visibleCandidateIds=rotated.slice(0,VISIBLE_SOLUTION_LIMIT).map(item=>item.candidateId);
-  }
-  renderSolutions();scheduleSessionSave();status("New solutions","Showing another set of seam-checked candidates.","ok");
-}
+function showNextSolutionBatch(){return findMoreSolutions();}
 function buildDetectorLearningProfile(){
-  const feedback=state.learning?.feedback||[],likes=feedback.filter(item=>item.label===1),dislikes=feedback.filter(item=>item.label===0);
-  if(!likes.length||!dislikes.length)return null;
-  const mean=items=>FEATURE_NAMES.map((_,index)=>items.reduce((sum,item)=>sum+(Number(item.features?.[index])||0),0)/items.length);
-  const liked=mean(likes),disliked=mean(dislikes),weights=liked.map((value,index)=>clamp(value-disliked[index],-.8,.8));
-  return{count:feedback.length,strength:Math.min(.18,.05+.025*Math.log2(Math.min(likes.length,dislikes.length)+1)),weights};
+  const feedback=(state.learning?.feedback||[]).filter(item=>Array.isArray(item.features)&&item.features.length===NEURAL_INPUTS),
+    likes=feedback.filter(item=>item.label===1),dislikes=feedback.filter(item=>item.label===0);
+  if(!feedback.length)return null;
+  const mean=items=>items.length?FEATURE_NAMES.map((_,index)=>items.reduce((sum,item)=>sum+(Number(item.features[index])||0),0)/items.length):null;
+  const likedCenter=mean(likes),dislikedCenter=mean(dislikes),weights=FEATURE_NAMES.map((_,index)=>{
+    if(likedCenter&&dislikedCenter)return clamp(likedCenter[index]-dislikedCenter[index],-1,1);
+    if(likedCenter)return clamp(likedCenter[index]*.72,-.8,.8);
+    return clamp(-dislikedCenter[index]*.72,-.8,.8);
+  });
+  const balanced=Math.min(likes.length,dislikes.length),oneSided=Math.max(likes.length,dislikes.length);
+  const strength=balanced?Math.min(.38,.12+.075*Math.log2(balanced+1)):Math.min(.20,.06+.045*Math.log2(oneSided+1));
+  return{
+    count:feedback.length,likes:likes.length,dislikes:dislikes.length,strength,weights,
+    likedCenter,dislikedCenter,model:validModel(state.learning?.model)?cloneModel(state.learning.model):null
+  };
 }
 function exportLearningData(){
   if(!state.learning)return;
@@ -1854,7 +1899,7 @@ function exportLearningData(){
       sessionId:state.currentSessionId,duration:state.duration,analysisRate:state.analysisRate,analysisFrames:state.analysisFrames,precisionRate:state.precisionRate,
       activeCandidateId:state.activeCandidateId,aiPickCandidateId:state.aiPickCandidateId,visibleCandidateIds:state.visibleCandidateIds.slice(),solutionRound:state.solutionRound,
       candidatePool:state.solutions.map(candidate=>({...primitiveCandidate(candidate),learningFeatures:candidateFeatureVector(candidate)})),
-      rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),
+      rawCandidates:cloneExportData(state.rawCandidates),verifiedCandidates:cloneExportData(state.verifiedCandidates),rejectedCandidates:cloneExportData(state.rejectedCandidates),searchHistory:cloneExportData(state.searchHistory),candidateArchive:cloneExportData(state.candidateArchive),
       waveformPeaks:quantizePeaks(state.wavePeaks),log:E.log.textContent}
   };
   triggerDownload(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`video_game_music_looper_TOTAL_data_${new Date().toISOString().replace(/[:.]/g,"-")}.json`);
@@ -1862,8 +1907,8 @@ function exportLearningData(){
 }
 function resetLearningData(){
   if(!confirm("Reset all likes, dislikes, learned weights, rating history, and saved loop results?"))return;
-  try{localStorage.removeItem(LEARNING_KEY);localStorage.removeItem(LEGACY_LEARNING_KEY);}catch{}
-  state.learning=defaultLearningData();state.savedSession=null;state.currentSessionId="";state.sessionPersistenceEnabled=false;state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;
+  try{localStorage.removeItem(LEARNING_KEY);localStorage.removeItem(LEGACY_LEARNING_KEY);localStorage.removeItem("videoGameMusicLooperLearningV1");}catch{}
+  state.learning=defaultLearningData();state.savedSession=null;state.currentSessionId="";state.sessionPersistenceEnabled=false;state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;state.searchHistory=[];state.candidateArchive=[];state.rawCandidates=[];state.verifiedCandidates=[];state.rejectedCandidates=[];
   for(const candidate of state.solutions)candidate.userRating=0;
   initializeVisibleSolutions();renderSolutions();saveLearningData();
   status("Learning data reset","Ratings, learned weights, history, and saved results were cleared.","ok");log("Learning data reset.");
@@ -2422,15 +2467,124 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
 }
 
 async function runDetection(options){
-
   return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
+}
+function hashText(value){
+  let hash=2166136261>>>0;
+  for(const char of String(value)){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619);}
+  return hash>>>0;
+}
+function candidateNearExisting(startSeconds,endSeconds,candidates=state.solutions){
+  const length=endSeconds-startSeconds;
+  return candidates.some(candidate=>{
+    const otherLength=candidate.endSeconds-candidate.startSeconds;
+    return Math.abs(candidate.startSeconds-startSeconds)<.075&&Math.abs(candidate.endSeconds-endSeconds)<.075||
+      (Math.abs(candidate.startSeconds-startSeconds)<.15&&Math.abs(otherLength-length)/Math.max(.001,Math.max(otherLength,length))<.006);
+  });
+}
+function collectCoarseCandidates(coarse){
+  const candidates=[coarse,...(Array.isArray(coarse?.alternatives)?coarse.alternatives:[])],unique=[];
+  for(const candidate of candidates){
+    const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate;
+    if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)continue;
+    if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.075&&Math.abs(item.end/state.analysisRate-end)<.075))continue;
+    unique.push(candidate);
+  }
+  return unique;
+}
+function stampCandidate(candidate,index=0){
+  candidate.trackKey=currentTrackKey();
+  candidate.solutionNumber=Number.isFinite(candidate.solutionNumber)?candidate.solutionNumber:index+1;
+  ensureCandidateId(candidate,index);
+  return candidate;
+}
+function mergeNewSolutions(newCandidates){
+  const added=[];
+  for(const candidate of newCandidates){
+    if(candidateNearExisting(candidate.startSeconds,candidate.endSeconds))continue;
+    stampCandidate(candidate,state.solutions.length+added.length);
+    state.solutions.push(candidate);added.push(candidate);
+  }
+  state.candidateArchive.push(...added.map(candidate=>({...primitiveCandidate(candidate),trackKey:currentTrackKey(),addedAt:new Date().toISOString(),searchRound:state.solutionRound})));
+  return added;
+}
+function visibleBatchFromNew(added){
+  rerankSolutions();
+  const liked=state.solutions.filter(candidate=>candidate.userRating===1&&candidate.seamVerified!==false).sort((a,b)=>b.learningScore-a.learningScore),chosen=[];
+  for(const candidate of liked){if(chosen.length>=2)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
+  const fresh=added.slice().sort((a,b)=>(b.learningScore-a.learningScore)||((b.fullDetailRank||0)-(a.fullDetailRank||0)));
+  for(const candidate of fresh){if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
+  for(const candidate of rankedAvailableCandidates(new Set(chosen.map(item=>item.candidateId)))){if(chosen.length>=VISIBLE_SOLUTION_LIMIT)break;if(candidateDiverseEnough(candidate,chosen))chosen.push(candidate);}
+  state.visibleCandidateIds=chosen.map(candidate=>candidate.candidateId);
+  if(!state.visibleCandidateIds.includes(state.activeCandidateId))state.activeCandidateId=state.visibleCandidateIds[0]||state.aiPickCandidateId||"";
+  state.lastNewCandidateId=fresh[0]?.candidateId||"";
+}
+async function analyzeCandidateBatch(settings,historyLabel){
+  const coarse=await runDetection(settings),unique=collectCoarseCandidates(coarse),unseen=unique.filter(candidate=>{
+    const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate;
+    return !candidateNearExisting(start,end);
+  });
+  const detailCount=Math.min(Math.max(4,settings.fullDetailCandidates),unseen.length),verified=[];
+  for(let index=0;index<detailCount;index++){
+    try{verified.push(await refineAtFullDetail(unseen[index],settings,index,detailCount));}
+    catch(error){log(`${historyLabel} candidate ${index+1} full-detail check failed: ${error.message||error}`);}
+  }
+  const seamless=filterSeamlessCandidates(verified,settings),rejected=verified.filter(candidate=>candidate.seamVerified===false);
+  state.searchHistory.push({
+    id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,trackKey:currentTrackKey(),label:historyLabel,
+    timestamp:new Date().toISOString(),settings:cloneExportData(settings),raw:cloneExportData(unique),verified:cloneExportData(verified),
+    seamless:cloneExportData(seamless),rejected:cloneExportData(rejected)
+  });
+  state.searchHistory=state.searchHistory.slice(-80);
+  state.rawCandidates.push(...cloneExportData(unique));state.verifiedCandidates.push(...cloneExportData(verified));state.rejectedCandidates.push(...cloneExportData(rejected));
+  return seamless;
+}
+async function findMoreSolutions(){
+  if(state.busy)return;
+  if(!state.file){status("Choose audio","Select the audio file before finding more solutions.","error");return;}
+  if(!state.solutions.length){await findLoop();return;}
+  invalidateMedia();
+  const base=readSettings(),previousActive=state.activeCandidateId,addedTotal=[];
+  state.solutionRound++;
+  try{
+    setBusy(true,"Training and searching for new solutions…");
+    if((state.learning?.feedback||[]).length)await trainNeuralModel();
+    const profile=buildDetectorLearningProfile();
+    await prepareAnalysis(base);
+    for(let attempt=0;attempt<3&&addedTotal.length<VISIBLE_SOLUTION_LIMIT;attempt++){
+      const round=state.solutionRound+attempt;
+      const settings={...base,
+        learningProfile:profile,searchMode:"more",explorationRound:round,
+        searchSeed:hashText(`${currentTrackKey()}|${round}|${state.learning?.events?.length||0}|${attempt}`),
+        excludeRegions:state.solutions.map(candidate=>({start:candidate.startSeconds,end:candidate.endSeconds,rating:candidate.userRating||0})),
+        coarsePairsToRefine:Math.min(64,base.coarsePairsToRefine+10+attempt*8),
+        deepLagCandidates:Math.min(96,base.deepLagCandidates+12+attempt*10),
+        fullDetailCandidates:Math.min(12,Math.max(base.fullDetailCandidates,8+attempt*2)),
+        maxCandidates:Math.min(4000,base.maxCandidates+attempt*240)
+      };
+      setProgress(40+attempt*12,`Learned search pass ${attempt+1}…`);
+      const fresh=await analyzeCandidateBatch(settings,`learned-pass-${round}-${attempt+1}`);
+      const added=mergeNewSolutions(fresh);
+      addedTotal.push(...added);
+      if(!added.length)log(`Learned search pass ${attempt+1} found no new seam-safe region; widening the search.`);
+    }
+    if(!addedTotal.length)throw new Error("No different seam-safe solution was found yet. Add more ratings or increase Maximum candidates, then try again.");
+    rerankSolutions();visibleBatchFromNew(addedTotal);
+    const active=state.solutions.find(candidate=>candidate.candidateId===previousActive&&candidate.userRating===1)||state.solutions.find(candidate=>candidate.candidateId===state.visibleCandidateIds[0])||addedTotal[0];
+    state.activeCandidateId=active.candidateId;state.result=active;
+    E.startInput.value=active.startSeconds.toFixed(6);E.endInput.value=active.endSeconds.toFixed(6);
+    updateResult(false);renderSolutions();saveCurrentSession();
+    status("New learned solutions",`${addedTotal.length} different seam-checked solution${addedTotal.length===1?"":"s"} added.`,"ok");
+    log(`Find more added ${addedTotal.length} new solution${addedTotal.length===1?"":"s"}; the neural profile influenced the search.`);
+  }catch(error){status("Find more failed",error.message||String(error),"error");log(`Find more error: ${error.message||error}`);}
+  finally{setBusy(false);E.progressBox.classList.add("hidden");}
 }
 
 function reset(options={}){
   const oldInput=state.inputFsName,preservedSession=options.preserveSavedSession?state.savedSession:null;
   stopPlayback();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.solutions=[];state.rawCandidates=[];state.verifiedCandidates=[];state.rejectedCandidates=[];state.activeCandidateId="";state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;state.lastNewCandidateId="";state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.solutions=[];state.rawCandidates=[];state.verifiedCandidates=[];state.rejectedCandidates=[];state.searchHistory=[];state.candidateArchive=[];state.activeCandidateId="";state.visibleCandidateIds=[];state.aiPickCandidateId="";state.solutionRound=0;state.lastNewCandidateId="";state.inputFsName=null;state.mediaVersion++;state.trackGeneration++;state.precisionRate=readSettings().precisionSampleRate;
   state.currentSessionId="";state.savedSession=preservedSession;state.restoredWithoutFile=false;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();
@@ -2442,7 +2596,7 @@ function reset(options={}){
 }
 function loadFile(file){
   if(!file)return;
-  const matchingSession=state.savedSession&&sessionMatchesFile(state.savedSession,file)?state.savedSession:null;
+  const matchingSession=(state.learning?.sessions||[]).slice().reverse().find(session=>sessionMatchesFile(session,file))||(state.savedSession&&sessionMatchesFile(state.savedSession,file)?state.savedSession:null);
   if(!isSupportedAudioFile(file)){
     const ext=extension(file.name);
     const midi=BLOCKED_MIDI_EXTENSIONS.has(ext);
@@ -2487,14 +2641,7 @@ async function findLoop(){
     setBusy(true,"Preparing the analysis track…");
     await prepareAnalysis(settings);
     setProgress(42,"Starting loop detection…");
-    const coarse=await runDetection(settings);
-    const candidates=[coarse,...(Array.isArray(coarse.alternatives)?coarse.alternatives:[])];
-    const unique=[];
-    for(const candidate of candidates){
-      const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate;
-      if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.08&&Math.abs(item.end/state.analysisRate-end)<.08))continue;
-      unique.push(candidate);
-    }
+    const coarse=await runDetection(settings),unique=collectCoarseCandidates(coarse);
     state.rawCandidates=cloneExportData(unique);
     const detailCount=Math.min(settings.fullDetailCandidates,unique.length),verified=[];
     for(let index=0;index<detailCount;index++){
@@ -2505,16 +2652,17 @@ async function findLoop(){
     state.verifiedCandidates=cloneExportData(verified);
     const seamless=filterSeamlessCandidates(verified,settings);
     state.rejectedCandidates=cloneExportData(verified.filter(candidate=>candidate.seamVerified===false));
+    state.searchHistory=[{id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,trackKey:currentTrackKey(),label:"initial",timestamp:new Date().toISOString(),settings:cloneExportData(settings),raw:cloneExportData(unique),verified:cloneExportData(verified),seamless:cloneExportData(seamless),rejected:cloneExportData(state.rejectedCandidates)}];
     if(!seamless.length)throw new Error("No candidate passed the hard-seam and beat-phase checks.");
     state.currentSessionId=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
     state.savedSession=null;state.sessionPersistenceEnabled=true;state.solutionRound=0;
-    state.solutions=seamless.map((candidate,index)=>({...candidate,solutionNumber:index+1,userRating:0}));
+    state.solutions=seamless.map((candidate,index)=>stampCandidate({...candidate,solutionNumber:index+1,userRating:0},index));state.candidateArchive=state.solutions.map(candidate=>({...primitiveCandidate(candidate),trackKey:currentTrackKey(),addedAt:new Date().toISOString(),searchRound:0}));
     for(let index=0;index<state.solutions.length;index++)ensureCandidateId(state.solutions[index],index);
     initializeVisibleSolutions();state.result=state.solutions.find(item=>item.candidateId===state.activeCandidateId)||state.solutions[0];state.activeCandidateId=state.result.candidateId;
     showResult();saveCurrentSession();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
     log(`Deep repeat match: ${Math.round((state.result.deepAligned??0)*100)}%; ${state.solutions.length} full-detail solutions checked.`);
-    status("Loop found",`${state.solutions.length} seam-checked solutions are ready. Ratings replace weaker options with new candidates.`,"ok");
+    status("Loop found",`${state.solutions.length} seam-checked solutions are ready. Rate them, then use Find more for a new learned search.`,"ok");
     log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
@@ -2640,6 +2788,7 @@ function seamFilter(start,end){
 
 async function renderWav(kind){
   if(!state.result||!state.file)throw new Error("Find a loop first.");
+  if(state.result.trackKey&&state.result.trackKey!==currentTrackKey())throw new Error("These loop points belong to a different audio file. Run Find loop for the selected file.");
   const ffmpeg=await ensureFFmpeg(),input=await ensureInputFile(),{start,end}=currentTimes();
   const output=`looper_${kind}_${Date.now().toString(36)}.wav`;
   let args;
