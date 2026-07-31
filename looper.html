@@ -137,7 +137,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <summary>Advanced settings</summary>
       <div class="settings-body">
         <div class="settings-head">
-          <p class="note">Deep uses a quick first pass, then checks the best matches more closely.</p>
+          <p class="note">Deep runs a denser repeat search, checks more full-detail candidates, and performs an extra beat-period polish.</p>
           <button class="button ghost small" id="resetSettingsButton" type="button">Reset defaults</button>
         </div>
 
@@ -191,13 +191,13 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <div class="settings-group">
           <p class="settings-title">Deep analysis</p>
           <div class="settings-grid">
-            <label><span class="label">Lag candidates</span><input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="96" step="1" value="44"></label>
-            <label><span class="label">Repeat check window</span><input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="30" step="0.5" value="8"></label>
+            <label><span class="label">Lag candidates</span><input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="128" step="1" value="72"></label>
+            <label><span class="label">Repeat check window</span><input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="30" step="0.5" value="12"></label>
             <label><span class="label">Minimum repeat coverage</span><input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.4"></label>
-            <label><span class="label">Lag fine search</span><input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="220"></label>
+            <label><span class="label">Lag fine search</span><input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="320"></label>
             <label><span class="label">Speed-ramp crossing penalty</span><input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46"></label>
             <label><span class="label">Settled-speed bonus</span><input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14"></label>
-            <label><span class="label">Full-detail candidates</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="6" step="1" value="5"></label>
+            <label><span class="label">Full-detail candidates</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="16" step="1" value="12"></label>
             <label><span class="label">Direct repeat floor</span><input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58"></label>
           </div>
         </div>
@@ -547,9 +547,9 @@ function pushTop(list,item,limit){
   if(item.score<=list[0].score)return;list[0]=item;let i=0;while(i+1<list.length&&list[i].score>list[i+1].score){const t=list[i];list[i]=list[i+1];list[i+1]=t;i++;}
 }
 function coarseSearch(bundle,candidates,options,duration){
-  const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="deep"?6:(quality==="maximum"?7:(quality==="fast"?4:5)),embeddings=[];
-  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="deep"?18:(quality==="maximum"?28:(quality==="fast"?12:20));
-  const flowSeconds=clamp(Number(options.instrumentFlowSeconds)||12,3,30),flowBins=quality==="deep"?20:(quality==="deep"?6:(quality==="maximum"?16:(quality==="fast"?8:12))),tempoBins=quality==="deep"?20:(quality==="deep"?6:(quality==="maximum"?16:(quality==="fast"?8:12)));
+  const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="deep"?12:(quality==="maximum"?7:(quality==="fast"?4:5)),embeddings=[];
+  const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="deep"?40:(quality==="maximum"?28:(quality==="fast"?12:20));
+  const flowSeconds=clamp(Number(options.instrumentFlowSeconds)||12,3,30),flowBins=quality==="deep"?28:(quality==="maximum"?16:(quality==="fast"?8:12)),tempoBins=quality==="deep"?28:(quality==="maximum"?16:(quality==="fast"?8:12));
   for(let i=0;i<candidates.length;i++){
     const frame=candidates[i];
     embeddings.push({
@@ -569,7 +569,7 @@ function coarseSearch(bundle,candidates,options,duration){
     });
     if(i%60===0)postProgress(30+8*i/candidates.length,"Preparing loop points…");
   }
-  const minimum=options.minimumLoop,requestedTop=clamp(Math.round(options.coarsePairsToRefine||18),1,64),topCap=quality==="deep"?80:64,topLimit=clamp(Math.max(requestedTop,quality==="deep"?requestedTop*4:requestedTop*2),1,topCap),top=[];
+  const minimum=options.minimumLoop,requestedTop=clamp(Math.round(options.coarsePairsToRefine||18),1,96),topCap=quality==="deep"?128:64,topLimit=clamp(Math.max(requestedTop,quality==="deep"?requestedTop*3:requestedTop*2),1,topCap),top=[];
   const times=new Float64Array(candidates.length);for(let i=0;i<candidates.length;i++)times[i]=candidates[i]/bundle.frameRate;
   const tolerance=Math.max(.01,(Number(options.tempoTolerancePercent)||8)/100),rampPenalty=clamp(Number(options.tempoRampPenalty)||.16,0,.75);
   const flowWeight=clamp(Number(options.instrumentFlowWeight)||.30,0,.75),flowMinimum=clamp(Number(options.instrumentFlowMinimum)||.62,0,1),tempoPathWeight=clamp(Number(options.tempoPathWeight)||.10,0,.5);
@@ -741,6 +741,101 @@ function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeco
   const phaseAlignment=Math.max(windowCorrelation(channels,bestStart,bestEnd,phaseWindow,"forward","transient",2100),windowCorrelation(channels,bestStart,bestEnd,phaseWindow,"backward","transient",2100));
   return{start:bestStart,end:bestEnd,waveform,seam:bestCost,phaseAlignment,periodCorrection:((bestEnd-bestStart)-targetPeriod)*1000/sampleRate};
 }
+
+function deepPeriodPolish(channels,sampleRate,result,options,beatSeconds=0){
+  const total=channels[0].length,start=result.start,baseEnd=result.end,basePeriod=baseEnd-start;
+  if(start<2||basePeriod<8||baseEnd>total)return result;
+
+  const requested=Math.max(24,Number(options.beatDriftCorrectionMs)||48);
+  const beatBound=beatSeconds>0?Math.max(22,Math.min(72,beatSeconds*1000*.10)):72;
+  const radiusMs=Math.min(requested,beatBound,72);
+  const radius=Math.max(1,Math.round(radiusMs*sampleRate/1000));
+  const coarseStep=Math.max(1,Math.round(.75*sampleRate/1000));
+  const fineRadius=Math.max(1,Math.round(1.75*sampleRate/1000));
+  const fineStep=Math.max(1,Math.round(.125*sampleRate/1000));
+  const shortWindow=Math.max(256,Math.round(Math.max(.42,(Number(options.refineMatchMs)||650)/1000)*sampleRate));
+  const longWindow=Math.max(shortWindow,Math.round(Math.max(4.5,Number(options.beatPhaseContextSeconds)||5.5)*sampleRate));
+  const phaseWindow=Math.max(96,Math.round(.14*sampleRate));
+  const seamContext=Math.max(48,Math.round(Math.max(48,Number(options.seamForwardContextMs)||48)*sampleRate/1000));
+
+  const scoreAt=end=>{
+    if(end<=start+4||end>total)return null;
+    const shortTransient=Math.max(
+      windowCorrelation(channels,start,end,shortWindow,"forward","transient",1400),
+      windowCorrelation(channels,start,end,shortWindow,"backward","transient",1400)
+    );
+    const longTransient=Math.max(
+      windowCorrelation(channels,start,end,longWindow,"forward","transient",3400),
+      windowCorrelation(channels,start,end,longWindow,"backward","transient",3400)
+    );
+    const longMono=Math.max(
+      windowCorrelation(channels,start,end,longWindow,"forward","mono",2600),
+      windowCorrelation(channels,start,end,longWindow,"backward","mono",2600)
+    );
+    const phase=forwardError(channels,start,end,phaseWindow);
+    const phase01=clamp(.58*clamp((phase.corr+1)/2,0,1)+.42*Math.exp(-1.25*Math.min(phase.raw,4)),0,1);
+    const seam=seamCost(channels,start,end,seamContext),seam01=Math.exp(-.48*Math.max(0,seam));
+    let beat01=.72;
+    if(options.beatLock&&beatSeconds>0){
+      const beats=(end-start)/(sampleRate*beatSeconds),error=Math.abs(beats-Math.round(beats));
+      beat01=Math.exp(-10.5*error*error);
+    }
+    let vocal=0;
+    if(options.useVocals)vocal=Math.max(
+      windowCorrelation(channels,start,end,Math.min(longWindow,Math.round(1.8*sampleRate)),"forward","vocal",1600),
+      windowCorrelation(channels,start,end,Math.min(longWindow,Math.round(1.8*sampleRate)),"backward","vocal",1600)
+    );
+    const short01=clamp((shortTransient+1)/2,0,1),long01=clamp((longTransient+1)/2,0,1),mono01=clamp((longMono+1)/2,0,1),vocal01=clamp((vocal+1)/2,0,1);
+    const score=(options.useVocals?.13:.15)*short01+.30*long01+.18*mono01+.15*phase01+.15*seam01+.09*beat01+(options.useVocals?.06:0)*vocal01;
+    return{score,seam,phaseAlignment:longTransient,waveform:.52*longTransient+.28*longMono+.20*shortTransient};
+  };
+
+  const baseline=scoreAt(baseEnd);
+  if(!baseline)return result;
+  let best={end:baseEnd,...baseline};
+  for(let delta=-radius;delta<=radius;delta+=coarseStep){
+    const candidate=scoreAt(baseEnd+delta);if(!candidate)continue;
+    candidate.score-=.018*Math.abs(delta)/Math.max(1,radius);
+    if(candidate.score>best.score)best={end:baseEnd+delta,...candidate};
+  }
+  const coarseEnd=best.end;
+  for(let delta=-fineRadius;delta<=fineRadius;delta+=fineStep){
+    const candidate=scoreAt(coarseEnd+delta);if(!candidate)continue;
+    candidate.score-=.010*Math.abs((coarseEnd+delta)-baseEnd)/Math.max(1,radius);
+    if(candidate.score>best.score)best={end:coarseEnd+delta,...candidate};
+  }
+
+  const minimumGain=Math.max(.008,Math.min(.04,Number(options.beatDriftMinGain)||.018));
+  if(best.end!==baseEnd&&best.score<baseline.score+minimumGain)best={end:baseEnd,...baseline};
+
+  const chosenPeriod=best.end-start;
+  const sharedRadius=Math.max(1,Math.round(Math.max(5,Number(options.seamSharedSearchMs)||7)*sampleRate/1000));
+  let finalStart=start,finalEnd=best.end,finalCost=best.seam,finalPhase=best.phaseAlignment,finalWave=best.waveform;
+  for(let offset=-sharedRadius;offset<=sharedRadius;offset++){
+    const candidateStart=start+offset,candidateEnd=candidateStart+chosenPeriod;
+    if(candidateStart<2||candidateEnd>total)continue;
+    const seam=seamCost(channels,candidateStart,candidateEnd,seamContext)+.006*Math.abs(offset)/Math.max(1,sharedRadius);
+    if(seam<finalCost){
+      finalCost=seam;finalStart=candidateStart;finalEnd=candidateEnd;
+      finalPhase=Math.max(
+        windowCorrelation(channels,finalStart,finalEnd,longWindow,"forward","transient",3400),
+        windowCorrelation(channels,finalStart,finalEnd,longWindow,"backward","transient",3400)
+      );
+      finalWave=Math.max(result.waveform??-1,best.waveform);
+    }
+  }
+  return{
+    ...result,
+    start:finalStart,
+    end:finalEnd,
+    seam:finalCost,
+    phaseAlignment:finalPhase,
+    waveform:Math.max(result.waveform??-1,finalWave),
+    periodCorrection:(result.periodCorrection||0)+((finalEnd-finalStart)-basePeriod)*1000/sampleRate,
+    deepPeriodPolished:true
+  };
+}
+
 function segmentSimilarityRange(bundle,startFrame,endFrame,otherStart,otherEnd,from,to,bins=96){
   from=clamp(from,0,bundle.dims);to=clamp(to,from+1,bundle.dims);
   let product=0,aa=0,bb=0;
@@ -823,7 +918,7 @@ function onsetLagQuality(bundle,lag){
 }
 function collectLagSeeds(coarsePool,candidates,bundle,options){
   const minimum=Math.max(2,Math.round((Number(options.minimumLoop)||12)*bundle.frameRate));
-  const maximum=bundle.frames-2,limit=clamp(Math.round(Number(options.deepLagCandidates)||40),8,96),tolerance=Math.max(1,Math.round(.10*bundle.frameRate));
+  const maximum=bundle.frames-2,limit=clamp(Math.round(Number(options.deepLagCandidates)||72),8,128),tolerance=Math.max(1,Math.round(.075*bundle.frameRate));
   const seeds=[];
   const add=(lag,sourceScore=0)=>{
     lag=Math.round(lag);if(lag<minimum||lag>maximum)return;
@@ -857,7 +952,7 @@ function refineLagSeeds(bundle,seeds,options){
     if(index%5===0)postProgress(55+5*index/Math.max(1,seeds.length),"Tightening repeat lengths…");
   }
   refined.sort((a,b)=>(b.quality+.03*b.sourceScore)-(a.quality+.03*a.sourceScore));
-  return refined.slice(0,Math.max(10,Math.min(refined.length,clamp(Math.round(Number(options.deepLagCandidates)||40),8,96))));
+  return refined.slice(0,Math.max(16,Math.min(refined.length,clamp(Math.round(Number(options.deepLagCandidates)||72),8,128))));
 }
 function deepLagEvidence(bundle,lag,options){
   const length=bundle.frames-lag;
@@ -905,7 +1000,7 @@ function deepLagEvidence(bundle,lag,options){
     }
     return best;
   };
-  const coarseStep=Math.max(1,Math.round((options.power==="deep"?.18:.32)*bundle.frameRate));let best=null,bestStart=0;
+  const coarseStep=Math.max(1,Math.round((options.power==="deep"?.10:.32)*bundle.frameRate));let best=null,bestStart=0;
   for(let start=0;start<=length;start+=coarseStep){const item=scoreStart(start,false);if(item&&(!best||item.score>best.score)){best=item;bestStart=start;}}
   if(!best)return null;
   const refineRadius=Math.max(coarseStep,Math.round(2.0*bundle.frameRate));
@@ -931,7 +1026,7 @@ function deepAnalyze(bundle,candidates,coarsePool,options){
     const seed01=nearest?clamp((nearest.score+.35)/1.7,0,1):.5;
     const score=.60*deep.score+.13*deep.aligned+.10*deep.lower+.08*deep.harmonic+.05*deep.timbre+.03*deep.tempo+.05*deep.coverage+.03*seed01-.07*deep.ramp;
     results.push({...nearest,score,startFrame:deep.startFrame,endFrame:deep.endFrame,deepScore:deep.score,deepAligned:deep.aligned,deepLower:deep.lower,deepHarmonic:deep.harmonic,deepTimbre:deep.timbre,deepRhythm:deep.rhythm,deepTempo:deep.tempo,deepStability:deep.stability,deepRamp:deep.ramp,deepCoverage:deep.coverage,deepBoundary:deep.boundary,deepDirection:deep.direction});
-    if(index%3===0)postProgress(60+14*index/Math.max(1,lags.length),"Deep-checking the repeating section…");
+    if(index%3===0)postProgress(58+14*index/Math.max(1,lags.length),"Deep-checking repeat length "+(index+1)+" of "+lags.length+"…");
   }
   results.sort((a,b)=>b.score-a.score);
   if(results.length>1){const margin=clamp(.5+(results[0].score-results[1].score)*3.2,.5,1);for(const item of results)item.deepMargin=margin;}
@@ -1037,7 +1132,7 @@ function detect(channels,sampleRate,requested){
   const coarsePool=coarseSearch(bundle,candidates,options,duration);if(!coarsePool.length)throw new Error("No loop matched the minimum length.");
   let searchPool;
   if(options.power==="deep"){
-    postProgress(53,"Building a deep repeat map…");
+    postProgress(51,"Building a dense repeat map…");
     searchPool=deepAnalyze(bundle,candidates,coarsePool,options);
     if(!searchPool.length)searchPool=coarsePool.map(pair=>({...pair,startFrame:candidates[pair.i],endFrame:candidates[pair.j]}));
   }else searchPool=coarsePool.map(pair=>({...pair,startFrame:candidates[pair.i],endFrame:candidates[pair.j]}));
@@ -1048,14 +1143,16 @@ function detect(channels,sampleRate,requested){
     if(repeat.coverage>=minimumCoverage)pair.score+=repeatWeight*repeat.score*repeat.coverage;else pair.score-=.05*(minimumCoverage-repeat.coverage)/minimumCoverage;
   }
   searchPool.sort((a,b)=>b.score-a.score);
-  const refineCount=options.power==="deep"?Math.min(8,clamp(Math.round(options.coarsePairsToRefine||24),1,64)):clamp(Math.round(options.coarsePairsToRefine||18),1,64),coarse=searchPool.slice(0,refineCount),results=[];
+  const requestedRefine=clamp(Math.round(options.coarsePairsToRefine||18),1,96);
+  const deepDetail=clamp(Math.round(Number(options.fullDetailCandidates)||12),1,16);
+  const refineCount=options.power==="deep"?Math.min(searchPool.length,Math.max(deepDetail,Math.min(requestedRefine,16))):Math.min(searchPool.length,requestedRefine),coarse=searchPool.slice(0,refineCount),results=[];
   for(let index=0;index<coarse.length;index++){
     const pair=coarse[index],startSeconds=pair.startFrame/bundle.frameRate,endSeconds=pair.endFrame/bundle.frameRate,initialStart=Math.round(startSeconds*sampleRate),initialEnd=Math.round(endSeconds*sampleRate);
-    const lowOptions=options.power==="deep"?{...options,refineRadiusMs:Math.min(120,Number(options.refineRadiusMs)||180),refineStepMs:Math.max(4,Number(options.refineStepMs)||2),maxPeriodCorrectionMs:Math.min(10,Number(options.maxPeriodCorrectionMs)||15),periodCorrectionStepMs:Math.max(1,Number(options.periodCorrectionStepMs)||.25),seamSharedSearchMs:Math.min(2,Number(options.seamSharedSearchMs)||5),seamPeriodSearchMs:Math.min(.25,Number(options.seamPeriodSearchMs)||.6),beatDriftCorrectionMs:0}:options;
-    let refined=refinePair(channels,sampleRate,initialStart,initialEnd,lowOptions,pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate);if(!refined)continue;
-    if(options.power!=="deep"){
-      const shifted=shiftEarliest(refined,bundle,sampleRate,options);if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,options,pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate)||shifted;else refined=shifted;
-    }else refined={...refined,shifted:0};
+    const beatSeconds=pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate;
+    let refined=refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeconds);if(!refined)continue;
+    const shifted=shiftEarliest(refined,bundle,sampleRate,options);
+    if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,options,beatSeconds)||shifted;else refined=shifted;
+    if(options.power==="deep")refined=deepPeriodPolish(channels,sampleRate,refined,options,beatSeconds);
     const length=(refined.end-refined.start)/sampleRate,correctionPenalty=.22*clamp(Math.abs(refined.periodCorrection||0)/60,0,1),phase01=clamp(((refined.phaseAlignment??pair.rhythm)+1)/2,0,1),flow01=clamp((pair.instrumentFlow+1)/2,0,1),harmonic01=clamp(((pair.harmonicFlow??pair.instrumentFlow??0)+1)/2,0,1),deep01=clamp(pair.deepScore??.5,0,1);
     const wave01=clamp((refined.waveform+1)/2,0,1),seam01=Math.exp(-.52*Math.max(0,refined.seam)),repeat01=clamp((pair.repeatConsistency+1)/2,0,1),coverage01=clamp(Math.max(pair.deepCoverage??0,pair.repeatCoverage??0),0,1);
     let early01=clamp(1-(refined.start/sampleRate)/Math.max(duration,1e-6),0,1);
@@ -1205,7 +1302,11 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
     const longMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"forward","mono",1600),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"backward","mono",1600));
     let score;if(options.useVocals){const vf=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"forward","vocal"),vb=sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,window,"backward","vocal");score=.26*mf+.15*mb+.17*tf+.10*tb+.12*vf+.06*vb;}else score=.34*mf+.18*mb+.20*tf+.11*tb;
     score+=-.30*Math.min(phase.raw,3)-.22*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage+phaseWeight*(.72*longTf+.28*longMf);
-    if(options.beatLock&&Number(options.localBeatSeconds)>0){const beats=(b-lockedStart)/(sampleRate*Number(options.localBeatSeconds)),error=Math.abs(beats-Math.round(beats));score-=.105*clamp(error/.5,0,1);}
+    if(options.power==="deep"){
+      const deepSeam=sliceSeamCost(startChannels,endChannels,lockedStart,b,Math.max(48,Math.round((Number(options.seamForwardContextMs)||48)*sampleRate/1000)));
+      score+=.16*Math.exp(-.48*Math.max(0,deepSeam))+.08*longTf+.035*longMf;
+    }
+    if(options.beatLock&&Number(options.localBeatSeconds)>0){const beats=(b-lockedStart)/(sampleRate*Number(options.localBeatSeconds)),error=Math.abs(beats-Math.round(beats));score-=(options.power==="deep"?.18:.105)*clamp(error/.5,0,1);}
     return score;
   };
   for(let delta=-maxCorrection;delta<=maxCorrection;delta+=correctionStep){const b=lockedEnd+delta,score=scoreAt(b)-.034*Math.abs(delta)/Math.max(1,maxCorrection);if(score>waveform){waveform=score;refinedEnd=b;}}
@@ -1311,24 +1412,24 @@ const state={
   precisionRate:48000
 };
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV7",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV6";
+const SETTINGS_KEY="videoGameMusicLooperSettingsV8",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV7";
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
-  analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,
-  maxCandidates:520,coarsePairsToRefine:24,autoVocalThreshold:.50,precisionSampleRate:48000,
-  refineRadiusMs:180,refineStepMs:1.5,refineMatchMs:420,maxPeriodCorrectionMs:15,
-  periodCorrectionStepMs:.125,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
-  tempoWindowSeconds:8,tempoTolerancePercent:8,tempoRampPenalty:.16,beatPhaseContextSeconds:3.5,beatPhaseWeight:.18,
-  instrumentFlowSeconds:12,instrumentFlowWeight:.30,instrumentFlowMinimum:.62,tempoPathWeight:.10,
-  repeatContentWeight:.24,repeatMinimumCoverage:.55,beatDriftCorrectionMs:18,beatDriftMinGain:.035,
-  deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,speedRampCrossingPenalty:.46,settledSpeedBonus:.14,fullDetailCandidates:5,deepSimilarityFloor:.58,
+  analysisSampleRate:22050,hopLength:256,matchWindowSeconds:10,boundaryContextSeconds:3.25,
+  maxCandidates:1100,coarsePairsToRefine:40,autoVocalThreshold:.50,precisionSampleRate:48000,
+  refineRadiusMs:240,refineStepMs:1,refineMatchMs:650,maxPeriodCorrectionMs:24,
+  periodCorrectionStepMs:.125,seamSharedSearchMs:7,seamPeriodSearchMs:.75,seamForwardContextMs:48,
+  tempoWindowSeconds:10,tempoTolerancePercent:7,tempoRampPenalty:.20,beatPhaseContextSeconds:5.5,beatPhaseWeight:.25,
+  instrumentFlowSeconds:18,instrumentFlowWeight:.38,instrumentFlowMinimum:.64,tempoPathWeight:.14,
+  repeatContentWeight:.32,repeatMinimumCoverage:.60,beatDriftCorrectionMs:48,beatDriftMinGain:.018,
+  deepLagCandidates:72,deepWindowSeconds:12,deepMinimumCoverage:.50,deepLagSearchMs:320,speedRampCrossingPenalty:.56,settledSpeedBonus:.18,fullDetailCandidates:12,deepSimilarityFloor:.60,
   earliestMusicalThreshold:.72,earliestVocalThreshold:.58
 });
 const POWER_PRESETS=Object.freeze({
   fast:{analysisSampleRate:11025,hopLength:512,matchWindowSeconds:4.2,boundaryContextSeconds:1.5,maxCandidates:650,coarsePairsToRefine:10,refineStepMs:4,periodCorrectionStepMs:.5,instrumentFlowSeconds:8,instrumentFlowWeight:.24},
   strong:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.25,maxCandidates:1500,coarsePairsToRefine:18,refineStepMs:2,periodCorrectionStepMs:.25,instrumentFlowSeconds:12,instrumentFlowWeight:.30},
   maximum:{analysisSampleRate:22050,hopLength:384,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:2200,coarsePairsToRefine:28,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:16,instrumentFlowWeight:.36},
-  deep:{analysisSampleRate:22050,hopLength:512,matchWindowSeconds:7,boundaryContextSeconds:2.5,maxCandidates:520,coarsePairsToRefine:24,refineStepMs:1.5,periodCorrectionStepMs:.125,instrumentFlowSeconds:12,instrumentFlowWeight:.30,deepLagCandidates:44,deepWindowSeconds:8,deepMinimumCoverage:.40,deepLagSearchMs:220,fullDetailCandidates:5}
+  deep:{analysisSampleRate:22050,hopLength:256,matchWindowSeconds:10,boundaryContextSeconds:3.25,maxCandidates:1100,coarsePairsToRefine:40,refineRadiusMs:240,refineStepMs:1,refineMatchMs:650,maxPeriodCorrectionMs:24,periodCorrectionStepMs:.125,seamSharedSearchMs:7,seamPeriodSearchMs:.75,seamForwardContextMs:48,tempoWindowSeconds:10,tempoTolerancePercent:7,tempoRampPenalty:.20,beatPhaseContextSeconds:5.5,beatPhaseWeight:.25,instrumentFlowSeconds:18,instrumentFlowWeight:.38,instrumentFlowMinimum:.64,tempoPathWeight:.14,repeatContentWeight:.32,repeatMinimumCoverage:.60,beatDriftCorrectionMs:48,beatDriftMinGain:.018,deepLagCandidates:72,deepWindowSeconds:12,deepMinimumCoverage:.50,deepLagSearchMs:320,speedRampCrossingPenalty:.56,settledSpeedBonus:.18,fullDetailCandidates:12,deepSimilarityFloor:.60}
 });
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
@@ -1434,13 +1535,13 @@ function readSettings(){
     repeatMinimumCoverage:finiteNumber(E.repeatMinimumCoverage,DEFAULT_SETTINGS.repeatMinimumCoverage,.2,1),
     beatDriftCorrectionMs:finiteNumber(E.beatDriftCorrectionMs,DEFAULT_SETTINGS.beatDriftCorrectionMs,0,100),
     beatDriftMinGain:finiteNumber(E.beatDriftMinGain,DEFAULT_SETTINGS.beatDriftMinGain,0,.25),
-    deepLagCandidates:Math.round(finiteNumber(E.deepLagCandidates,DEFAULT_SETTINGS.deepLagCandidates,8,96)),
+    deepLagCandidates:Math.round(finiteNumber(E.deepLagCandidates,DEFAULT_SETTINGS.deepLagCandidates,8,128)),
     deepWindowSeconds:finiteNumber(E.deepWindowSeconds,DEFAULT_SETTINGS.deepWindowSeconds,2,30),
     deepMinimumCoverage:finiteNumber(E.deepMinimumCoverage,DEFAULT_SETTINGS.deepMinimumCoverage,.15,1),
     deepLagSearchMs:finiteNumber(E.deepLagSearchMs,DEFAULT_SETTINGS.deepLagSearchMs,20,1000),
     speedRampCrossingPenalty:finiteNumber(E.speedRampCrossingPenalty,DEFAULT_SETTINGS.speedRampCrossingPenalty,0,1),
     settledSpeedBonus:finiteNumber(E.settledSpeedBonus,DEFAULT_SETTINGS.settledSpeedBonus,0,.5),
-    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,1,6)),
+    fullDetailCandidates:Math.round(finiteNumber(E.fullDetailCandidates,DEFAULT_SETTINGS.fullDetailCandidates,1,16)),
     deepSimilarityFloor:finiteNumber(E.deepSimilarityFloor,DEFAULT_SETTINGS.deepSimilarityFloor,.25,.95),
     earliestMusicalThreshold:finiteNumber(E.earliestMusicalThreshold,DEFAULT_SETTINGS.earliestMusicalThreshold,0,1),
     earliestVocalThreshold:finiteNumber(E.earliestVocalThreshold,DEFAULT_SETTINGS.earliestVocalThreshold,0,1)
@@ -1472,7 +1573,7 @@ function loadSettings(){
     const current=localStorage.getItem(SETTINGS_KEY),older=current?null:localStorage.getItem(LEGACY_SETTINGS_KEY);
     legacy=!current&&!!older;saved=JSON.parse(current||older||"null");
   }catch{}
-  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",maxCandidates:520,coarsePairsToRefine:24,beatDriftCorrectionMs:18,beatDriftMinGain:.035,deepLagCandidates:44,deepLagSearchMs:220,fullDetailCandidates:5};
+  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",...POWER_PRESETS.deep};
   writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
 }
 function resetSettingsDefaults(){
