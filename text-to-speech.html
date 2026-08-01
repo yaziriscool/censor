@@ -458,9 +458,9 @@ summary{padding:10px 11px;color:var(--yellow-dim);cursor:pointer;font-size:.76re
           <div class="custom-censor-empty">Choose one or more audio files.</div>
         </div>
         <p class="note">
-          A different sound is chosen randomly for each censored section.
-          The same sound is avoided twice in a row when possible. Short sounds
-          loop, and long sounds are trimmed.
+          Sounds save automatically on this device. A different sound is chosen
+          randomly for each censored section. The same sound is avoided twice in
+          a row when possible. Short sounds loop, and long sounds are trimmed.
         </p>
       </div>    </div>
 
@@ -556,10 +556,17 @@ const PRESETS = Object.freeze({
 });
 
 const FAVORITES_KEY = "ttsFavoriteVoicesV2";
+const VOICE_BROWSER_STATE_KEY = "ttsVoiceBrowserStateV1";
+const CUSTOM_CENSOR_DB_NAME = "YaziCensorSavedMedia";
+const CUSTOM_CENSOR_DB_VERSION = 1;
+const CUSTOM_CENSOR_STORE = "customCensorSounds";
+let customCensorDBPromise = null;
+
 
 const state = {
   voices: [], visibleVoices: [], voiceById: new Map(), providers: [],
   favorites: new Set(), busy: false, audioContext: null,
+  savedVoiceId: "David", savedProvider: "all",
   resultURL: null, resultBlob: null, cache: new Map(),
   customCensors: [], customCensorLoadPromise: null,
   lastCustomCensorId: null,
@@ -641,6 +648,90 @@ function loadSavedFavorites() {
 function saveFavorites() {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify([...state.favorites]));
 }
+
+function loadSavedVoiceBrowserState() {
+  try {
+    const saved =
+      JSON.parse(
+        localStorage.getItem(
+          VOICE_BROWSER_STATE_KEY
+        )
+        || "{}"
+      );
+
+    if (
+      typeof saved.provider === "string"
+      && saved.provider
+    ) {
+      state.savedProvider =
+        saved.provider;
+
+      if (
+        [
+          ...E.providerFilter.options
+        ].some(
+          option =>
+            option.value === saved.provider
+        )
+      ) {
+        E.providerFilter.value =
+          saved.provider;
+      }
+    }
+
+    if (
+      typeof saved.voiceId === "string"
+      && saved.voiceId
+    ) {
+      state.savedVoiceId =
+        saved.voiceId;
+    }
+
+    if (
+      typeof saved.search === "string"
+    ) {
+      E.voiceSearch.value =
+        saved.search;
+    }
+
+    E.searchAll.checked =
+      saved.searchAll === true;
+  } catch {
+    state.savedVoiceId = "David";
+  }
+}
+
+function saveVoiceBrowserState() {
+  const selected =
+    selectedVoice();
+
+  if (selected) {
+    state.savedVoiceId =
+      selected.id;
+  }
+
+  try {
+    localStorage.setItem(
+      VOICE_BROWSER_STATE_KEY,
+      JSON.stringify({
+        provider:
+          E.providerFilter.value
+          || state.savedProvider
+          || "all",
+        voiceId:
+          state.savedVoiceId
+          || "",
+        search:
+          E.voiceSearch.value
+          || "",
+        searchAll:
+          E.searchAll.checked
+      })
+    );
+  } catch {
+    // The page still works when browser storage is blocked.
+  }
+}
 function updateFavoriteUI() {
   const voice = selectedVoice();
   const active = !!voice && state.favorites.has(voice.id);
@@ -651,12 +742,26 @@ function updateFavoriteUI() {
 }
 function updateVoiceMeta() {
   const voice = selectedVoice();
-  E.voiceProvider.textContent = voice ? "Service: " + providerName(voice.source) : "Service: —";
+
+  if (voice) {
+    state.savedVoiceId =
+      voice.id;
+  }
+
+  E.voiceProvider.textContent =
+    voice
+      ? "Service: " + providerName(voice.source)
+      : "Service: —";
+
   updateFavoriteUI();
   updateTextInfo();
+  saveVoiceBrowserState();
 }
 function populateProviderFilter() {
-  const previous = E.providerFilter.value || "all";
+  const previous =
+    state.savedProvider
+    || E.providerFilter.value
+    || "all";
   E.providerFilter.textContent = "";
   const all = document.createElement("option");
   all.value = "all";
@@ -675,9 +780,15 @@ function populateProviderFilter() {
   E.providerFilter.value = [...E.providerFilter.options].some(option => option.value === previous)
     ? previous
     : "all";
+
+  state.savedProvider =
+    E.providerFilter.value;
 }
 async function loadVoices() {
-  const previous = selectedVoice()?.id || "David";
+  const previous =
+    state.savedVoiceId
+    || selectedVoice()?.id
+    || "David";
   E.voiceStatus.textContent = "Loading voices…";
   E.reloadVoices.disabled = true;
   try {
@@ -710,7 +821,7 @@ async function loadVoices() {
     E.reloadVoices.disabled = state.busy;
   }
 }
-function filterVoices(preferredId = selectedVoice()?.id) {
+function filterVoices(preferredId = state.savedVoiceId || selectedVoice()?.id) {
   const query = E.voiceSearch.value.trim().toLowerCase();
   const section = E.providerFilter.value || "all";
   const searchEverywhere = !!query && E.searchAll.checked;
@@ -769,6 +880,7 @@ function filterVoices(preferredId = selectedVoice()?.id) {
       ? preferredId
       : state.visibleVoices[0].id;
     E.voiceSelect.value = selectedId;
+    state.savedVoiceId = selectedId;
   }
 
   E.voiceCount.textContent = state.visibleVoices.length + " of " + state.voices.length + " voices";
@@ -923,6 +1035,240 @@ function toMono44100(buffer) {
     output[index] = mono[left] * (1 - amount) + mono[right] * amount;
   }
   return output;
+}
+
+function openCustomCensorDB() {
+  if (!("indexedDB" in window)) {
+    return Promise.reject(
+      new Error("This browser does not support saved custom sounds.")
+    );
+  }
+
+  if (customCensorDBPromise) {
+    return customCensorDBPromise;
+  }
+
+  customCensorDBPromise =
+    new Promise(
+      (resolve, reject) => {
+        const request =
+          indexedDB.open(
+            CUSTOM_CENSOR_DB_NAME,
+            CUSTOM_CENSOR_DB_VERSION
+          );
+
+        request.onupgradeneeded =
+          () => {
+            const database =
+              request.result;
+
+            if (
+              !database.objectStoreNames.contains(
+                CUSTOM_CENSOR_STORE
+              )
+            ) {
+              const store =
+                database.createObjectStore(
+                  CUSTOM_CENSOR_STORE,
+                  {
+                    keyPath: "id"
+                  }
+                );
+
+              store.createIndex(
+                "signature",
+                "signature",
+                {
+                  unique: true
+                }
+              );
+
+              store.createIndex(
+                "savedAt",
+                "savedAt",
+                {
+                  unique: false
+                }
+              );
+            }
+          };
+
+        request.onsuccess =
+          () => {
+            const database =
+              request.result;
+
+            database.onversionchange =
+              () => {
+                database.close();
+                customCensorDBPromise = null;
+              };
+
+            resolve(database);
+          };
+
+        request.onerror =
+          () => {
+            customCensorDBPromise = null;
+
+            reject(
+              request.error
+              || new Error(
+                  "Could not open saved custom sounds."
+                )
+            );
+          };
+
+        request.onblocked =
+          () => {
+            reject(
+              new Error(
+                "Saved custom sounds are open in another tab. Close old tabs and reload."
+              )
+            );
+          };
+      }
+    );
+
+  return customCensorDBPromise;
+}
+
+async function customCensorStoreRequest(
+  mode,
+  operation
+) {
+  const database =
+    await openCustomCensorDB();
+
+  return await new Promise(
+    (resolve, reject) => {
+      const transaction =
+        database.transaction(
+          CUSTOM_CENSOR_STORE,
+          mode
+        );
+
+      const store =
+        transaction.objectStore(
+          CUSTOM_CENSOR_STORE
+        );
+
+      let request;
+
+      try {
+        request =
+          operation(store);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      transaction.oncomplete =
+        () =>
+          resolve(
+            request?.result
+          );
+
+      transaction.onerror =
+        () =>
+          reject(
+            transaction.error
+            || request?.error
+            || new Error(
+                "Saved custom sound storage failed."
+              )
+          );
+
+      transaction.onabort =
+        () =>
+          reject(
+            transaction.error
+            || new Error(
+                "Saved custom sound storage was cancelled."
+              )
+          );
+    }
+  );
+}
+
+async function readSavedCustomCensorRecords() {
+  const records =
+    await customCensorStoreRequest(
+      "readonly",
+      store => store.getAll()
+    );
+
+  return Array.isArray(records)
+    ? records.sort(
+        (first, second) =>
+          Number(first.savedAt || 0)
+          - Number(second.savedAt || 0)
+      )
+    : [];
+}
+
+async function saveCustomCensorRecord(item) {
+  await customCensorStoreRequest(
+    "readwrite",
+    store =>
+      store.put({
+        id: item.id,
+        signature: item.signature,
+        name: item.file.name,
+        type:
+          item.file.type
+          || "application/octet-stream",
+        lastModified:
+          item.file.lastModified
+          || Date.now(),
+        savedAt:
+          item.savedAt
+          || Date.now(),
+        blob: item.file
+      })
+  );
+}
+
+async function deleteSavedCustomCensorRecord(id) {
+  await customCensorStoreRequest(
+    "readwrite",
+    store => store.delete(id)
+  );
+}
+
+async function clearSavedCustomCensorRecords() {
+  await customCensorStoreRequest(
+    "readwrite",
+    store => store.clear()
+  );
+}
+
+function fileFromSavedCustomCensor(record) {
+  const blob =
+    record.blob instanceof Blob
+      ? record.blob
+      : new Blob(
+          [record.blob],
+          {
+            type:
+              record.type
+              || "application/octet-stream"
+          }
+        );
+
+  return new File(
+    [blob],
+    record.name || "custom-censor-audio",
+    {
+      type:
+        record.type
+        || blob.type
+        || "application/octet-stream",
+      lastModified:
+        Number(record.lastModified)
+        || Date.now()
+    }
+  );
 }
 
 function customCensorSignature(file) {
@@ -1106,7 +1452,7 @@ function renderCustomCensorList() {
   }
 }
 
-function removeCustomCensorAudio(
+async function removeCustomCensorAudio(
   id,
   writeLog = true
 ) {
@@ -1140,6 +1486,14 @@ function removeCustomCensorAudio(
 
   renderCustomCensorList();
 
+  try {
+    await deleteSavedCustomCensorRecord(id);
+  } catch (error) {
+    log(
+      `Could not update saved sounds: ${error?.message || error}`
+    );
+  }
+
   if (writeLog) {
     log(
       `Removed custom censor: ${removed.file.name}.`
@@ -1147,7 +1501,7 @@ function removeCustomCensorAudio(
   }
 }
 
-function clearCustomCensorAudio(
+async function clearCustomCensorAudio(
   writeLog = false
 ) {
   for (
@@ -1165,12 +1519,138 @@ function clearCustomCensorAudio(
   E.customCensorInput.value = "";
   renderCustomCensorList();
 
+  try {
+    await clearSavedCustomCensorRecords();
+  } catch (error) {
+    log(
+      `Could not clear saved sounds: ${error?.message || error}`
+    );
+  }
+
   if (writeLog) {
     log("All custom censors removed.");
   }
 }
 
+async function decodeTtsCustomCensorFile(
+  file,
+  storedRecord = null
+) {
+  const decoded =
+    await decodeAudio(file);
+
+  const samples =
+    toMono44100(decoded);
+
+  if (!samples.length) {
+    throw new Error(
+      "The audio file is empty."
+    );
+  }
+
+  return {
+    id:
+      storedRecord?.id
+      || crypto.randomUUID?.()
+      || `${Date.now()}-${Math.random()}`,
+    signature:
+      storedRecord?.signature
+      || customCensorSignature(file),
+    file,
+    url:
+      URL.createObjectURL(file),
+    savedAt:
+      Number(storedRecord?.savedAt)
+      || Date.now(),
+    samples
+  };
+}
+
+async function restoreCustomCensorAudio() {
+  const promise =
+    (async () => {
+      try {
+        const records =
+          await readSavedCustomCensorRecords();
+
+        if (!records.length) {
+          renderCustomCensorList();
+          return;
+        }
+
+        let restored = 0;
+
+        for (
+          const record
+          of records
+        ) {
+          try {
+            const file =
+              fileFromSavedCustomCensor(
+                record
+              );
+
+            const item =
+              await decodeTtsCustomCensorFile(
+                file,
+                record
+              );
+
+            state.customCensors.push(
+              item
+            );
+
+            restored++;
+            renderCustomCensorList();
+          } catch (error) {
+            log(
+              `Could not restore ${record.name || "a saved sound"}: ${error?.message || error}`
+            );
+
+            try {
+              await deleteSavedCustomCensorRecord(
+                record.id
+              );
+            } catch {
+              // Leave storage cleanup for a later attempt.
+            }
+          }
+        }
+
+        if (restored) {
+          log(
+            `${restored} saved custom censor sound${restored === 1 ? "" : "s"} restored.`
+          );
+        }
+      } catch (error) {
+        log(
+          `Saved custom sounds are unavailable: ${error?.message || error}`
+        );
+      }
+    })();
+
+  state.customCensorLoadPromise =
+    promise;
+
+  try {
+    await promise;
+  } finally {
+    if (
+      state.customCensorLoadPromise === promise
+    ) {
+      state.customCensorLoadPromise =
+        null;
+    }
+
+    renderCustomCensorList();
+  }
+}
+
 async function loadCustomCensorAudio(files) {
+  if (state.customCensorLoadPromise) {
+    await state.customCensorLoadPromise;
+  }
+
   const selectedFiles =
     [
       ...(files || [])
@@ -1202,61 +1682,57 @@ async function loadCustomCensorAudio(files) {
     return;
   }
 
-  const promise = (async () => {
-    let loaded = 0;
+  const promise =
+    (async () => {
+      let loaded = 0;
 
-    for (
-      const file
-      of candidates
-    ) {
-      try {
-        const decoded =
-          await decodeAudio(file);
+      for (
+        const file
+        of candidates
+      ) {
+        try {
+          const item =
+            await decodeTtsCustomCensorFile(
+              file
+            );
 
-        const samples =
-          toMono44100(decoded);
+          try {
+            await saveCustomCensorRecord(
+              item
+            );
+          } catch (error) {
+            URL.revokeObjectURL(
+              item.url
+            );
 
-        if (!samples.length) {
-          throw new Error(
-            "The audio file is empty."
+            throw new Error(
+              `Could not save ${file.name}: ${error?.message || error}`
+            );
+          }
+
+          state.customCensors.push(
+            item
+          );
+
+          existing.add(
+            item.signature
+          );
+
+          loaded++;
+          renderCustomCensorList();
+        } catch (error) {
+          log(
+            `Could not load ${file.name}: ${error?.message || error}`
           );
         }
+      }
 
-        const item = {
-          id:
-            crypto.randomUUID?.()
-            || `${Date.now()}-${Math.random()}`,
-          signature:
-            customCensorSignature(file),
-          file,
-          url:
-            URL.createObjectURL(file),
-          samples
-        };
-
-        state.customCensors.push(
-          item
-        );
-
-        existing.add(
-          item.signature
-        );
-
-        loaded++;
-        renderCustomCensorList();
-      } catch (error) {
+      if (loaded) {
         log(
-          `Could not load ${file.name}: ${error?.message || error}`
+          `${loaded} custom censor sound${loaded === 1 ? "" : "s"} added and saved.`
         );
       }
-    }
-
-    if (loaded) {
-      log(
-        `${loaded} custom censor sound${loaded === 1 ? "" : "s"} added.`
-      );
-    }
-  })();
+    })();
 
   state.customCensorLoadPromise =
     promise;
@@ -2003,9 +2479,22 @@ async function generate() {
 E.textInput.addEventListener("input", updateTextInfo);
 E.clearText.addEventListener("click", () => { E.textInput.value = ""; updateTextInfo(); E.textInput.focus(); });
 E.enableCensor.addEventListener("change", updateTextInfo);
-E.voiceSearch.addEventListener("input", () => filterVoices());
-E.providerFilter.addEventListener("change", () => filterVoices());
-E.searchAll.addEventListener("change", () => filterVoices());
+E.voiceSearch.addEventListener("input", () => {
+  filterVoices(state.savedVoiceId);
+  saveVoiceBrowserState();
+});
+E.providerFilter.addEventListener("change", () => {
+  state.savedProvider =
+    E.providerFilter.value
+    || "all";
+
+  filterVoices(state.savedVoiceId);
+  saveVoiceBrowserState();
+});
+E.searchAll.addEventListener("change", () => {
+  filterVoices(state.savedVoiceId);
+  saveVoiceBrowserState();
+});
 E.voiceSelect.addEventListener("change", updateVoiceMeta);
 E.favoriteButton.addEventListener("click", toggleFavorite);
 E.reloadVoices.addEventListener("click", loadVoices);
@@ -2020,7 +2509,7 @@ E.showKeyButton.addEventListener("click", () => {
 for (const element of [E.distortion, E.speed, E.coverage, E.beepVolume]) element.addEventListener("input", updateSettingsUI);
 $$('input[name="preset"],input[name="timing"],input[name="effect"]').forEach(element => element.addEventListener("change", updateSettingsUI));
 E.customCensorInput.addEventListener("change", () => loadCustomCensorAudio(E.customCensorInput.files));
-E.clearAllCustomCensors.addEventListener("click", () => clearCustomCensorAudio(true));
+E.clearAllCustomCensors.addEventListener("click", () => void clearCustomCensorAudio(true));
 E.clearLog.addEventListener("click", () => { E.log.textContent = ""; });
 window.addEventListener("beforeunload", () => {
   if (state.resultURL) URL.revokeObjectURL(state.resultURL);
@@ -2031,7 +2520,13 @@ window.addEventListener("beforeunload", () => {
 const rememberedKey = localStorage.getItem("censorElevenLabsKey") || "";
 if (rememberedKey) { E.apiKey.value = rememberedKey; E.rememberKey.checked = true; }
 loadSavedFavorites();
-setupMobileSections(); renderCustomCensorList(); updateTextInfo(); updateSettingsUI(); loadVoices();
+loadSavedVoiceBrowserState();
+setupMobileSections();
+renderCustomCensorList();
+void restoreCustomCensorAudio();
+updateTextInfo();
+updateSettingsUI();
+loadVoices();
 
 })();
 
