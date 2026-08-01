@@ -169,7 +169,9 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
       <label class="check"><input id="preferFirst" type="checkbox" checked><span>Use the first matching loop</span></label>
       <label class="check"><input id="beatLock" type="checkbox" checked><span>Protect beat timing</span></label>
       <label class="check"><input id="tempoAware" type="checkbox" checked><span>Handle speed changes</span></label>
+      <label class="check"><input id="adaptiveQuality" type="checkbox" checked><span>Adapt to low-quality audio</span></label>
     </div>
+    <p class="help">Adaptive quality keeps the source's real sample grid for the final seam and checks low-quality audio at multiple resolutions.</p>
 
     <details class="settings-details" id="advancedSettings">
       <summary>Advanced settings</summary>
@@ -182,14 +184,14 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <div class="settings-group">
           <p class="settings-title">Analysis</p>
           <div class="settings-grid">
-            <label><span class="label">Analysis sample rate</span><input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="48000" step="1" value="22050"></label>
+            <label><span class="label">Analysis sample rate</span><input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="96000" step="1" value="22050"></label>
             <label><span class="label">Hop length</span><input class="text setting-input" id="hopLength" type="number" min="128" max="2048" step="1" value="512"></label>
             <label><span class="label">Match window</span><input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="20" step="0.1" value="7"></label>
             <label><span class="label">Boundary context</span><input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="8" step="0.05" value="2.25"></label>
             <label><span class="label">Maximum candidates</span><input class="text setting-input" id="maxCandidates" type="number" min="100" max="4000" step="10" value="1500"></label>
             <label><span class="label">Candidates to refine</span><input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="64" step="1" value="18"></label>
             <label><span class="label">Auto vocal threshold</span><input class="text setting-input" id="autoVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.5"></label>
-            <label><span class="label">Full-detail refine rate</span><input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="96000" step="1" value="48000"></label>
+            <label><span class="label">Precision ceiling</span><input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="192000" step="1" value="96000"></label>
           </div>
         </div>
 
@@ -494,17 +496,17 @@ function buildFeatures(channels,sampleRate,options){
   const hann=new Float32Array(fftSize);for(let i=0;i<fftSize;i++)hann[i]=.5-.5*Math.cos(2*Math.PI*i/(fftSize-1));
   const logEdges=[];const minF=40,maxF=analysisRate*.49;for(let i=0;i<=8;i++)logEdges.push(minF*Math.pow(maxF/minF,i/8));
   const vocalEdges=[];for(let i=0;i<=6;i++)vocalEdges.push(100*Math.pow(Math.min(6500,maxF)/100,i/6));
-  let centerEnergySum=0,sideEnergySum=0,vocalRatioSum=0;
+  let centerEnergySum=0,sideEnergySum=0,vocalRatioSum=0,highBandEnergySum=0,totalBandEnergySum=0,highBandActiveFrames=0;
   for(let frame=0;frame<frames;frame++){
     const offset=frame*hop;let sumSq=0,zcr=0,previous=mid[offset]||0;
     for(let i=0;i<fftSize;i++){const m=mid[offset+i]||0,s=side[offset+i]||0,w=hann[i];window[i]=m*w;sideWindow[i]=s*w;sumSq+=m*m;if((m>=0)!==(previous>=0))zcr++;previous=m;}
     fftPower(window,tables,real,imag);fftPower(sideWindow,tables,realSide,imagSide);
-    let spectrumSum=0,centroidSum=0,flux=0,fullBand=0,vocalBand=0,sideBand=0;
+    let spectrumSum=0,centroidSum=0,flux=0,fullBand=0,highBand=0,vocalBand=0,sideBand=0;
     const chroma=new Float64Array(12),bands=new Float64Array(8),vBands=new Float64Array(6);
     for(let k=1;k<fftSize/2;k++){
       const p=real[k]*real[k]+imag[k]*imag[k],sp=realSide[k]*realSide[k]+imagSide[k]*imagSide[k],freq=k*analysisRate/fftSize;power[k]=p;sidePower[k]=sp;
       const logp=Math.log1p(p),delta=Math.max(0,logp-previousLog[k]);flux+=delta;previousLog[k]=logp;spectrumSum+=p;centroidSum+=freq*p;
-      if(freq>=40&&freq<=maxF)fullBand+=p;
+      if(freq>=40&&freq<=maxF){fullBand+=p;if(freq>=Math.min(9000,maxF*.72))highBand+=p;}
       if(freq>=100&&freq<=Math.min(6500,maxF)){const centered=Math.max(0,p-.60*sp);vocalBand+=centered;sideBand+=sp;for(let b=0;b<6;b++)if(freq>=vocalEdges[b]&&freq<vocalEdges[b+1])vBands[b]+=centered;}
       if(freq>=minF&&freq<=maxF){for(let b=0;b<8;b++)if(freq>=logEdges[b]&&freq<logEdges[b+1]){bands[b]+=p;break;}const midi=69+12*Math.log2(freq/440);const pc=((Math.round(midi)%12)+12)%12;chroma[pc]+=p;}
     }
@@ -512,7 +514,7 @@ function buildFeatures(channels,sampleRate,options){
     for(let i=0;i<8;i++)data[row+12+i]=Math.log1p(bands[i]);
     const rms=Math.sqrt(sumSq/fftSize);data[row+20]=Math.log1p(rms*100);data[row+21]=centroidSum/(spectrumSum+1e-12)/maxF;data[row+22]=Math.log1p(flux);data[row+23]=zcr/fftSize;
     onsetRaw[frame]=Math.log1p(flux);
-    const ratio=vocalBand/(fullBand+1e-12),activity=Math.log1p(vocalBand);activityRaw[frame]=activity;centerEnergySum+=vocalBand;sideEnergySum+=sideBand;vocalRatioSum+=ratio;
+    const ratio=vocalBand/(fullBand+1e-12),activity=Math.log1p(vocalBand);activityRaw[frame]=activity;centerEnergySum+=vocalBand;sideEnergySum+=sideBand;vocalRatioSum+=ratio;highBandEnergySum+=highBand;totalBandEnergySum+=fullBand;if(highBand/(fullBand+1e-12)>.008)highBandActiveFrames++;
     if(options.useVocals){let vTotal=0;for(let i=0;i<6;i++)vTotal+=vBands[i];for(let i=0;i<6;i++)data[row+24+i]=Math.log1p(vBands[i]/(vTotal+1e-12)*100);data[row+30]=ratio;data[row+31]=frame?Math.max(0,activity-activityRaw[frame-1]):0;}
     if(frame%160===0)postProgress(8+18*frame/frames,"Reading the track…");
   }
@@ -520,7 +522,9 @@ function buildFeatures(channels,sampleRate,options){
   const activity=smooth(normalize01(activityRaw),Math.max(1,Math.round(.18*analysisRate/hop))),onset=smooth(normalize01(onsetRaw),1),frameRate=analysisRate/hop,beat=estimateBeatFrames(onset,frameRate),tempo=estimateLocalTempoMap(onset,frameRate,beat.period,options),speedRegion=detectSettledSpeedRegion(tempo.period,tempo.stability,tempo.ramp,frameRate);
   const centerDominance=centerEnergySum/(centerEnergySum+sideEnergySum+1e-12),activitySpread=percentile(activity,.9)-percentile(activity,.2),ratioLevel=vocalRatioSum/Math.max(1,frames);
   const vocalPresence=clamp(.50*centerDominance+.30*clamp(activitySpread*1.8,0,1)+.20*clamp(ratioLevel*5,0,1),0,1);
-  return{data,frames,dims,activity,onset,beatFrames:beat.frames,beatPeriod:beat.period,localPeriod:tempo.period,tempoStability:tempo.stability,tempoRamp:tempo.ramp,tempoSettled:tempo.settled,settledSpeedStart:speedRegion.start,settledSpeedStrength:speedRegion.strength,settledBeforePeriod:speedRegion.beforePeriod,settledAfterPeriod:speedRegion.afterPeriod,analysisRate,hop,frameRate,mid,side,vocalPresence};
+  const spectralBandwidth=highBandEnergySum/(totalBandEnergySum+1e-12),highBandOccupancy=highBandActiveFrames/Math.max(1,frames);
+  const spectralQuality=(spectralBandwidth<.0025&&highBandOccupancy<.10)?"low":((spectralBandwidth<.010&&highBandOccupancy<.28)?"medium":"high");
+  return{data,frames,dims,activity,onset,beatFrames:beat.frames,beatPeriod:beat.period,localPeriod:tempo.period,tempoStability:tempo.stability,tempoRamp:tempo.ramp,tempoSettled:tempo.settled,settledSpeedStart:speedRegion.start,settledSpeedStrength:speedRegion.strength,settledBeforePeriod:speedRegion.beforePeriod,settledAfterPeriod:speedRegion.afterPeriod,analysisRate,hop,frameRate,mid,side,vocalPresence,spectralBandwidth,highBandOccupancy,spectralQuality};
 }
 function localValleys(activity,maxCount){
   const found=[];for(let i=1;i<activity.length-1;i++)if(activity[i]<=activity[i-1]&&activity[i]<=activity[i+1])found.push(i);
@@ -1242,8 +1246,12 @@ function detect(channels,sampleRate,requested){
   postProgress(3,"Starting analysis…");const fullBundle=buildFeatures(channels,sampleRate,{...options,useVocals:true});
   if(requested.vocalMode==="auto")options.useVocals=fullBundle.vocalPresence>=clamp(Number(requested.autoVocalThreshold)||.50,0,1);else options.useVocals=requested.vocalMode==="vocal";
   const bundle=options.useVocals?fullBundle:stripVocalFeatures(fullBundle);
+  if(options.adaptiveQuality){
+    const levels={high:2,medium:1,low:0},profile=String(options.sourceQuality||"high"),spectral=String(bundle.spectralQuality||"high");
+    options.sourceQuality=(levels[spectral]??2)<(levels[profile]??2)?spectral:profile;
+  }
   if(!options.useVocals)postProgress(27,"Using instrumental mode…");
-  postMessage({type:"mode",mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence});
+  postMessage({type:"mode",mode:options.useVocals?"Vocals":"Instrumental",vocalPresence:bundle.vocalPresence,sourceQuality:options.sourceQuality||"high",spectralBandwidth:bundle.spectralBandwidth||0,highBandOccupancy:bundle.highBandOccupancy||0});
   const duration=channels[0].length/sampleRate;
   const searchStart=clamp(Number(options.searchStartSeconds)||0,0,duration);
   const searchEnd=options.searchEndEnabled?clamp(Number(options.searchEndSeconds)||duration,searchStart,duration):duration;
@@ -1488,6 +1496,184 @@ function chooseStrictDeepFine(baseline,candidate,sampleRate,startCenter,endCente
   return score(candidate)>=score(baseline)+.006?candidate:baseline;
 }
 
+
+function smoothChannelSet(channels,radius){
+  radius=Math.max(1,Math.round(radius));
+  return channels.map(channel=>{
+    const out=new Float32Array(channel.length),prefix=new Float64Array(channel.length+1);
+    for(let i=0;i<channel.length;i++)prefix[i+1]=prefix[i]+channel[i];
+    for(let i=0;i<channel.length;i++){
+      const a=Math.max(0,i-radius),b=Math.min(channel.length,i+radius+1);
+      out[i]=(prefix[b]-prefix[a])/Math.max(1,b-a);
+    }
+    return out;
+  });
+}
+function resampleChannelSet(channels,sourceRate,targetRate){
+  if(sourceRate===targetRate)return channels.map(channel=>channel.slice());
+  return channels.map(channel=>linearResample(channel,sourceRate,targetRate));
+}
+function convertFineRate(result,fromRate,toRate){
+  if(!result||fromRate===toRate)return result;
+  const scale=toRate/fromRate;
+  return{...result,startDelta:result.startDelta*scale,endDelta:result.endDelta*scale};
+}
+function assessFineCandidate(startChannels,endChannels,smoothedSets,sampleRate,startCenter,endCenter,result,options){
+  const startIndex=Math.round(startCenter+Number(result.startDelta||0));
+  const endIndex=Math.round(endCenter+Number(result.endDelta||0));
+  if(startIndex<2||endIndex<2||startIndex>=startChannels[0].length-2||endIndex>endChannels[0].length)return null;
+  const seamContext=Math.max(32,Math.round((Number(options.seamForwardContextMs)||32)*sampleRate/1000));
+  const longWindow=Math.max(Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000),Math.round((Number(options.beatPhaseContextSeconds)||3.5)*sampleRate));
+  const rawSeam=sliceSeamCost(startChannels,endChannels,startIndex,endIndex,seamContext);
+  const rawTransient=Math.max(
+    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"forward","transient",2600),
+    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"backward","transient",2600)
+  );
+  const rawMono=Math.max(
+    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"forward","mono",1900),
+    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"backward","mono",1900)
+  );
+  let smoothSeam=rawSeam,smoothTransient=rawTransient,smoothMono=rawMono;
+  for(const pair of smoothedSets){
+    const seam=sliceSeamCost(pair.start,pair.end,startIndex,endIndex,seamContext);
+    const transient=Math.max(
+      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"forward","transient",2300),
+      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"backward","transient",2300)
+    );
+    const mono=Math.max(
+      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"forward","mono",1800),
+      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"backward","mono",1800)
+    );
+    smoothSeam=Math.min(smoothSeam,seam);
+    smoothTransient=Math.max(smoothTransient,transient);
+    smoothMono=Math.max(smoothMono,mono);
+  }
+  let beatQuality=.76,beatError=0;
+  const beatSeconds=Number(options.localBeatSeconds)||0;
+  if(options.beatLock&&beatSeconds>0){
+    const beats=(endIndex-startIndex)/(sampleRate*beatSeconds);
+    beatError=Math.abs(beats-Math.round(beats));
+    beatQuality=Math.exp(-12*beatError*beatError);
+  }
+  const rawSeamQuality=Math.exp(-.50*Math.max(0,rawSeam));
+  const smoothSeamQuality=Math.exp(-.46*Math.max(0,smoothSeam));
+  const transientQuality=clamp((.58*rawTransient+.42*smoothTransient+1)/2,0,1);
+  const monoQuality=clamp((.52*rawMono+.48*smoothMono+1)/2,0,1);
+  const originalWave=clamp(((Number(result.waveform)||-1)+1)/2,0,1);
+  let score=.29*rawSeamQuality+.19*smoothSeamQuality+.23*transientQuality+.16*monoQuality+.08*beatQuality+.05*originalWave;
+  if(rawSeamQuality<.10)score-=.18;
+  if(transientQuality<.36)score-=.12;
+  return{
+    ...result,
+    startDelta:startIndex-startCenter,
+    endDelta:endIndex-endCenter,
+    seam:.72*rawSeam+.28*smoothSeam,
+    rawSeam,
+    smoothSeam,
+    phaseAlignment:.58*rawTransient+.42*smoothTransient,
+    waveform:.38*rawTransient+.27*smoothTransient+.20*rawMono+.15*smoothMono,
+    adaptiveScore:score,
+    adaptiveBeatError:beatError
+  };
+}
+
+function fractionalSliceValue(channels,position,channel){
+  const max=channels[channel].length-1;
+  position=clamp(position,0,max);
+  const left=Math.floor(position),right=Math.min(max,left+1),t=position-left;
+  return channels[channel][left]*(1-t)+channels[channel][right]*t;
+}
+function fractionalSeamCost(startChannels,endChannels,startPosition,endPosition,sampleRate,contextMs){
+  const channels=Math.min(startChannels.length,endChannels.length);
+  if(startPosition<2||endPosition<2||startPosition+2>=startChannels[0].length||endPosition>endChannels[0].length)return Infinity;
+  const centerA=Math.round(startPosition),centerB=Math.round(endPosition);
+  const radius=Math.max(24,Math.min(Math.round(sampleRate*.020),Math.round((contextMs||32)*sampleRate/1000)));
+  let level=0,derivative=0,count=0;
+  for(let k=-radius;k<=radius;k+=4){
+    const a=clamp(centerA+k,1,startChannels[0].length-1),b=clamp(centerB+k,1,endChannels[0].length-1);
+    for(let c=0;c<channels;c++){
+      const x=startChannels[c][a],y=endChannels[c][b];
+      level+=x*x+y*y;
+      const dx=x-startChannels[c][a-1],dy=y-endChannels[c][b-1];
+      derivative+=dx*dx+dy*dy;count+=2;
+    }
+  }
+  const rms=Math.sqrt(level/Math.max(1,count))+1e-10;
+  const scale=Math.max(Math.sqrt(derivative/Math.max(1,count)),rms*.003,1e-8);
+  let jump=0,slope=0;
+  for(let c=0;c<channels;c++){
+    const tail=fractionalSliceValue(endChannels,endPosition-1,c),head=fractionalSliceValue(startChannels,startPosition,c);
+    const before=tail-fractionalSliceValue(endChannels,endPosition-2,c),after=fractionalSliceValue(startChannels,startPosition+1,c)-head;
+    const delta=head-tail,expected=.5*(before+after);
+    jump+=delta*delta;slope+=(delta-expected)*(delta-expected);
+  }
+  jump=Math.sqrt(jump/channels)/scale;slope=Math.sqrt(slope/channels)/scale;
+  const points=96,span=Math.max(16,Math.round(Math.min(.018,(contextMs||32)/1000)*sampleRate));
+  let diff=0,energy=0,meanA=0,meanB=0,n=0;
+  for(let i=0;i<points;i++){
+    const offset=i*span/Math.max(1,points-1);
+    for(let c=0;c<channels;c++){
+      const a=fractionalSliceValue(startChannels,startPosition+offset,c),b=fractionalSliceValue(endChannels,endPosition+offset,c);
+      diff+=(a-b)*(a-b);energy+=.5*(a*a+b*b);meanA+=a;meanB+=b;n++;
+    }
+  }
+  meanA/=Math.max(1,n);meanB/=Math.max(1,n);
+  let product=0,aa=0,bb=0;
+  for(let i=0;i<points;i++){
+    const offset=i*span/Math.max(1,points-1);
+    for(let c=0;c<channels;c++){
+      const a=fractionalSliceValue(startChannels,startPosition+offset,c)-meanA,b=fractionalSliceValue(endChannels,endPosition+offset,c)-meanB;
+      product+=a*b;aa+=a*a;bb+=b*b;
+    }
+  }
+  const raw=Math.sqrt(diff/Math.max(1,n))/(Math.sqrt(energy/Math.max(1,n))+1e-10);
+  const corr=product/(Math.sqrt(aa*bb)+1e-10);
+  return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(raw,4)+.42*Math.min(.5*(1-corr),2);
+}
+function fractionalMicroPolish(startChannels,endChannels,sampleRate,startCenter,endCenter,result,options){
+  const ceiling=clamp(Math.round(Number(options.precisionCeiling)||sampleRate),sampleRate,192000);
+  const factor=clamp(Math.floor(ceiling/sampleRate),1,4);
+  if(factor<=1)return result;
+  const step=1/factor,baseStart=startCenter+Number(result.startDelta||0),baseEnd=endCenter+Number(result.endDelta||0);
+  let bestStart=baseStart,bestEnd=baseEnd,bestCost=fractionalSeamCost(startChannels,endChannels,baseStart,baseEnd,sampleRate,Number(options.seamForwardContextMs)||32);
+  for(let shared=-1;shared<=1+1e-9;shared+=step){
+    for(let period=-1;period<=1+1e-9;period+=step){
+      const a=baseStart+shared,b=baseEnd+shared+period;
+      const cost=fractionalSeamCost(startChannels,endChannels,a,b,sampleRate,Number(options.seamForwardContextMs)||32)+.016*Math.abs(shared)+.11*Math.abs(period);
+      if(cost<bestCost){bestCost=cost;bestStart=a;bestEnd=b;}
+    }
+  }
+  return{...result,startDelta:bestStart-startCenter,endDelta:bestEnd-endCenter,seam:Math.min(Number(result.seam)||Infinity,bestCost),fractionalPrecisionFactor:factor};
+}
+
+function adaptiveQualityFine(startChannels,endChannels,sampleRate,startCenter,endCenter,options,baseResult){
+  const quality=String(options.sourceQuality||"unknown");
+  if(!options.adaptiveQuality||quality==="high")return fractionalMicroPolish(startChannels,endChannels,sampleRate,startCenter,endCenter,{...baseResult,multiRateUsed:false},options);
+  const severe=quality==="low"||sampleRate<=32000;
+  const radiusA=Math.max(1,Math.round(sampleRate/16000));
+  const radiusB=Math.max(radiusA+1,Math.round(sampleRate/8000));
+  const smoothA={start:smoothChannelSet(startChannels,radiusA),end:smoothChannelSet(endChannels,radiusA)};
+  const smoothB={start:smoothChannelSet(startChannels,radiusB),end:smoothChannelSet(endChannels,radiusB)};
+  const candidates=[baseResult];
+  try{
+    const baseStart=Math.round(startCenter+Number(baseResult.startDelta||0));
+    const baseEnd=Math.round(endCenter+Number(baseResult.endDelta||0));
+    const smoothOptions={...maximumFineOptions(options),power:options.power,refineRadiusMs:severe?42:28,refineStepMs:severe?2:2.5,maxPeriodCorrectionMs:severe?7:5,beatDriftCorrectionMs:Math.min(8,Math.max(3,Number(options.beatDriftCorrectionMs)||8))};
+    const local=refineBoundarySlices(smoothA.start,smoothA.end,sampleRate,baseStart,baseEnd,smoothOptions);
+    candidates.push({...local,startDelta:(baseStart-startCenter)+local.startDelta,endDelta:(baseEnd-endCenter)+local.endDelta});
+  }catch{}
+  const smoothSets=[smoothA,smoothB];
+  const assessed=candidates.map(candidate=>assessFineCandidate(startChannels,endChannels,smoothSets,sampleRate,startCenter,endCenter,candidate,options)).filter(Boolean);
+  if(!assessed.length)return fractionalMicroPolish(startChannels,endChannels,sampleRate,startCenter,endCenter,{...baseResult,multiRateUsed:false},options);
+  assessed.sort((a,b)=>b.adaptiveScore-a.adaptiveScore);
+  const baseline=assessed.find(item=>Math.abs(item.startDelta-baseResult.startDelta)<1.01&&Math.abs(item.endDelta-baseResult.endDelta)<1.01)||assessed[0];
+  let chosen=assessed[0];
+  const rawLimit=Math.max((baseline.rawSeam||0)*1.18,(baseline.rawSeam||0)+.10);
+  if(chosen.rawSeam>rawLimit&&chosen.adaptiveScore<(baseline.adaptiveScore||0)+.035)chosen=baseline;
+  chosen=fractionalMicroPolish(startChannels,endChannels,sampleRate,startCenter,endCenter,chosen,options);
+  return{...chosen,multiRateUsed:assessed.length>1,multiRateCandidates:assessed.length};
+}
+
 let loadedChannels=null,loadedSampleRate=0,loadedFrames=0;
 onmessage=event=>{
   const message=event.data;
@@ -1525,6 +1711,7 @@ onmessage=event=>{
         result.deepCandidateSeam=deepResult.seam;
         result.usedDeepFine=result!==maximumResult;
       }else result=refineBoundarySlices(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,message.options);
+      result=adaptiveQualityFine(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,message.options,result);
       postMessage({type:"fineDone",result});
       return;
     }
@@ -1539,7 +1726,7 @@ onmessage=event=>{
 (() => {
 "use strict";
 
-const APP_BUILD="maximum-baseline-deep-search-range-v1";
+const APP_BUILD="maximum-baseline-deep-search-range-adaptive-quality-v2";
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 
@@ -1550,7 +1737,7 @@ const E={
   searchStartSeconds:$("#searchStartSeconds"),searchEndSeconds:$("#searchEndSeconds"),searchEndEnabled:$("#searchEndEnabled"),
   searchStartReadout:$("#searchStartReadout"),searchEndReadout:$("#searchEndReadout"),searchEndField:$("#searchEndField"),
   resetSearchRangeButton:$("#resetSearchRangeButton"),setSearchStartButton:$("#setSearchStartButton"),setSearchEndButton:$("#setSearchEndButton"),
-  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),tempoAware:$("#tempoAware"),
+  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),tempoAware:$("#tempoAware"),adaptiveQuality:$("#adaptiveQuality"),
   resetSettingsButton:$("#resetSettingsButton"),analysisSampleRate:$("#analysisSampleRate"),hopLength:$("#hopLength"),
   matchWindowSeconds:$("#matchWindowSeconds"),boundaryContextSeconds:$("#boundaryContextSeconds"),
   maxCandidates:$("#maxCandidates"),coarsePairsToRefine:$("#coarsePairsToRefine"),
@@ -1582,23 +1769,24 @@ E.runtimeBadge=E.cpuBadge;
 const state={
   file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,searchWavePeaks:null,searchRangeDrag:null,searchWaveLoading:false,
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
+  sourceSampleRate:0,sourceChannels:0,sourceBitrateKbps:0,sourceQuality:"unknown",sourceProfileVersion:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
   ffmpegTask:Promise.resolve(),ffmpegExecCount:0,ffmpegRecoveryCount:0,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
-  precisionRate:48000
+  precisionRate:96000
 };
 
 const FFMPEG_EXEC_TIMEOUT_MS=120000;
 const FFMPEG_MAX_EXECS_PER_SESSION=7;
 const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV10",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV9";
+const SETTINGS_KEY="videoGameMusicLooperSettingsV11",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV10";
 const DEFAULT_SETTINGS=Object.freeze({
-  vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,
+  vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,adaptiveQuality:true,
   searchStartSeconds:0,searchEndEnabled:false,searchEndSeconds:0,
   analysisSampleRate:22050,hopLength:384,matchWindowSeconds:8,boundaryContextSeconds:2.75,
-  maxCandidates:2200,coarsePairsToRefine:28,autoVocalThreshold:.50,precisionSampleRate:48000,
+  maxCandidates:2200,coarsePairsToRefine:28,autoVocalThreshold:.50,precisionSampleRate:96000,
   refineRadiusMs:180,refineStepMs:1.5,refineMatchMs:420,maxPeriodCorrectionMs:15,
   periodCorrectionStepMs:.125,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,
   tempoWindowSeconds:8,tempoTolerancePercent:8,tempoRampPenalty:.16,beatPhaseContextSeconds:3.5,beatPhaseWeight:.18,
@@ -1651,6 +1839,7 @@ function feedbackCalibratedScore(values){
 
 function extension(name){const match=/\.([^.]+)$/.exec(name||"");return match?match[1].toLowerCase():"";}
 const SUPPORTED_AUDIO_EXTENSIONS=new Set(["wav","mp3","ogg","oga","flac","m4a","aac","opus","aif","aiff","wma","webm"]);
+const LOSSY_AUDIO_EXTENSIONS=new Set(["mp3","ogg","oga","m4a","aac","opus","wma","webm"]);
 const BLOCKED_MIDI_EXTENSIONS=new Set(["mid","midi","rmi","kar"]);
 function isSupportedAudioFile(file){
   if(!file)return false;
@@ -1755,17 +1944,18 @@ function readSettings(){
     preferFirst:!!E.preferFirst.checked,
     beatLock:!!E.beatLock.checked,
     tempoAware:!!E.tempoAware.checked,
+    adaptiveQuality:!!E.adaptiveQuality.checked,
     searchStartSeconds:finiteNumber(E.searchStartSeconds,DEFAULT_SETTINGS.searchStartSeconds,0,86400),
     searchEndEnabled:!!E.searchEndEnabled.checked,
     searchEndSeconds:finiteNumber(E.searchEndSeconds,DEFAULT_SETTINGS.searchEndSeconds,0,86400),
-    analysisSampleRate:Math.round(finiteNumber(E.analysisSampleRate,DEFAULT_SETTINGS.analysisSampleRate,8000,48000)),
+    analysisSampleRate:Math.round(finiteNumber(E.analysisSampleRate,DEFAULT_SETTINGS.analysisSampleRate,8000,96000)),
     hopLength:Math.round(finiteNumber(E.hopLength,DEFAULT_SETTINGS.hopLength,128,2048)),
     matchWindowSeconds:finiteNumber(E.matchWindowSeconds,DEFAULT_SETTINGS.matchWindowSeconds,1,20),
     boundaryContextSeconds:finiteNumber(E.boundaryContextSeconds,DEFAULT_SETTINGS.boundaryContextSeconds,.25,8),
     maxCandidates:Math.round(finiteNumber(E.maxCandidates,DEFAULT_SETTINGS.maxCandidates,100,4000)),
     coarsePairsToRefine:Math.round(finiteNumber(E.coarsePairsToRefine,DEFAULT_SETTINGS.coarsePairsToRefine,1,64)),
     autoVocalThreshold:finiteNumber(E.autoVocalThreshold,DEFAULT_SETTINGS.autoVocalThreshold,0,1),
-    precisionSampleRate:Math.round(finiteNumber(E.precisionSampleRate,DEFAULT_SETTINGS.precisionSampleRate,22050,96000)),
+    precisionSampleRate:Math.round(finiteNumber(E.precisionSampleRate,DEFAULT_SETTINGS.precisionSampleRate,22050,192000)),
     refineRadiusMs:finiteNumber(E.refineRadiusMs,DEFAULT_SETTINGS.refineRadiusMs,10,1000),
     refineStepMs:finiteNumber(E.refineStepMs,DEFAULT_SETTINGS.refineStepMs,.25,20),
     refineMatchMs:finiteNumber(E.refineMatchMs,DEFAULT_SETTINGS.refineMatchMs,50,2000),
@@ -1803,7 +1993,7 @@ function writeSettings(settings){
   const s={...DEFAULT_SETTINGS,...settings};
   setRadio("vocalMode",s.vocalMode);setRadio("power",s.power);
   E.minimumLoop.value=s.minimumLoop;E.previewRepeats.value=String(s.previewRepeats);
-  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;E.tempoAware.checked=!!s.tempoAware;
+  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;E.tempoAware.checked=!!s.tempoAware;E.adaptiveQuality.checked=s.adaptiveQuality!==false;
   E.searchStartSeconds.value=String(Number.isFinite(Number(s.searchStartSeconds))?s.searchStartSeconds:0);
   E.searchEndEnabled.checked=!!s.searchEndEnabled;
   E.searchEndSeconds.value=String(Number.isFinite(Number(s.searchEndSeconds))?s.searchEndSeconds:0);
@@ -1828,7 +2018,7 @@ function loadSettings(){
     const current=localStorage.getItem(SETTINGS_KEY),older=current?null:localStorage.getItem(LEGACY_SETTINGS_KEY);
     legacy=!current&&!!older;saved=JSON.parse(current||older||"null");
   }catch{}
-  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",...POWER_PRESETS.deep};
+  if(legacy&&saved&&typeof saved==="object")saved={...saved,power:"deep",adaptiveQuality:true,precisionSampleRate:Math.max(96000,Number(saved.precisionSampleRate)||0),...POWER_PRESETS.deep};
   writeSettings(saved&&typeof saved==="object"?saved:DEFAULT_SETTINGS);
 }
 function resetSettingsDefaults(){
@@ -1848,7 +2038,7 @@ function applyPowerPreset(power){
   log(`${power[0].toUpperCase()+power.slice(1)} search preset loaded.`);
 }
 function analysisSignature(settings){
-  return String(settings.analysisSampleRate);
+  return [settings.analysisSampleRate,settings.hopLength,settings.adaptiveQuality?1:0,state.sourceSampleRate||0,state.sourceQuality].join(":");
 }
 
 function setBusy(value,message=""){
@@ -1936,7 +2126,7 @@ function createAnalysisWorker(){
       state.analysisChannels=message.channels;
       state.wavePeaks=new Float32Array(message.peaks);
       if(!state.searchWavePeaks)state.searchWavePeaks=state.wavePeaks;
-      E.sampleRateSide.textContent=`${message.sampleRate.toLocaleString()} Hz`;
+      E.sampleRateSide.textContent=state.sourceSampleRate?`${state.sourceSampleRate.toLocaleString()} Hz source · ${message.sampleRate.toLocaleString()} Hz analysis`:`${message.sampleRate.toLocaleString()} Hz`;
       E.channelsSide.textContent=String(message.channels);
       if(!state.duration)state.duration=message.frames/message.sampleRate;
       E.durationSide.textContent=formatClock(state.duration,true);
@@ -2384,6 +2574,46 @@ async function ensureInputFile(ffmpeg=null){
 }
 
 
+async function ensureSourceAudioProfile(){
+  if(state.sourceSampleRate>0&&state.sourceProfileVersion===state.mediaVersion){
+    return{sampleRate:state.sourceSampleRate,channels:state.sourceChannels,bitrateKbps:state.sourceBitrateKbps,quality:state.sourceQuality};
+  }
+  if(!state.file)throw new Error("Choose an audio file first.");
+  const version=state.mediaVersion;
+  const data=await runFFmpegJob("Source-quality probe",async ffmpeg=>{
+    const input=await ensureInputFile(ffmpeg);
+    const output=`looper_source_probe_${Date.now().toString(36)}.wav`;
+    try{
+      await execFFmpegWithTimeout(ffmpeg,[
+        "-i",input,"-vn","-map","0:a:0","-t","0.35","-ac","2","-c:a","pcm_s16le",output
+      ],"Source-quality probe",90000);
+      return await ffmpeg.readFile(output);
+    }finally{
+      await deleteFileQuiet(ffmpeg,output);
+    }
+  },{retries:1});
+  if(version!==state.mediaVersion)throw new Error("Source-quality probe was cancelled.");
+  const pcm=parsePcmWav(data);
+  const bitrateKbps=state.duration>0?(state.file.size*8/state.duration/1000):0;
+  const ext=extension(state.file.name);
+  const lowRate=pcm.sampleRate<=32000;
+  const veryLowRate=pcm.sampleRate<=24000;
+  const lossy=LOSSY_AUDIO_EXTENSIONS.has(ext);
+  const lowBitrate=lossy&&bitrateKbps>0&&bitrateKbps<160;
+  const veryLowBitrate=lossy&&bitrateKbps>0&&bitrateKbps<96;
+  const mediumBitrate=lossy&&bitrateKbps>0&&bitrateKbps<256;
+  const quality=(veryLowRate||veryLowBitrate||lowRate||lowBitrate)?"low":(mediumBitrate?"medium":"high");
+  state.sourceSampleRate=pcm.sampleRate;
+  state.sourceChannels=pcm.channels;
+  state.sourceBitrateKbps=bitrateKbps;
+  state.sourceQuality=quality;
+  state.sourceProfileVersion=version;
+  E.sampleRateSide.textContent=`${pcm.sampleRate.toLocaleString()} Hz source`;
+  const bitrateText=bitrateKbps>0?` · about ${Math.round(bitrateKbps)} kbps`:"";
+  log(`Source profile: ${pcm.sampleRate.toLocaleString()} Hz, ${pcm.channels} channel${pcm.channels===1?"":"s"}${bitrateText}; ${quality} quality handling.`);
+  return{sampleRate:pcm.sampleRate,channels:pcm.channels,bitrateKbps,quality};
+}
+
 async function prepareSearchWaveformPreview(file,version){
   if(!file||version!==state.mediaVersion)return;
   state.searchWaveLoading=true;
@@ -2422,6 +2652,17 @@ async function prepareSearchWaveformPreview(file,version){
 }
 
 async function prepareAnalysis(settings){
+  const profile=await ensureSourceAudioProfile();
+  if(settings.adaptiveQuality){
+    settings.sourceSampleRate=profile.sampleRate;
+    settings.sourceQuality=profile.quality;
+    settings.sourceBitrateKbps=profile.bitrateKbps;
+    if((settings.power==="maximum"||settings.power==="deep")&&profile.quality!=="high"){
+      settings.hopLength=Math.min(settings.hopLength,profile.quality==="low"?192:256);
+      const usefulNativeRate=Math.min(48000,profile.sampleRate);
+      settings.analysisSampleRate=Math.min(96000,Math.max(settings.analysisSampleRate,usefulNativeRate));
+    }
+  }
   const signature=analysisSignature(settings);
   if(state.analysisWorker&&state.analysisSignature===signature&&state.analysisFrames>0)return;
   const rate=settings.analysisSampleRate;
@@ -2451,28 +2692,33 @@ async function prepareAnalysis(settings){
       channels:pcm.channels,sampleRate:pcm.sampleRate
     },[pcm.buffer]);
   });
-  log(`Analysis track ready at ${rate.toLocaleString()} Hz.`);
+  const adaptiveText=settings.adaptiveQuality&&profile.quality!=="high"?` with ${settings.hopLength}-sample low-quality timing`:"";
+  log(`Analysis track ready at ${pcm.sampleRate.toLocaleString()} Hz${adaptiveText}.`);
 }
-async function extractPcmPair(startFrom,startTo,endFrom,endTo,sampleRate,label){
+async function extractPcmPair(startFrom,startTo,endFrom,endTo,requestedRate,label){
   return runFFmpegJob("Full-detail boundary extraction",async ffmpeg=>{
     const input=await ensureInputFile(ffmpeg);
     const token=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
     const startOutput=`looper_${label}_start_${token}.wav`;
     const endOutput=`looper_${label}_end_${token}.wav`;
-    const startDuration=Math.max(2/sampleRate,startTo-startFrom);
-    const endDuration=Math.max(2/sampleRate,endTo-endFrom);
+    const rateHint=requestedRate>0?requestedRate:(state.sourceSampleRate||48000);
+    const rateArgs=requestedRate>0?["-ar",String(requestedRate)]:[];
+    const startDuration=Math.max(2/rateHint,startTo-startFrom);
+    const endDuration=Math.max(2/rateHint,endTo-endFrom);
     try{
       await execFFmpegWithTimeout(ffmpeg,[
         "-ss",filterNumber(startFrom),"-i",input,
         "-ss",filterNumber(endFrom),"-i",input,
-        "-map","0:a:0","-t",filterNumber(startDuration),"-vn","-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",startOutput,
-        "-map","1:a:0","-t",filterNumber(endDuration),"-vn","-ar",String(sampleRate),"-ac","2","-c:a","pcm_s16le",endOutput
+        "-map","0:a:0","-t",filterNumber(startDuration),"-vn",...rateArgs,"-ac","2","-c:a","pcm_s16le",startOutput,
+        "-map","1:a:0","-t",filterNumber(endDuration),"-vn",...rateArgs,"-ac","2","-c:a","pcm_s16le",endOutput
       ],"Full-detail boundary extraction",120000);
       const [startData,endData]=await Promise.all([
         ffmpeg.readFile(startOutput),
         ffmpeg.readFile(endOutput)
       ]);
-      return{startPcm:parsePcmWav(startData),endPcm:parsePcmWav(endData)};
+      const startPcm=parsePcmWav(startData),endPcm=parsePcmWav(endData);
+      if(startPcm.sampleRate!==endPcm.sampleRate)throw new Error("The boundary slices were decoded at different sample rates.");
+      return{startPcm,endPcm,sampleRate:startPcm.sampleRate};
     }finally{
       await Promise.all([
         deleteFileQuiet(ffmpeg,startOutput),
@@ -2483,8 +2729,8 @@ async function extractPcmPair(startFrom,startTo,endFrom,endTo,sampleRate,label){
 }
 async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTotal=1){
   const coarseStart=coarse.start/state.analysisRate,coarseEnd=coarse.end/state.analysisRate;
-  const rate=settings.precisionSampleRate;
-  state.precisionRate=rate;
+  const profile=await ensureSourceAudioProfile();
+  const requestedRate=settings.adaptiveQuality?0:settings.precisionSampleRate;
 
   const requiredBefore=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,settings.beatPhaseContextSeconds*1000)+120)/1000;
   const requiredAfter=(settings.refineRadiusMs+Math.max(settings.refineMatchMs,settings.beatPhaseContextSeconds*1000,90)+120)/1000;
@@ -2498,11 +2744,12 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   const endTo=Math.min(duration,coarseEnd+marginAfter);
 
   setProgress(80+12*candidateIndex/candidateTotal,`Reading candidate ${candidateIndex+1} of ${candidateTotal}…`);
-  const {startPcm,endPcm}=await extractPcmPair(startFrom,startTo,endFrom,endTo,rate,`candidate_${candidateIndex+1}`);
+  const {startPcm,endPcm,sampleRate:rate}=await extractPcmPair(startFrom,startTo,endFrom,endTo,requestedRate,`candidate_${candidateIndex+1}`);
+  state.precisionRate=rate;
 
   const startCenter=Math.round((coarseStart-startFrom)*rate);
   const endCenter=Math.round((coarseEnd-endFrom)*rate);
-  const fineOptions={...settings,useVocals:coarse.mode==="Vocals",localBeatSeconds:coarse.localBeatSeconds||0};
+  const fineOptions={...settings,useVocals:coarse.mode==="Vocals",localBeatSeconds:coarse.localBeatSeconds||0,sourceQuality:coarse.sourceQuality||profile.quality,sourceSampleRate:profile.sampleRate,precisionCeiling:settings.precisionSampleRate};
 
   setProgress(84+13*(candidateIndex+1)/candidateTotal,`Checking candidate ${candidateIndex+1} of ${candidateTotal}…`);
   const fine=await waitForWorker("fine",()=>state.analysisWorker.postMessage({
@@ -2540,7 +2787,7 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   const fullDetailRank=.20*deepAligned+.08*deepLower+.10*instrumentQuality+.09*harmonicQuality+.03*timbreQuality+.13*waveQuality+.18*seamQuality+.14*phaseQuality+.04*tempoQuality+.03*repeatQuality+.02*coverageQuality+.02*marginQuality-.05*deepRamp+.42*feedbackScore-verificationPenalty;
 
   log(`Full-detail correction: start ${fine.startDelta>=0?"+":""}${(fine.startDelta*1000/rate).toFixed(3)} ms, end ${fine.endDelta>=0?"+":""}${(fine.endDelta*1000/rate).toFixed(3)} ms.`);
-  log(`Hard-seam score: ${fine.seam.toFixed(4)}.`);
+  log(`Hard-seam score: ${fine.seam.toFixed(4)} at ${rate.toLocaleString()} Hz${fine.multiRateUsed?" with multi-rate agreement":""}.`);
 
   return{
     ...coarse,startSeconds,endSeconds,sampleRate:rate,
@@ -2558,6 +2805,7 @@ function reset(){
   stopPlayback();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
+  state.sourceSampleRate=0;state.sourceChannels=0;state.sourceBitrateKbps=0;state.sourceQuality="unknown";state.sourceProfileVersion=0;
   state.searchWavePeaks=null;state.searchRangeDrag=null;state.searchWaveLoading=false;
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   E.sourcePlayer.classList.add("hidden");E.sourcePlayer.removeAttribute("src");E.sourcePlayer.load();E.searchRangePanel.classList.add("hidden");
@@ -3051,11 +3299,11 @@ E.searchWaveCanvas.addEventListener("pointercancel",()=>{state.searchRangeDrag=n
 for(const input of $$('input[name="power"]')){
   input.addEventListener("change",()=>applyPowerPreset(input.value));
 }
-for(const input of $$('input[name="vocalMode"],#minimumLoop,#preferFirst,#beatLock,#tempoAware,.setting-input')){
+for(const input of $$('input[name="vocalMode"],#minimumLoop,#preferFirst,#beatLock,#tempoAware,#adaptiveQuality,.setting-input')){
   input.addEventListener("change",()=>{
     saveSettings();
     if(input.id==="minimumLoop")normalizeSearchRange(false);
-    if(input.id==="analysisSampleRate")terminateAnalysisWorker();
+    if(input.id==="analysisSampleRate"||input.id==="adaptiveQuality")terminateAnalysisWorker();
   });
 }
 E.sourcePlayer.addEventListener("play",()=>{
@@ -3097,7 +3345,7 @@ window.addEventListener("beforeunload",()=>{
 });
 
 E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
-E.cpuBadge.textContent="Range-controlled Maximum + Deep";
+E.cpuBadge.textContent="Adaptive multi-rate Maximum + Deep";
 loadSettings();
 reset();
 })();
