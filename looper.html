@@ -1870,7 +1870,7 @@ function formatClock(seconds,short=false){
   seconds=Math.max(0,Number(seconds)||0);const minutes=Math.floor(seconds/60),remaining=seconds-minutes*60;
   return short?`${minutes}:${String(Math.floor(remaining)).padStart(2,"0")}`:`${minutes}:${remaining.toFixed(3).padStart(6,"0")}`;
 }
-function formatRoblox(seconds){const value=Math.max(0,Number(seconds)||0).toFixed(6).replace(/0+$/,"").replace(/\.$/,"");return value||"0";}
+function formatRoblox(seconds){return Math.max(0,Number(seconds)||0).toFixed(3);}
 
 function searchRangeValues(){
   const duration=Math.max(0,Number(state.duration)||0);
