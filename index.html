@@ -374,12 +374,6 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
  .panel-head{align-items:center}.mobile{min-height:66px}.mobile .button{min-width:145px}textarea{min-height:145px}
 }
 
-.youtube-import{margin-top:15px;padding-top:15px;border-top:1px solid var(--border)}
-.youtube-import h3{margin:0;color:var(--text);font-size:.95rem}
-.youtube-grid{display:grid;grid-template-columns:minmax(0,1fr) 118px 112px auto;gap:8px;align-items:end;margin-top:10px}
-.youtube-grid .button{min-height:43px}.youtube-settings{margin-top:10px}.youtube-settings .details-body{padding-top:1px}.youtube-progress{margin-top:11px}
-@media(max-width:800px){.youtube-grid{grid-template-columns:minmax(0,1fr) 105px 105px}.youtube-grid .button{grid-column:1/-1;width:100%}}
-@media(max-width:680px){.youtube-grid{grid-template-columns:1fr 1fr}.youtube-grid>label:first-child{grid-column:1/-1}.youtube-grid .button{grid-column:1/-1}}
 
 
 .custom-censor-list{
@@ -515,18 +509,6 @@ summary { padding: 10px 11px; color: var(--yellow-dim); cursor: pointer; font-si
     <div id="sourcePreviewWrap" class="hidden">
       <audio id="sourceAudio" class="preview hidden" controls preload="metadata"></audio>
       <video id="sourceVideo" class="preview hidden" controls playsinline preload="metadata"></video>
-    </div>
-
-    <div class="youtube-import">
-      <div><p class="kicker">YouTube link</p><h3>Import a video or MP3</h3></div>
-      <div class="youtube-grid">
-        <label><span class="label">YouTube URL</span><input class="text" id="youtubeUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=..."></label>
-        <label><span class="label">Import as</span><select id="youtubeFormat"><option value="mp4" selected>MP4 video</option><option value="mp3">MP3 audio</option></select></label>
-        <label id="youtubeQualityLabel"><span class="label">Quality</span><select id="youtubeQuality"><option value="1080" selected>1080p</option><option value="720">720p</option><option value="480">480p</option><option value="360">360p</option></select></label>
-        <button class="button secondary" id="youtubeImportButton" type="button">Import link</button>
-      </div>
-      <div class="progress-box youtube-progress hidden" id="youtubeProgressBox"><div class="track"><div class="bar" id="youtubeProgressBar"></div></div><p id="youtubeProgressText">Preparing link…</p></div>
-      <details class="youtube-settings"><summary>YouTube server settings</summary><div class="details-body"><label class="label" for="cobaltEndpoint">Cobalt API address</label><input class="text mono" id="cobaltEndpoint" value="/api/cobalt/" autocomplete="off" spellcheck="false"><p class="note">Use a self-hosted Cobalt API or a same-origin proxy. The public Cobalt service is not intended to be embedded in other websites. Import only media that can legally be downloaded.</p></div></details>
     </div>
   </article>
 
@@ -842,10 +824,6 @@ const E = {
   modalClearBtn: $("#modalClearBtn"), modalSearch: $("#modalSearch"),
   modalWords: $("#modalWords"), modalSelection: $("#modalSelection"),
   modalGenerateBtn: $("#modalGenerateBtn"), runtimeBadge: $("#runtimeBadge"),
-  youtubeUrl: $("#youtubeUrl"), youtubeFormat: $("#youtubeFormat"), youtubeQuality: $("#youtubeQuality"),
-  youtubeQualityLabel: $("#youtubeQualityLabel"), youtubeImportButton: $("#youtubeImportButton"),
-  cobaltEndpoint: $("#cobaltEndpoint"), youtubeProgressBox: $("#youtubeProgressBox"),
-  youtubeProgressBar: $("#youtubeProgressBar"), youtubeProgressText: $("#youtubeProgressText"),
 };
 
 const VIDEO_EXTS = new Set(["mp4","mov","mkv","webm","avi","wmv","flv","mpeg","mpg","3gp","3gpp"]);
@@ -953,7 +931,7 @@ function escapeHtml(v) {
   return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
 function log(message) {
-  E.log.textContent += message + "\n";
+  E.log.textContent += message + "\\n";
   E.log.scrollTop = E.log.scrollHeight;
 }
 function status(title, message, kind="") {
@@ -999,7 +977,7 @@ function saveBlobLink(blob, filename, description) {
 }
 function setBusy(value, message="") {
   state.busy = value;
-  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn,E.customCensorInput,E.clearAllCustomCensors,E.youtubeImportButton,E.youtubeUrl,E.youtubeFormat,E.youtubeQuality,E.cobaltEndpoint]) {
+  for (const el of [E.transcribeBtn,E.generateBtn,E.mobileBtn,E.resetBtn,E.autoBtn,E.allBtn,E.clearBtn,E.modalAutoBtn,E.modalAllBtn,E.modalClearBtn,E.modalGenerateBtn,E.customCensorInput,E.clearAllCustomCensors]) {
     if (el) el.disabled = value;
   }
   E.fileInput.disabled = value;
@@ -1056,444 +1034,7 @@ function setupMobileSections() {
   window.addEventListener("scroll",()=>{if(!scheduled){scheduled=true;requestAnimationFrame(updateCurrent)}},{passive:true}); updateCurrent();
 }
 
-const YOUTUBE_HOSTS = new Set(["youtube.com","www.youtube.com","m.youtube.com","music.youtube.com","youtu.be","www.youtu.be"]);
-function setYouTubeProgress(percent,message){E.youtubeProgressBox.classList.remove("hidden");E.youtubeProgressBar.style.width=`${clamp(percent,0,100)}%`;E.youtubeProgressText.textContent=message;}
-function isYouTubeLink(value){try{const url=new URL(value);return (url.protocol==="https:"||url.protocol==="http:")&&YOUTUBE_HOSTS.has(url.hostname.toLowerCase())}catch{return false}}
-function safeCobaltMediaURL(value){const url=new URL(value,location.href);if(url.protocol!=="https:"&&url.protocol!=="http:")throw new Error("The YouTube server returned an unsafe media URL.");return url.href;}
-function ensureFilenameExtension(filename,wantedExtension){const clean=String(filename||"").replace(/[\\/:*?"<>|]+/g,"_").trim()||`youtube.${wantedExtension}`;return extension(clean)===wantedExtension?clean:clean.replace(/\.[^.]+$/,"")+"."+wantedExtension;}
-async function downloadYouTubeBlob(mediaURL,wantedMime){const response=await fetch(mediaURL,{credentials:"omit"});if(!response.ok)throw new Error(`The YouTube media download failed with HTTP ${response.status}.`);const total=Number(response.headers.get("content-length")||response.headers.get("estimated-content-length")||0);if(!response.body)return new Blob([await response.arrayBuffer()],{type:response.headers.get("content-type")||wantedMime});const reader=response.body.getReader(),chunks=[];let loaded=0;while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);loaded+=value.byteLength;const percent=total>0?32+loaded/total*62:Math.min(92,32+Math.log10(loaded+10)*9);setYouTubeProgress(percent,total>0?`Downloading media: ${formatBytes(loaded)} of ${formatBytes(total)}`:`Downloading media: ${formatBytes(loaded)}`)}return new Blob(chunks,{type:response.headers.get("content-type")||wantedMime});}
-function normalizeCobaltEndpoint(value) {
-  const raw =
-    String(value || "")
-      .trim();
 
-  if (!raw) {
-    return "";
-  }
-
-  try {
-    const url =
-      new URL(
-        raw,
-        location.href
-      );
-
-    if (!url.pathname.endsWith("/")) {
-      url.pathname += "/";
-    }
-
-    return url.href;
-  } catch {
-    return raw.endsWith("/")
-      ? raw
-      : raw + "/";
-  }
-}
-
-function cobaltEndpointCandidates(value) {
-  const normalized =
-    normalizeCobaltEndpoint(value);
-
-  if (!normalized) {
-    return [];
-  }
-
-  const candidates =
-    [normalized];
-
-  const withoutSlash =
-    normalized.endsWith("/")
-      ? normalized.slice(0, -1)
-      : normalized;
-
-  if (
-    withoutSlash
-    && withoutSlash !== normalized
-  ) {
-    candidates.push(
-      withoutSlash
-    );
-  }
-
-  return [
-    ...new Set(candidates)
-  ];
-}
-
-async function postToCobalt(
-  endpointValue,
-  request
-) {
-  const attempts =
-    cobaltEndpointCandidates(
-      endpointValue
-    );
-
-  if (!attempts.length) {
-    throw new Error(
-      "Enter the Cobalt API address."
-    );
-  }
-
-  const failures = [];
-
-  for (
-    const endpoint
-    of attempts
-  ) {
-    let response;
-
-    try {
-      response =
-        await fetch(
-          endpoint,
-          {
-            method: "POST",
-            headers: {
-              "Accept":
-                "application/json",
-              "Content-Type":
-                "application/json"
-            },
-            body:
-              JSON.stringify(
-                request
-              ),
-            redirect:
-              "follow"
-          }
-        );
-    } catch (error) {
-      failures.push(
-        `${endpoint}: ${error?.message || error}`
-      );
-
-      continue;
-    }
-
-    const raw =
-      await response.text();
-
-    let result = null;
-
-    try {
-      result =
-        JSON.parse(raw);
-    } catch {
-      const looksLikeHtml =
-        /^\s*<!doctype html|^\s*<html/i.test(
-          raw
-        );
-
-      failures.push(
-        (
-          `${endpoint}: HTTP ${response.status}`
-          + (
-              looksLikeHtml
-                ? " returned an HTML page"
-                : " returned non-JSON data"
-            )
-        )
-      );
-
-      /*
-        A reverse proxy commonly mounts Cobalt at /api/cobalt/ while
-        /api/cobalt is handled by the website itself. Retry the alternate
-        slash form before reporting the configuration error.
-      */
-      if (
-        response.status === 405
-        || response.status === 404
-        || looksLikeHtml
-      ) {
-        continue;
-      }
-
-      throw new Error(
-        failures.at(-1)
-      );
-    }
-
-    if (!response.ok) {
-      const detail =
-        result?.error?.code
-        || result?.error?.message
-        || result?.error
-        || `HTTP ${response.status}`;
-
-      failures.push(
-        `${endpoint}: ${detail}`
-      );
-
-      continue;
-    }
-
-    return {
-      endpoint,
-      result
-    };
-  }
-
-  throw new Error(
-    (
-      "The Cobalt route is not accepting POST requests. "
-      + "Use /api/cobalt/ with the trailing slash and configure that path "
-      + "to proxy to the root of the self-hosted Cobalt API. "
-      + failures.join(" | ")
-    )
-  );
-}
-
-async function importYouTubeLink() {
-  if (state.busy) {
-    return;
-  }
-
-  const sourceURL =
-    E.youtubeUrl.value.trim();
-
-  const endpointInput =
-    E.cobaltEndpoint.value.trim();
-
-  const format =
-    E.youtubeFormat.value === "mp3"
-      ? "mp3"
-      : "mp4";
-
-  if (!isYouTubeLink(sourceURL)) {
-    status(
-      "Invalid YouTube link",
-      "Paste a YouTube video, music, or Shorts link.",
-      "error"
-    );
-
-    openMobileSection(
-      "sourcePanel"
-    );
-
-    return;
-  }
-
-  if (!endpointInput) {
-    status(
-      "YouTube server missing",
-      "Enter the self-hosted Cobalt API address.",
-      "error"
-    );
-
-    return;
-  }
-
-  const normalizedEndpoint =
-    normalizeCobaltEndpoint(
-      endpointInput
-    );
-
-  E.cobaltEndpoint.value =
-    normalizedEndpoint;
-
-  localStorage.setItem(
-    "audioCensorCobaltEndpoint",
-    normalizedEndpoint
-  );
-
-  try {
-    setBusy(
-      true,
-      "Importing the YouTube link…"
-    );
-
-    setYouTubeProgress(
-      5,
-      "Sending the link to the YouTube server…"
-    );
-
-    const request =
-      format === "mp3"
-        ? {
-            url: sourceURL,
-            downloadMode: "audio",
-            audioFormat: "mp3",
-            audioBitrate: "320",
-            filenameStyle: "basic",
-            alwaysProxy: true,
-            localProcessing: "disabled"
-          }
-        : {
-            url: sourceURL,
-            downloadMode: "auto",
-            videoQuality:
-              E.youtubeQuality.value
-              || "1080",
-            youtubeVideoContainer: "mp4",
-            youtubeVideoCodec: "h264",
-            filenameStyle: "basic",
-            alwaysProxy: true,
-            localProcessing: "disabled"
-          };
-
-    const {
-      endpoint,
-      result
-    } =
-      await postToCobalt(
-        normalizedEndpoint,
-        request
-      );
-
-    /*
-      Save the exact working slash form, so later imports do not repeat the
-      failed request.
-    */
-    E.cobaltEndpoint.value =
-      endpoint;
-
-    localStorage.setItem(
-      "audioCensorCobaltEndpoint",
-      endpoint
-    );
-
-    if (
-      result.status === "error"
-    ) {
-      throw new Error(
-        result.error?.code
-        || "The YouTube server could not process this link."
-      );
-    }
-
-    if (
-      result.status === "picker"
-    ) {
-      throw new Error(
-        "This link contains multiple items. Use a single YouTube video link."
-      );
-    }
-
-    if (
-      result.status === "local-processing"
-    ) {
-      throw new Error(
-        "The Cobalt server returned local processing. Configure it to return a tunnel instead."
-      );
-    }
-
-    if (
-      !["tunnel", "redirect"].includes(
-        result.status
-      )
-      || !result.url
-    ) {
-      throw new Error(
-        "The YouTube server returned an unsupported response."
-      );
-    }
-
-    setYouTubeProgress(
-      30,
-      "The link is ready. Starting the media download…"
-    );
-
-    const wantedMime =
-      format === "mp3"
-        ? "audio/mpeg"
-        : "video/mp4";
-
-    const blob =
-      await downloadYouTubeBlob(
-        safeCobaltMediaURL(
-          result.url
-        ),
-        wantedMime
-      );
-
-    const filename =
-      ensureFilenameExtension(
-        result.filename,
-        format
-      );
-
-    const file =
-      new File(
-        [blob],
-        filename,
-        {
-          type:
-            blob.type
-            || wantedMime,
-          lastModified:
-            Date.now()
-        }
-      );
-
-    setYouTubeProgress(
-      97,
-      "Opening the imported media…"
-    );
-
-    await chooseFile(
-      file
-    );
-
-    setYouTubeProgress(
-      100,
-      "YouTube media imported."
-    );
-
-    status(
-      "YouTube media ready",
-      `${filename} is ready to transcribe.`,
-      "ok"
-    );
-
-    log(
-      `YouTube import finished: ${filename}.`
-    );
-
-    if (
-      MOBILE_LAYOUT.matches
-    ) {
-      setMobileSectionOpen(
-        "sourcePanel",
-        false
-      );
-
-      openMobileSection(
-        "transcriptionPanel"
-      );
-    }
-
-    setTimeout(
-      () =>
-        E.youtubeProgressBox.classList.add(
-          "hidden"
-        ),
-      1200
-    );
-  } catch (error) {
-    const message =
-      error?.message
-      || String(error);
-
-    status(
-      "YouTube import failed",
-      message,
-      "error"
-    );
-
-    log(
-      `Error: ${message}`
-    );
-
-    E.youtubeProgressBox.classList.add(
-      "hidden"
-    );
-  } finally {
-    setBusy(false);
-  }
-}
-
-function updateYouTubeControls(){E.youtubeQualityLabel.classList.toggle("hidden",E.youtubeFormat.value==="mp3")}
 function ensureCustomCensorAudioContext() {
   if (!state.customCensorAudioContext) {
     const Context =
@@ -3522,9 +3063,6 @@ E.fileInput.addEventListener("change",()=>chooseFile(E.fileInput.files?.[0]));
 for (const event of ["dragenter","dragover"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.add("drag")});
 for (const event of ["dragleave","drop"]) E.dropZone.addEventListener(event,e=>{e.preventDefault();E.dropZone.classList.remove("drag")});
 E.dropZone.addEventListener("drop",e=>chooseFile(e.dataTransfer?.files?.[0]));
-E.youtubeImportButton.addEventListener("click",importYouTubeLink);
-E.youtubeFormat.addEventListener("change",updateYouTubeControls);
-E.youtubeUrl.addEventListener("keydown",event=>{if(event.key==="Enter")importYouTubeLink()});
 
 $$('input[name="provider"]').forEach(el=>el.addEventListener("change",providerUi));
 $$('input[name="preset"]').forEach(el=>el.addEventListener("change",()=>E.customBox.classList.toggle("hidden",presetChoice()!=="custom")));
@@ -3556,19 +3094,7 @@ E.clearLogBtn.addEventListener("click",()=>E.log.textContent="");
 if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
 const remembered = localStorage.getItem("censorElevenLabsKey") || "";
 if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
-const savedCobaltEndpoint=localStorage.getItem("audioCensorCobaltEndpoint");
-if (savedCobaltEndpoint) {
-  E.cobaltEndpoint.value =
-    normalizeCobaltEndpoint(
-      savedCobaltEndpoint
-    );
-} else {
-  E.cobaltEndpoint.value =
-    normalizeCobaltEndpoint(
-      E.cobaltEndpoint.value
-    );
-}
-setupMobileSections(); renderCustomCensorList(); providerUi(); updateCensorEffectUI(); updateYouTubeControls(); refreshButtons();
+setupMobileSections(); renderCustomCensorList(); providerUi(); updateCensorEffectUI(); refreshButtons();
 window.addEventListener("beforeunload",()=>{
   for (const item of state.customCensors) URL.revokeObjectURL(item.url);
 });
