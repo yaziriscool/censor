@@ -686,9 +686,9 @@ biatch=bitch</textarea>
           <div class="custom-censor-empty">Choose one or more audio files.</div>
         </div>
         <p class="note">
-          A different sound is chosen randomly for each censored section.
-          The same sound is avoided twice in a row when possible. Short sounds
-          loop, and long sounds are trimmed.
+          Sounds save automatically on this device. A different sound is chosen
+          randomly for each censored section. The same sound is avoided twice in
+          a row when possible. Short sounds loop, and long sounds are trimmed.
         </p>
       </div>    </div>
   </article>
@@ -884,6 +884,11 @@ const SOUND_LABELS = new Set([
   "sound",
 ]);
 
+const CUSTOM_CENSOR_DB_NAME = "YaziCensorSavedMedia";
+const CUSTOM_CENSOR_DB_VERSION = 1;
+const CUSTOM_CENSOR_STORE = "customCensorSounds";
+let customCensorDBPromise = null;
+
 const state = {
   file: null, sourceURL: null, resultURLs: [],
   ffmpeg: null, ffmpegLoaded: false, ffmpegLoading: null,
@@ -1052,6 +1057,240 @@ function ensureCustomCensorAudioContext() {
   }
 
   return state.customCensorAudioContext;
+}
+
+function openCustomCensorDB() {
+  if (!("indexedDB" in window)) {
+    return Promise.reject(
+      new Error("This browser does not support saved custom sounds.")
+    );
+  }
+
+  if (customCensorDBPromise) {
+    return customCensorDBPromise;
+  }
+
+  customCensorDBPromise =
+    new Promise(
+      (resolve, reject) => {
+        const request =
+          indexedDB.open(
+            CUSTOM_CENSOR_DB_NAME,
+            CUSTOM_CENSOR_DB_VERSION
+          );
+
+        request.onupgradeneeded =
+          () => {
+            const database =
+              request.result;
+
+            if (
+              !database.objectStoreNames.contains(
+                CUSTOM_CENSOR_STORE
+              )
+            ) {
+              const store =
+                database.createObjectStore(
+                  CUSTOM_CENSOR_STORE,
+                  {
+                    keyPath: "id"
+                  }
+                );
+
+              store.createIndex(
+                "signature",
+                "signature",
+                {
+                  unique: true
+                }
+              );
+
+              store.createIndex(
+                "savedAt",
+                "savedAt",
+                {
+                  unique: false
+                }
+              );
+            }
+          };
+
+        request.onsuccess =
+          () => {
+            const database =
+              request.result;
+
+            database.onversionchange =
+              () => {
+                database.close();
+                customCensorDBPromise = null;
+              };
+
+            resolve(database);
+          };
+
+        request.onerror =
+          () => {
+            customCensorDBPromise = null;
+
+            reject(
+              request.error
+              || new Error(
+                  "Could not open saved custom sounds."
+                )
+            );
+          };
+
+        request.onblocked =
+          () => {
+            reject(
+              new Error(
+                "Saved custom sounds are open in another tab. Close old tabs and reload."
+              )
+            );
+          };
+      }
+    );
+
+  return customCensorDBPromise;
+}
+
+async function customCensorStoreRequest(
+  mode,
+  operation
+) {
+  const database =
+    await openCustomCensorDB();
+
+  return await new Promise(
+    (resolve, reject) => {
+      const transaction =
+        database.transaction(
+          CUSTOM_CENSOR_STORE,
+          mode
+        );
+
+      const store =
+        transaction.objectStore(
+          CUSTOM_CENSOR_STORE
+        );
+
+      let request;
+
+      try {
+        request =
+          operation(store);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      transaction.oncomplete =
+        () =>
+          resolve(
+            request?.result
+          );
+
+      transaction.onerror =
+        () =>
+          reject(
+            transaction.error
+            || request?.error
+            || new Error(
+                "Saved custom sound storage failed."
+              )
+          );
+
+      transaction.onabort =
+        () =>
+          reject(
+            transaction.error
+            || new Error(
+                "Saved custom sound storage was cancelled."
+              )
+          );
+    }
+  );
+}
+
+async function readSavedCustomCensorRecords() {
+  const records =
+    await customCensorStoreRequest(
+      "readonly",
+      store => store.getAll()
+    );
+
+  return Array.isArray(records)
+    ? records.sort(
+        (first, second) =>
+          Number(first.savedAt || 0)
+          - Number(second.savedAt || 0)
+      )
+    : [];
+}
+
+async function saveCustomCensorRecord(item) {
+  await customCensorStoreRequest(
+    "readwrite",
+    store =>
+      store.put({
+        id: item.id,
+        signature: item.signature,
+        name: item.file.name,
+        type:
+          item.file.type
+          || "application/octet-stream",
+        lastModified:
+          item.file.lastModified
+          || Date.now(),
+        savedAt:
+          item.savedAt
+          || Date.now(),
+        blob: item.file
+      })
+  );
+}
+
+async function deleteSavedCustomCensorRecord(id) {
+  await customCensorStoreRequest(
+    "readwrite",
+    store => store.delete(id)
+  );
+}
+
+async function clearSavedCustomCensorRecords() {
+  await customCensorStoreRequest(
+    "readwrite",
+    store => store.clear()
+  );
+}
+
+function fileFromSavedCustomCensor(record) {
+  const blob =
+    record.blob instanceof Blob
+      ? record.blob
+      : new Blob(
+          [record.blob],
+          {
+            type:
+              record.type
+              || "application/octet-stream"
+          }
+        );
+
+  return new File(
+    [blob],
+    record.name || "custom-censor-audio",
+    {
+      type:
+        record.type
+        || blob.type
+        || "application/octet-stream",
+      lastModified:
+        Number(record.lastModified)
+        || Date.now()
+    }
+  );
 }
 
 function customCensorSignature(file) {
@@ -1235,7 +1474,7 @@ function renderCustomCensorList() {
   }
 }
 
-function removeCustomCensorAudio(
+async function removeCustomCensorAudio(
   id,
   writeLog = true
 ) {
@@ -1269,6 +1508,14 @@ function removeCustomCensorAudio(
 
   renderCustomCensorList();
 
+  try {
+    await deleteSavedCustomCensorRecord(id);
+  } catch (error) {
+    log(
+      `Could not update saved sounds: ${error?.message || error}`
+    );
+  }
+
   if (writeLog) {
     log(
       `Removed custom censor: ${removed.file.name}.`
@@ -1276,7 +1523,7 @@ function removeCustomCensorAudio(
   }
 }
 
-function clearCustomCensorAudio(
+async function clearCustomCensorAudio(
   writeLog = false
 ) {
   for (
@@ -1294,12 +1541,165 @@ function clearCustomCensorAudio(
   E.customCensorInput.value = "";
   renderCustomCensorList();
 
+  try {
+    await clearSavedCustomCensorRecords();
+  } catch (error) {
+    log(
+      `Could not clear saved sounds: ${error?.message || error}`
+    );
+  }
+
   if (writeLog) {
     log("All custom censors removed.");
   }
 }
 
+async function decodeMainCustomCensorFile(
+  file,
+  storedRecord = null
+) {
+  const context =
+    ensureCustomCensorAudioContext();
+
+  const bytes =
+    await file.arrayBuffer();
+
+  const buffer =
+    await context.decodeAudioData(
+      bytes.slice(0)
+    );
+
+  const channels = [];
+
+  for (
+    let channel = 0;
+    channel < buffer.numberOfChannels;
+    channel++
+  ) {
+    channels.push(
+      new Float32Array(
+        buffer.getChannelData(channel)
+      )
+    );
+  }
+
+  if (!channels.length || !buffer.length) {
+    throw new Error(
+      "The audio file is empty."
+    );
+  }
+
+  return {
+    id:
+      storedRecord?.id
+      || crypto.randomUUID?.()
+      || `${Date.now()}-${Math.random()}`,
+    signature:
+      storedRecord?.signature
+      || customCensorSignature(file),
+    file,
+    url:
+      URL.createObjectURL(file),
+    savedAt:
+      Number(storedRecord?.savedAt)
+      || Date.now(),
+    decoded: {
+      channels,
+      sampleRate:
+        buffer.sampleRate,
+      frameCount:
+        buffer.length
+    },
+    resampled:
+      new Map()
+  };
+}
+
+async function restoreCustomCensorAudio() {
+  const promise =
+    (async () => {
+      try {
+        const records =
+          await readSavedCustomCensorRecords();
+
+        if (!records.length) {
+          renderCustomCensorList();
+          return;
+        }
+
+        let restored = 0;
+
+        for (
+          const record
+          of records
+        ) {
+          try {
+            const file =
+              fileFromSavedCustomCensor(
+                record
+              );
+
+            const item =
+              await decodeMainCustomCensorFile(
+                file,
+                record
+              );
+
+            state.customCensors.push(
+              item
+            );
+
+            restored++;
+            renderCustomCensorList();
+          } catch (error) {
+            log(
+              `Could not restore ${record.name || "a saved sound"}: ${error?.message || error}`
+            );
+
+            try {
+              await deleteSavedCustomCensorRecord(
+                record.id
+              );
+            } catch {
+              // Leave storage cleanup for a later attempt.
+            }
+          }
+        }
+
+        if (restored) {
+          log(
+            `${restored} saved custom censor sound${restored === 1 ? "" : "s"} restored.`
+          );
+        }
+      } catch (error) {
+        log(
+          `Saved custom sounds are unavailable: ${error?.message || error}`
+        );
+      }
+    })();
+
+  state.customCensorLoadPromise =
+    promise;
+
+  try {
+    await promise;
+  } finally {
+    if (
+      state.customCensorLoadPromise === promise
+    ) {
+      state.customCensorLoadPromise =
+        null;
+    }
+
+    renderCustomCensorList();
+  }
+}
+
 async function loadCustomCensorAudio(files) {
+  if (state.customCensorLoadPromise) {
+    await state.customCensorLoadPromise;
+  }
+
   const selectedFiles =
     [
       ...(files || [])
@@ -1331,87 +1731,57 @@ async function loadCustomCensorAudio(files) {
     return;
   }
 
-  const promise = (async () => {
-    let loaded = 0;
-    const context =
-      ensureCustomCensorAudioContext();
+  const promise =
+    (async () => {
+      let loaded = 0;
 
-    for (
-      const file
-      of candidates
-    ) {
-      try {
-        const bytes =
-          await file.arrayBuffer();
+      for (
+        const file
+        of candidates
+      ) {
+        try {
+          const item =
+            await decodeMainCustomCensorFile(
+              file
+            );
 
-        const buffer =
-          await context.decodeAudioData(
-            bytes.slice(0)
+          try {
+            await saveCustomCensorRecord(
+              item
+            );
+          } catch (error) {
+            URL.revokeObjectURL(
+              item.url
+            );
+
+            throw new Error(
+              `Could not save ${file.name}: ${error?.message || error}`
+            );
+          }
+
+          state.customCensors.push(
+            item
           );
 
-        const channels = [];
+          existing.add(
+            item.signature
+          );
 
-        for (
-          let channel = 0;
-          channel < buffer.numberOfChannels;
-          channel++
-        ) {
-          channels.push(
-            new Float32Array(
-              buffer.getChannelData(channel)
-            )
+          loaded++;
+          renderCustomCensorList();
+        } catch (error) {
+          log(
+            `Could not load ${file.name}: ${error?.message || error}`
           );
         }
+      }
 
-        if (!channels.length || !buffer.length) {
-          throw new Error(
-            "The audio file is empty."
-          );
-        }
-
-        const item = {
-          id:
-            crypto.randomUUID?.()
-            || `${Date.now()}-${Math.random()}`,
-          signature:
-            customCensorSignature(file),
-          file,
-          url:
-            URL.createObjectURL(file),
-          decoded: {
-            channels,
-            sampleRate:
-              buffer.sampleRate,
-            frameCount:
-              buffer.length
-          },
-          resampled:
-            new Map()
-        };
-
-        state.customCensors.push(
-          item
-        );
-
-        existing.add(
-          item.signature
-        );
-
-        loaded++;
-        renderCustomCensorList();
-      } catch (error) {
+      if (loaded) {
         log(
-          `Could not load ${file.name}: ${error?.message || error}`
+          `${loaded} custom censor sound${loaded === 1 ? "" : "s"} added and saved.`
         );
       }
-    }
-
-    if (loaded) {
-      log(
-        `${loaded} custom censor sound${loaded === 1 ? "" : "s"} added.`
-      );
-    }
-  })();
+    })();
 
   state.customCensorLoadPromise =
     promise;
@@ -3071,7 +3441,7 @@ $$('input[name="effect"]').forEach(el=>el.addEventListener("change",updateCensor
 E.coverage.addEventListener("input",()=>E.coverageOut.textContent=`${E.coverage.value}%`);
 E.beepVolume.addEventListener("input",()=>E.volumeOut.textContent=`${E.beepVolume.value}%`);
 E.customCensorInput.addEventListener("change",()=>loadCustomCensorAudio(E.customCensorInput.files));
-E.clearAllCustomCensors.addEventListener("click",()=>clearCustomCensorAudio(true));
+E.clearAllCustomCensors.addEventListener("click",()=>void clearCustomCensorAudio(true));
 
 E.showKeyBtn.addEventListener("click",()=>{
   const show=E.apiKey.type==="password"; E.apiKey.type=show?"text":"password"; E.showKeyBtn.textContent=show?"Hide":"Show";
@@ -3094,7 +3464,7 @@ E.clearLogBtn.addEventListener("click",()=>E.log.textContent="");
 if (location.protocol === "file:") E.protocolWarning.classList.remove("hidden");
 const remembered = localStorage.getItem("censorElevenLabsKey") || "";
 if (remembered) { E.apiKey.value=remembered; E.rememberKey.checked=true; }
-setupMobileSections(); renderCustomCensorList(); providerUi(); updateCensorEffectUI(); refreshButtons();
+setupMobileSections(); renderCustomCensorList(); void restoreCustomCensorAudio(); providerUi(); updateCensorEffectUI(); refreshButtons();
 window.addEventListener("beforeunload",()=>{
   for (const item of state.customCensors) URL.revokeObjectURL(item.url);
 });
