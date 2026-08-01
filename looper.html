@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0a">
 <meta name="color-scheme" content="dark">
-<title>Video Game Music Looper — Feedback Calibrated</title>
+<title>Music Looper</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
@@ -30,7 +30,7 @@ button{border:0}a{color:inherit}.hidden{display:none!important}
 .sr{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
 .topline{position:fixed;z-index:1000;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--yellow-dim),var(--yellow),var(--yellow2));box-shadow:0 0 24px rgba(250,226,157,.3)}
 .shell{width:min(1180px,calc(100% - 30px));margin-inline:auto}
-header{display:flex;align-items:end;justify-content:space-between;gap:22px;padding:32px 0 19px}
+header{display:flex;align-items:end;justify-content:flex-start;gap:22px;padding:32px 0 19px}
 .kicker{margin:0 0 5px;color:var(--yellow-dim);font-size:.7rem;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
 h1,h2,p{margin-top:0}h1{margin-bottom:5px;color:var(--yellow);font-size:clamp(1.65rem,4vw,2.5rem);line-height:1.03;letter-spacing:-.04em}
 h2{margin-bottom:0;font-size:1.08rem;letter-spacing:-.02em}.subtitle{max-width:700px;margin:0;color:var(--dim);font-size:.9rem;line-height:1.5}
@@ -68,23 +68,19 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 </head>
 <body>
 <div class="topline"></div>
+<span class="hidden" id="cpuBadge" aria-hidden="true"></span>
 <header class="shell">
   <div>
     <p class="kicker">Audio tool</p>
-    <h1>Video Game Music Looper</h1>
-    <p class="subtitle">Choose a track, find the loop, and download the result.</p>
-  </div>
-  <div class="badges">
-    <span class="badge">Runs locally</span>
-    <span class="badge">No fades</span>
-    <span class="badge" id="cpuBadge">Waveform-first engine</span>
+    <h1>Music Looper</h1>
+    <p class="subtitle">Basically for roblox developers that need like a clean loop for their game(s)</p>
   </div>
 </header>
 <main class="shell grid">
 <section class="main">
   <article class="panel">
     <div class="panel-head">
-      <div><p class="kicker">1 · Source</p><h2>Choose audio</h2></div>
+      <div><p class="kicker">File Selector (Mario 64 Reference).</p><h2>Choose audio</h2></div>
       <button class="button ghost small" id="resetButton" type="button">Reset</button>
     </div>
     <div id="protocolWarning" class="warning hidden" style="margin-bottom:12px">Open this through localhost or a hosted site. Browser audio tools may fail from file://.</div>
@@ -142,14 +138,14 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
   </article>
 
   <article class="panel">
-    <div class="panel-head"><div><p class="kicker">2 · Detection</p><h2>Loop settings</h2></div></div>
+    <div class="panel-head"><div><p class="kicker">Settings</p><h2>Loop settings</h2></div></div>
     <span class="label">Track type</span>
     <div class="segmented" role="radiogroup">
       <label><input type="radio" name="vocalMode" value="auto" checked><span>Auto</span></label>
       <label><input type="radio" name="vocalMode" value="vocal"><span>Vocals</span></label>
       <label><input type="radio" name="vocalMode" value="instrumental"><span>Instrumental</span></label>
     </div>
-    <p class="help">Use Vocals when lyrics are present. Use Instrumental when they are not.</p>
+    <p class="help">I would not use vocals for right now since they can be buggy, but sometimes you might get a seamless loop with it</p>
 
     <div class="field">
       <span class="label">Search power</span>
@@ -167,97 +163,59 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
     </div>
     <div class="checks">
       <label class="check"><input id="preferFirst" type="checkbox" checked><span>Use the first matching loop</span></label>
-      <label class="check"><input id="beatLock" type="checkbox" checked><span>Protect beat timing</span></label>
+      <label class="check"><input id="beatLock" type="checkbox" checked><span>Double Check for the rhythm and beat stuff.</span></label>
       <label class="check"><input id="tempoAware" type="checkbox" checked><span>Handle speed changes</span></label>
     </div>
-    <p class="help">Native-rate and low-quality handling are always active. Every mode checks waveform, rhythm, instruments, vocals, and the literal hard splice.</p>
 
-    <details class="settings-details" id="advancedSettings">
-      <summary>Advanced settings</summary>
-      <div class="settings-body">
-        <div class="settings-head">
-          <p class="note">Deep runs the complete Maximum search first, then performs a second independent repeat search and stricter full-detail verification.</p>
-          <button class="button ghost small" id="resetSettingsButton" type="button">Reset defaults</button>
-        </div>
-
-        <div class="settings-group">
-          <p class="settings-title">Analysis</p>
-          <div class="settings-grid">
-            <label><span class="label">Analysis sample rate</span><input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="96000" step="1" value="22050"></label>
-            <label><span class="label">Hop length</span><input class="text setting-input" id="hopLength" type="number" min="128" max="2048" step="1" value="512"></label>
-            <label><span class="label">Match window</span><input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="20" step="0.1" value="7"></label>
-            <label><span class="label">Boundary context</span><input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="8" step="0.05" value="2.25"></label>
-            <label><span class="label">Maximum candidates</span><input class="text setting-input" id="maxCandidates" type="number" min="100" max="4000" step="10" value="1500"></label>
-            <label><span class="label">Candidates to refine</span><input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="64" step="1" value="18"></label>
-            <label><span class="label">Auto vocal threshold</span><input class="text setting-input" id="autoVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.5"></label>
-            <label><span class="label">Precision ceiling</span><input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="192000" step="1" value="96000"></label>
-          </div>
-        </div>
-
-        <div class="settings-group">
-          <p class="settings-title">Boundary refinement</p>
-          <div class="settings-grid">
-            <label><span class="label">Shared search radius</span><input class="text setting-input" id="refineRadiusMs" type="number" min="10" max="1000" step="1" value="180"></label>
-            <label><span class="label">Shared search step</span><input class="text setting-input" id="refineStepMs" type="number" min="0.25" max="20" step="0.25" value="2"></label>
-            <label><span class="label">Match length</span><input class="text setting-input" id="refineMatchMs" type="number" min="50" max="2000" step="5" value="420"></label>
-            <label><span class="label">Period correction</span><input class="text setting-input" id="maxPeriodCorrectionMs" type="number" min="0.25" max="50" step="0.25" value="15"></label>
-            <label><span class="label">Period step</span><input class="text setting-input" id="periodCorrectionStepMs" type="number" min="0.05" max="5" step="0.05" value="0.25"></label>
-            <label><span class="label">Seam shared search</span><input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="5"></label>
-            <label><span class="label">Seam period search</span><input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.6"></label>
-            <label><span class="label">Seam check length</span><input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="32"></label>
-          </div>
-        </div>
-
-        <div class="settings-group">
-          <p class="settings-title">Speed and beat changes</p>
-          <div class="settings-grid">
-            <label><span class="label">Tempo window</span><input class="text setting-input" id="tempoWindowSeconds" type="number" min="3" max="20" step="0.5" value="8"></label>
-            <label><span class="label">Tempo tolerance %</span><input class="text setting-input" id="tempoTolerancePercent" type="number" min="1" max="35" step="0.5" value="8"></label>
-            <label><span class="label">Ramp penalty</span><input class="text setting-input" id="tempoRampPenalty" type="number" min="0" max="0.75" step="0.01" value="0.16"></label>
-            <label><span class="label">Beat phase check</span><input class="text setting-input" id="beatPhaseContextSeconds" type="number" min="0.5" max="12" step="0.25" value="3.5"></label>
-            <label><span class="label">Beat phase weight</span><input class="text setting-input" id="beatPhaseWeight" type="number" min="0" max="0.75" step="0.01" value="0.18"></label>
-            <label><span class="label">Instrument flow window</span><input class="text setting-input" id="instrumentFlowSeconds" type="number" min="3" max="30" step="0.5" value="12"></label>
-            <label><span class="label">Instrument flow weight</span><input class="text setting-input" id="instrumentFlowWeight" type="number" min="0" max="0.75" step="0.01" value="0.3"></label>
-            <label><span class="label">Minimum instrument match</span><input class="text setting-input" id="instrumentFlowMinimum" type="number" min="0" max="1" step="0.01" value="0.62"></label>
-            <label><span class="label">Tempo path weight</span><input class="text setting-input" id="tempoPathWeight" type="number" min="0" max="0.5" step="0.01" value="0.1"></label>
-            <label><span class="label">Whole-loop check weight</span><input class="text setting-input" id="repeatContentWeight" type="number" min="0" max="0.75" step="0.01" value="0.24"></label>
-            <label><span class="label">Whole-loop coverage</span><input class="text setting-input" id="repeatMinimumCoverage" type="number" min="0.2" max="1" step="0.05" value="0.55"></label>
-            <label><span class="label">Beat drift correction</span><input class="text setting-input" id="beatDriftCorrectionMs" type="number" min="0" max="100" step="0.5" value="18"></label>
-            <label><span class="label">Beat drift minimum gain</span><input class="text setting-input" id="beatDriftMinGain" type="number" min="0" max="0.25" step="0.005" value="0.035"></label>
-          </div>
-        </div>
-
-        <div class="settings-group">
-          <p class="settings-title">Deep analysis</p>
-          <div class="settings-grid">
-            <label><span class="label">Lag candidates</span><input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="128" step="1" value="96"></label>
-            <label><span class="label">Repeat check window</span><input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="30" step="0.5" value="16"></label>
-            <label><span class="label">Minimum repeat coverage</span><input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.4"></label>
-            <label><span class="label">Lag fine search</span><input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="320"></label>
-            <label><span class="label">Speed-ramp crossing penalty</span><input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46"></label>
-            <label><span class="label">Settled-speed bonus</span><input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14"></label>
-            <label><span class="label">Full-detail candidates</span><input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="48" step="1" value="18"></label>
-            <label><span class="label">Direct repeat floor</span><input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58"></label>
-          </div>
-        </div>
-
-        <div class="settings-group">
-          <p class="settings-title">First repeat</p>
-          <div class="settings-grid">
-            <label><span class="label">Music threshold</span><input class="text setting-input" id="earliestMusicalThreshold" type="number" min="0" max="1" step="0.01" value="0.72"></label>
-            <label><span class="label">Vocal threshold</span><input class="text setting-input" id="earliestVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.58"></label>
-          </div>
-        </div>
-        <p class="saved-note">Settings save in this browser automatically.</p>
-      </div>
-    </details>
+    <div class="hidden" aria-hidden="true">
+      <button id="resetSettingsButton" type="button"></button>
+      <input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="96000" step="1" value="22050">
+      <input class="text setting-input" id="hopLength" type="number" min="128" max="2048" step="1" value="512">
+      <input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="20" step="0.1" value="7">
+      <input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="8" step="0.05" value="2.25">
+      <input class="text setting-input" id="maxCandidates" type="number" min="100" max="4000" step="10" value="1500">
+      <input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="64" step="1" value="18">
+      <input class="text setting-input" id="autoVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.5">
+      <input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="192000" step="1" value="96000">
+      <input class="text setting-input" id="refineRadiusMs" type="number" min="10" max="1000" step="1" value="180">
+      <input class="text setting-input" id="refineStepMs" type="number" min="0.25" max="20" step="0.25" value="2">
+      <input class="text setting-input" id="refineMatchMs" type="number" min="50" max="2000" step="5" value="420">
+      <input class="text setting-input" id="maxPeriodCorrectionMs" type="number" min="0.25" max="50" step="0.25" value="15">
+      <input class="text setting-input" id="periodCorrectionStepMs" type="number" min="0.05" max="5" step="0.05" value="0.25">
+      <input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="5">
+      <input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.6">
+      <input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="32">
+      <input class="text setting-input" id="tempoWindowSeconds" type="number" min="3" max="20" step="0.5" value="8">
+      <input class="text setting-input" id="tempoTolerancePercent" type="number" min="1" max="35" step="0.5" value="8">
+      <input class="text setting-input" id="tempoRampPenalty" type="number" min="0" max="0.75" step="0.01" value="0.16">
+      <input class="text setting-input" id="beatPhaseContextSeconds" type="number" min="0.5" max="12" step="0.25" value="3.5">
+      <input class="text setting-input" id="beatPhaseWeight" type="number" min="0" max="0.75" step="0.01" value="0.18">
+      <input class="text setting-input" id="instrumentFlowSeconds" type="number" min="3" max="30" step="0.5" value="12">
+      <input class="text setting-input" id="instrumentFlowWeight" type="number" min="0" max="0.75" step="0.01" value="0.3">
+      <input class="text setting-input" id="instrumentFlowMinimum" type="number" min="0" max="1" step="0.01" value="0.62">
+      <input class="text setting-input" id="tempoPathWeight" type="number" min="0" max="0.5" step="0.01" value="0.1">
+      <input class="text setting-input" id="repeatContentWeight" type="number" min="0" max="0.75" step="0.01" value="0.24">
+      <input class="text setting-input" id="repeatMinimumCoverage" type="number" min="0.2" max="1" step="0.05" value="0.55">
+      <input class="text setting-input" id="beatDriftCorrectionMs" type="number" min="0" max="100" step="0.5" value="18">
+      <input class="text setting-input" id="beatDriftMinGain" type="number" min="0" max="0.25" step="0.005" value="0.035">
+      <input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="128" step="1" value="96">
+      <input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="30" step="0.5" value="16">
+      <input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.4">
+      <input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="320">
+      <input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46">
+      <input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14">
+      <input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="48" step="1" value="18">
+      <input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58">
+      <input class="text setting-input" id="earliestMusicalThreshold" type="number" min="0" max="1" step="0.01" value="0.72">
+      <input class="text setting-input" id="earliestVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.58">
+    </div>
 
     <button class="button primary large" id="findButton" type="button" disabled>Find loop</button>
     <div class="progress-box hidden" id="progressBox"><div class="track"><div class="bar" id="progressBar"></div></div><p id="progressText">Getting ready…</p></div>
   </article>
 
   <article class="panel result hidden" id="resultPanel">
-    <div class="panel-head"><div><p class="kicker">3 · Result</p><h2>Loop found</h2></div><button class="button ghost small" id="findAgainButton" type="button">Find again</button></div>
+    <div class="panel-head"><div><p class="kicker">3 · Result</p><h2>Attempt</h2></div><button class="button ghost small" id="findAgainButton" type="button">Find again</button></div>
     <div class="region-box"><div class="region-value" id="regionValue">0, 0</div><button class="button secondary small" id="copyRegionButton" type="button">Copy</button></div>
     <div class="stats">
       <div><span>Start</span><strong id="startStat">0:00.000</strong></div>
@@ -279,7 +237,6 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
         <label><span class="label">Loop start</span><span class="stepper"><button class="button ghost mini" data-adjust="start" data-direction="-1" type="button">−</button><input class="text" id="startInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="start" data-direction="1" type="button">+</button></span></label>
         <label><span class="label">Loop end</span><span class="stepper"><button class="button ghost mini" data-adjust="end" data-direction="-1" type="button">−</button><input class="text" id="endInput" type="number" step="0.000001"><button class="button ghost mini" data-adjust="end" data-direction="1" type="button">+</button></span></label>
       </div>
-      <p class="note">The − and + buttons move one full-detail sample at a time.</p>
     </div>
 
     <div class="downloads">
@@ -292,7 +249,7 @@ audio{width:100%}.preview{margin-top:11px;border-radius:11px;background:#000}
 
 <aside class="aside">
   <article class="panel sticky">
-    <div class="panel-head"><div><p class="kicker">Status</p><h2 id="statusTitle">Ready</h2></div><span class="status-dot" id="statusDot"></span></div>
+    <div class="hidden" aria-hidden="true"><h2 id="statusTitle">Ready</h2><span id="statusDot"></span></div>
     <p class="status-message" id="statusMessage">Choose an audio file.</p>
     <div class="side-stats">
       <div><span>Duration</span><strong id="durationSide">0:00</strong></div>
