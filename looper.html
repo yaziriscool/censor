@@ -3647,39 +3647,119 @@ async function renderExtractedAudio(){
 }
 async function renderExtendedVideo(){
   if(!state.result||state.mediaMode!=="video")throw new Error("Choose a video and find a loop first.");
-  const {start,end}=currentTimes(),repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
+  const {start,end}=currentTimes();
+  const repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
+  const loopLength=Math.max(.02,end-start);
   const duration=extendedDuration(start,end,repeats);
+
   return runFFmpegJob("Extended video render",async ffmpeg=>{
     const input=await ensureInputFile(ffmpeg);
     const nonce=Date.now().toString(36);
-    const videoOnly=`looper_video_${nonce}.mp4`;
-    const audioOnly=`looper_audio_${nonce}.m4a`;
+    const baseVideo=`looper_base_${nonce}.mp4`;
+    const loopVideo=`looper_loop_${nonce}.mp4`;
+    const timelineVideo=`looper_timeline_${nonce}.mp4`;
+    const concatList=`looper_concat_${nonce}.ffconcat`;
+    const audioWav=`looper_audio_${nonce}.wav`;
     const output=`looper_extended_${nonce}.mp4`;
-    const videoGraph=videoOnlyLoopFilter(start,end,repeats);
-    const audioGraph=previewFilter(start,end,repeats).replace(/\[out\]$/, "[acat]")+";[acat]aresample=async=1:first_pts=0[outa]";
-    try{
-      setProgress(12,"Building the looped video pictures…");
-      const videoBase=["-fflags","+genpts","-i",input,"-filter_complex",videoGraph,"-map","[outv]","-an","-t",filterNumber(duration),"-pix_fmt","yuv420p","-movflags","+faststart"];
+    const temporary=[baseVideo,loopVideo,timelineVideo,concatList,audioWav,output];
+    const videoFilter="settb=AVTB,setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,format=yuv420p";
+    let codec="h264";
+
+    const encodeVideoPart=async(from,length,target,label)=>{
+      const seek=from>0?["-ss",filterNumber(from)]:[];
+      const common=[...seek,"-i",input,"-t",filterNumber(length),"-map","0:v:0","-an","-vf",videoFilter,"-fps_mode","vfr","-movflags","+faststart"];
       try{
-        await execFFmpegWithTimeout(ffmpeg,[...videoBase,"-c:v","libx264","-preset","ultrafast","-crf","20","-tag:v","avc1",videoOnly],"Looped H.264 video render",420000);
+        await execFFmpegWithTimeout(ffmpeg,[...common,"-c:v","libx264","-preset","ultrafast","-crf","20","-tag:v","avc1",target],`${label} H.264 encode`,240000);
+        return "h264";
       }catch(firstError){
-        await deleteFileQuiet(ffmpeg,videoOnly);
-        log("The H.264 encoder was unavailable. Using the MP4 compatibility encoder.");
-        await execFFmpegWithTimeout(ffmpeg,[...videoBase,"-c:v","mpeg4","-q:v","2","-tag:v","mp4v",videoOnly],"Looped compatible video render",420000);
+        await deleteFileQuiet(ffmpeg,target);
+        log(`${label}: H.264 was unavailable, so the compatible MP4 encoder is being used.`);
+        await execFFmpegWithTimeout(ffmpeg,[...common,"-c:v","mpeg4","-q:v","3","-tag:v","mp4v",target],`${label} compatible encode`,240000);
+        return "mpeg4";
+      }
+    };
+
+    try{
+      // Encode only the original timeline through the first loop end. Unlike the
+      // old renderer, this does NOT re-encode the loop pictures for every repeat.
+      setProgress(10,"Encoding the video through the first loop once…");
+      codec=await encodeVideoPart(0,end,baseVideo,"Base video");
+
+      let repeatedSource=baseVideo;
+      if(start>.000001){
+        setProgress(30,"Encoding the loop picture section once…");
+        const loopCodec=await encodeVideoPart(start,loopLength,loopVideo,"Loop video");
+        if(loopCodec!==codec){
+          // Extremely unusual, but mixed codecs cannot be stream-concatenated.
+          // Rebuild the base with the codec that the second segment accepted.
+          await deleteFileQuiet(ffmpeg,baseVideo);
+          const forceCompatible=codec==="h264"&&loopCodec==="mpeg4";
+          if(forceCompatible){
+            const common=["-i",input,"-t",filterNumber(end),"-map","0:v:0","-an","-vf",videoFilter,"-fps_mode","vfr","-movflags","+faststart","-c:v","mpeg4","-q:v","3","-tag:v","mp4v",baseVideo];
+            await execFFmpegWithTimeout(ffmpeg,common,"Compatible base video encode",240000);
+            codec="mpeg4";
+          }
+        }
+        repeatedSource=loopVideo;
       }
 
-      setProgress(57,"Building the exact looped audio…");
+      let videoForMux=baseVideo;
+      if(repeats>1){
+        setProgress(48,"Repeating the already-encoded video section…");
+        const lines=["ffconcat version 1.0",`file '${baseVideo}'`,`duration ${filterNumber(end)}`];
+        for(let index=1;index<repeats;index++){
+          lines.push(`file '${repeatedSource}'`);
+          lines.push(`duration ${filterNumber(loopLength)}`);
+        }
+        await ffmpeg.writeFile(concatList,new TextEncoder().encode(lines.join("\n")+"\n"));
+        await execFFmpegWithTimeout(ffmpeg,[
+          "-f","concat","-safe","0","-i",concatList,
+          "-map","0:v:0","-an","-c:v","copy","-fflags","+genpts",
+          "-avoid_negative_ts","make_zero","-t",filterNumber(duration),
+          "-movflags","+faststart",timelineVideo
+        ],"Fast video repetition",120000);
+        videoForMux=timelineVideo;
+      }
+
+      // Build the complete audio once as PCM, then follow the censor's reliable
+      // MP4 approach: stream-copy the finished video and encode the replacement
+      // audio only once during the final mux.
+      setProgress(62,"Building the exact repeated audio…");
       await execFFmpegWithTimeout(ffmpeg,[
-        "-fflags","+genpts","-i",input,"-vn","-filter_complex",audioGraph,"-map","[outa]",
-        "-t",filterNumber(duration),"-c:a","aac","-b:a","192k",audioOnly
-      ],"Looped audio render",300000);
+        "-i",input,"-vn","-filter_complex",previewFilter(start,end,repeats),
+        "-map","[out]","-c:a","pcm_s16le",audioWav
+      ],"Exact repeated audio render",300000);
 
       setProgress(82,"Putting the looped audio back into the video…");
-      await execFFmpegWithTimeout(ffmpeg,[
-        "-fflags","+genpts","-i",videoOnly,"-i",audioOnly,
-        "-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","copy",
-        "-t",filterNumber(duration),"-movflags","+faststart","-avoid_negative_ts","make_zero",output
-      ],"Final MP4 mux",180000);
+      let muxError=null;
+      try{
+        await execFFmpegWithTimeout(ffmpeg,[
+          "-i",videoForMux,"-i",audioWav,"-map","0:v:0","-map","1:a:0",
+          "-map_metadata","0","-c:v","copy","-c:a","aac","-b:a","192k",
+          "-movflags","+faststart","-shortest",output
+        ],"Fast final MP4 mux",180000);
+      }catch(error){
+        muxError=error;
+        await deleteFileQuiet(ffmpeg,output);
+        log("The video stream-copy mux was rejected. Rebuilding a browser-compatible MP4 once.");
+        try{
+          await execFFmpegWithTimeout(ffmpeg,[
+            "-i",videoForMux,"-i",audioWav,"-map","0:v:0","-map","1:a:0",
+            "-c:v","libx264","-preset","ultrafast","-crf","20","-pix_fmt","yuv420p",
+            "-c:a","aac","-b:a","192k","-movflags","+faststart","-shortest",output
+          ],"H.264 final MP4 fallback",300000);
+          muxError=null;
+        }catch(secondError){
+          await deleteFileQuiet(ffmpeg,output);
+          await execFFmpegWithTimeout(ffmpeg,[
+            "-i",videoForMux,"-i",audioWav,"-map","0:v:0","-map","1:a:0",
+            "-c:v","mpeg4","-q:v","3","-c:a","aac","-b:a","192k",
+            "-movflags","+faststart","-shortest",output
+          ],"Compatible final MP4 fallback",300000);
+          muxError=null;
+        }
+      }
+      if(muxError)throw muxError;
 
       const data=await ffmpeg.readFile(output);
       if(!data||data.byteLength<4096)throw new Error("The final MP4 file was empty or incomplete.");
@@ -3687,9 +3767,7 @@ async function renderExtendedVideo(){
       copy.set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
       return new Blob([copy],{type:"video/mp4"});
     }finally{
-      await deleteFileQuiet(ffmpeg,videoOnly);
-      await deleteFileQuiet(ffmpeg,audioOnly);
-      await deleteFileQuiet(ffmpeg,output);
+      for(const name of temporary)await deleteFileQuiet(ffmpeg,name);
     }
   });
 }
@@ -3734,9 +3812,22 @@ function videoResultKey(){
 function installVideoResult(blob,name,key){
   if(state.videoResultUrl){try{URL.revokeObjectURL(state.videoResultUrl);}catch{}}
   state.videoResultBlob=blob;state.videoResultKey=key;state.videoResultUrl=URL.createObjectURL(blob);
-  E.resultVideoPreview.src=state.videoResultUrl;E.resultVideoPreview.load();
-  const {start}=currentTimes(),finalEnd=Math.max(start+.02,extendedDuration(currentTimes().start,currentTimes().end,clamp(Math.round(Number(E.previewRepeats.value)||3),1,50)));
-  bindResultVideoLoop(start,finalEnd,"Finished extended video. The pictures and the rebuilt looped audio are muxed into this same MP4.");
+  detachResultVideoHandlers();
+  const video=E.resultVideoPreview;
+  try{video.pause();}catch{}
+  video.loop=true;
+  video.src=state.videoResultUrl;
+  video.preload="metadata";
+  video.onloadedmetadata=()=>{
+    try{video.currentTime=0;}catch{}
+  };
+  video.onerror=()=>{
+    const detail=video.error?.message||`media error ${video.error?.code||"unknown"}`;
+    log(`Finished MP4 preview could not play: ${detail}. The saved MP4 is still available below.`);
+  };
+  video.load();
+  E.resultVideoNote.textContent="Finished extended video. Its repeated picture sections and rebuilt looped audio are already inside this single MP4, so the player does not seek at every loop.";
+  E.resultVideoPanel.classList.remove("hidden");
   E.downloadVideo.href=state.videoResultUrl;
   E.downloadVideo.download=name;
   E.downloadVideo.dataset.ready="1";
@@ -3766,7 +3857,7 @@ async function downloadVideoResult(button){
 
   const original=button.textContent;
   try{
-    setBusy(true,"Building the extended video and putting its looped audio back in…");button.textContent="Working…";
+    setBusy(true,"Encoding each video section once, repeating it quickly, and putting the looped audio back in…");button.textContent="Working…";
     const blob=await renderExtendedVideo();
     installVideoResult(blob,name,key);
     if(saveHandle){
