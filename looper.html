@@ -1786,6 +1786,7 @@ E.runtimeBadge=E.cpuBadge;
 const state={
   file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,searchWavePeaks:null,searchRangeDrag:null,searchWaveLoading:false,
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,
+  precisionWorkers:[],precisionQueue:[],precisionWorkerUrl:"",precisionTaskId:0,precisionDesired:0,
   sourceSampleRate:0,sourceChannels:0,sourceBitrateKbps:0,sourceQuality:"unknown",sourceProfileVersion:0,
   loadWait:null,detectWait:null,fineWait:null,
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
@@ -1796,6 +1797,20 @@ const state={
 
 const FFMPEG_EXEC_TIMEOUT_MS=120000;
 const FFMPEG_MAX_EXECS_PER_SESSION=7;
+const LOGICAL_CPU_COUNT=Math.max(2,Math.round(Number(navigator.hardwareConcurrency)||4));
+const CAN_USE_WASM_THREADS=!!(self.crossOriginIsolated&&typeof SharedArrayBuffer!=="undefined");
+function precisionWorkerCount(power){
+  const reserve=LOGICAL_CPU_COUNT>=8?2:1;
+  const available=Math.max(1,LOGICAL_CPU_COUNT-reserve);
+  const cap={fast:2,strong:3,maximum:5,deep:6}[power]||3;
+  return Math.max(1,Math.min(cap,available));
+}
+function poweredFullDetailCount(settings){
+  const base=Math.max(1,Math.round(Number(settings.fullDetailCandidates)||1));
+  const extra=Math.max(0,Math.floor((LOGICAL_CPU_COUNT-4)/2));
+  const bonusCap={fast:2,strong:4,maximum:7,deep:10}[settings.power]||3;
+  return Math.min(48,base+Math.min(extra,bonusCap));
+}
 const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
 
 const SETTINGS_KEY="videoGameMusicLooperSettingsV12",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV11";
@@ -2111,7 +2126,83 @@ function startWebAudioTracking(context,source,map,duration=0){
   update();
 }
 function revokeTextUrl(){if(state.textUrl){URL.revokeObjectURL(state.textUrl);state.textUrl="";}}
-function invalidateMedia(){stopPlayback();state.mediaVersion++;}
+function invalidateMedia(){stopPlayback();terminatePrecisionWorkers();state.mediaVersion++;}
+
+function terminatePrecisionWorkers(){
+  const cancellation=new Error("Precision worker pool was reset.");
+  while(state.precisionQueue.length){
+    const task=state.precisionQueue.shift();
+    try{task.reject(cancellation);}catch{}
+  }
+  for(const slot of state.precisionWorkers){
+    if(slot.task){try{slot.task.reject(cancellation);}catch{}}
+    try{slot.worker.terminate();}catch{}
+  }
+  state.precisionWorkers=[];state.precisionDesired=0;
+  if(state.precisionWorkerUrl){try{URL.revokeObjectURL(state.precisionWorkerUrl);}catch{}}
+  state.precisionWorkerUrl="";
+}
+
+function makePrecisionWorkerSlot(index){
+  if(!state.precisionWorkerUrl){
+    state.precisionWorkerUrl=URL.createObjectURL(new Blob([WORKER_SOURCE],{type:"text/javascript"}));
+  }
+  const worker=new Worker(state.precisionWorkerUrl);
+  const slot={worker,index,busy:false,task:null};
+  const fail=error=>{
+    const task=slot.task;slot.task=null;slot.busy=false;
+    try{worker.terminate();}catch{}
+    const position=state.precisionWorkers.indexOf(slot);
+    if(position>=0)state.precisionWorkers.splice(position,1);
+    if(task)task.reject(error instanceof Error?error:new Error(String(error)));
+    if(state.precisionDesired>0&&state.precisionWorkers.length<state.precisionDesired){
+      state.precisionWorkers.push(makePrecisionWorkerSlot(state.precisionWorkers.length));
+    }
+    pumpPrecisionWorkers();
+  };
+  worker.onmessage=event=>{
+    const message=event.data||{};
+    if(message.type==="fineDone"){
+      const task=slot.task;slot.task=null;slot.busy=false;
+      if(task)task.resolve(message.result);
+      pumpPrecisionWorkers();
+    }else if(message.type==="error")fail(new Error(message.message||"Precision worker failed."));
+  };
+  worker.onerror=event=>fail(new Error(event.message||"Precision worker crashed."));
+  return slot;
+}
+
+function ensurePrecisionWorkers(count){
+  count=Math.max(1,Math.round(count)||1);state.precisionDesired=count;
+  while(state.precisionWorkers.length<count){
+    state.precisionWorkers.push(makePrecisionWorkerSlot(state.precisionWorkers.length));
+  }
+  while(state.precisionWorkers.length>count){
+    const slot=state.precisionWorkers.pop();
+    if(slot.task){state.precisionQueue.unshift(slot.task);slot.task=null;}
+    try{slot.worker.terminate();}catch{}
+  }
+  pumpPrecisionWorkers();
+}
+
+function pumpPrecisionWorkers(){
+  for(const slot of state.precisionWorkers){
+    if(slot.busy||!state.precisionQueue.length)continue;
+    const task=state.precisionQueue.shift();
+    slot.busy=true;slot.task=task;
+    try{slot.worker.postMessage(task.message,task.transfers);}catch(error){
+      slot.busy=false;slot.task=null;task.reject(error);
+      queueMicrotask(pumpPrecisionWorkers);
+    }
+  }
+}
+
+function runPrecisionFine(message,transfers){
+  return new Promise((resolve,reject)=>{
+    state.precisionQueue.push({id:++state.precisionTaskId,message,transfers,resolve,reject,attempt:0});
+    pumpPrecisionWorkers();
+  });
+}
 
 function terminateAnalysisWorker(preserveData=false){
   const cancellation=new Error("Analysis worker was reset.");
@@ -2392,15 +2483,13 @@ async function loadFFmpegCoreCandidate(
   );
 
   try {
-    await ffmpeg.load(
-      {
-        classWorkerURL,
-        coreURL:
-          `${candidate.coreBase}/ffmpeg-core.js`,
-        wasmURL:
-          `${candidate.coreBase}/ffmpeg-core.wasm`
-      }
-    );
+    const loadConfig={
+      classWorkerURL,
+      coreURL:`${candidate.coreBase}/ffmpeg-core.js`,
+      wasmURL:`${candidate.coreBase}/ffmpeg-core.wasm`
+    };
+    if(candidate.threaded)loadConfig.workerURL=`${candidate.coreBase}/ffmpeg-core.worker.js`;
+    await ffmpeg.load(loadConfig);
 
     return {
       ffmpeg,
@@ -2513,6 +2602,11 @@ async function ensureFFmpeg() {
         await importFFmpegWrapper();
 
       const coreCandidates = [
+        ...(CAN_USE_WASM_THREADS?[{
+          name:"jsDelivr multi-thread core",
+          coreBase:"https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.10/dist/esm",
+          threaded:true
+        }]:[]),
         {
           name: "jsDelivr core",
           coreBase:
@@ -2564,7 +2658,7 @@ async function ensureFFmpeg() {
           E.runtimeBadge.textContent =
             "ffmpeg.wasm loaded";
 
-          log("Media tools loaded.");
+          log(`Media tools loaded${candidate.threaded?" with WebAssembly threads":""}.`);
 
           return state.ffmpeg;
         } catch (error) {
@@ -2800,11 +2894,11 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   const fineOptions={...settings,useVocals:coarse.mode==="Vocals",localBeatSeconds:coarse.localBeatSeconds||0,sourceQuality:coarse.sourceQuality||profile.quality,sourceSampleRate:profile.sampleRate,precisionCeiling:settings.precisionSampleRate};
 
   setProgress(84+13*(candidateIndex+1)/candidateTotal,`Checking candidate ${candidateIndex+1} of ${candidateTotal}…`);
-  const fine=await waitForWorker("fine",()=>state.analysisWorker.postMessage({
+  const fine=await runPrecisionFine({
     type:"fine",sampleRate:rate,startCenter,endCenter,options:fineOptions,
     startBuffer:startPcm.buffer,startByteOffset:startPcm.byteOffset,startLength:startPcm.length,startChannels:startPcm.channels,
     endBuffer:endPcm.buffer,endByteOffset:endPcm.byteOffset,endLength:endPcm.length,endChannels:endPcm.channels
-  },[startPcm.buffer,endPcm.buffer]));
+  },[startPcm.buffer,endPcm.buffer]);
 
   let startSeconds=coarseStart+fine.startDelta/rate;
   let endSeconds=coarseEnd+fine.endDelta/rate;
@@ -2850,7 +2944,7 @@ async function runDetection(options){
 }
 
 function reset(){
-  stopPlayback();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
+  stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   state.sourceSampleRate=0;state.sourceChannels=0;state.sourceBitrateKbps=0;state.sourceQuality="unknown";state.sourceProfileVersion=0;
@@ -2940,41 +3034,40 @@ async function findLoop(){
     // precision stage in a clean worker, then recycle it periodically below.
     disposeFFmpeg("Recycled the media engine before full-detail verification.",true);
 
-    const requestedCount=Math.min(settings.fullDetailCandidates,unique.length),verified=[];
-    let checked=0,analysisRecoveryUsed=false;
-    const verifyNext=async()=>{
-      const index=checked++;
+    const workerCount=precisionWorkerCount(settings.power);
+    ensurePrecisionWorkers(workerCount);
+    const poweredCount=poweredFullDetailCount(settings);
+    const requestedCount=Math.min(poweredCount,unique.length),verified=[];
+    log(`Precision stage using ${workerCount} CPU worker${workerCount===1?"":"s"}; ${requestedCount} candidates scheduled.`);
+    let checked=0;
+    const verifyIndex=async index=>{
       try{
-        verified.push(await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount)));
+        const result=await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount));
+        verified.push(result);
       }catch(error){
-        const message=error?.message||String(error);
-        const workerProblem=/worker|timed out|disposed|reset/i.test(message);
-        if(workerProblem&&!analysisRecoveryUsed){
-          analysisRecoveryUsed=true;
-          log(`Candidate ${index+1} lost the analysis worker. Rebuilding it and retrying that candidate once.`);
-          try{
-            terminateAnalysisWorker();
-            await prepareAnalysis(settings);
-            disposeFFmpeg("Recycled the media engine after rebuilding the analysis worker.",true);
-            verified.push(await refineAtFullDetail(unique[index],settings,index,Math.max(1,requestedCount)));
-            return;
-          }catch(retryError){
-            log(`Candidate ${index+1} recovery failed: ${retryError.message||retryError}`);
-          }
-        }
-        log(`Candidate ${index+1} full-detail check failed: ${message}`);
+        log(`Candidate ${index+1} full-detail check failed: ${error?.message||error}`);
       }
     };
-    while(checked<requestedCount)await verifyNext();
+    const verifyThrough=async target=>{
+      target=Math.min(target,unique.length);
+      while(checked<target){
+        const batch=[];
+        const batchEnd=Math.min(target,checked+workerCount);
+        while(checked<batchEnd)batch.push(verifyIndex(checked++));
+        await Promise.all(batch);
+      }
+    };
+    await verifyThrough(requestedCount);
 
     const sortVerified=()=>verified.sort((a,b)=>(b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence));
     sortVerified();
-    while(checked<Math.min(settings.power==="deep"?Math.max(12,requestedCount):6,unique.length)){
+    const adaptiveLimit=Math.min(settings.power==="deep"?Math.max(16,requestedCount):Math.max(8,requestedCount),unique.length);
+    while(checked<adaptiveLimit){
       const top=verified[0],second=verified[1];
       const margin=top&&second?(top.fullDetailRank-second.fullDetailRank):1;
       const uncertain=!top||top.confidence<.74||(top.feedbackScore??0)<.58||margin<.055;
       if(!uncertain)break;
-      await verifyNext();
+      await verifyThrough(Math.min(adaptiveLimit,checked+workerCount));
       sortVerified();
     }
 
@@ -2993,6 +3086,7 @@ async function findLoop(){
   }finally{
     // Both workers hold large WebAssembly/PCM heaps. Releasing them after every
     // search prevents one long session from poisoning later searches or exports.
+    terminatePrecisionWorkers();
     terminateAnalysisWorker(!!state.result);
     disposeFFmpeg();
     setBusy(false);
@@ -3387,7 +3481,7 @@ for(const button of $$("[data-adjust]")){
 
 window.addEventListener("resize",()=>{drawWaveform();drawSearchRange();});
 window.addEventListener("beforeunload",()=>{
-  stopPlayback();terminateAnalysisWorker();revokeTextUrl();
+  stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   disposeFFmpeg();
 });
@@ -3396,6 +3490,7 @@ E.protocolWarning.classList.toggle("hidden",location.protocol!=="file:");
 E.cpuBadge.textContent="Native-rate waveform hyper-analysis";
 loadSettings();
 reset();
+log(`Compute profile: ${LOGICAL_CPU_COUNT} logical cores, up to ${precisionWorkerCount("deep")} precision workers${CAN_USE_WASM_THREADS?", threaded FFmpeg enabled when available":""}.`);
 })();
 
 </script>
