@@ -1823,7 +1823,7 @@ onmessage=event=>{
 
 window.requestAnimationFrame=window.requestAnimationFrame||window.webkitRequestAnimationFrame||function(callback){return setTimeout(function(){callback(Date.now());},16);};
 window.cancelAnimationFrame=window.cancelAnimationFrame||window.webkitCancelAnimationFrame||function(id){clearTimeout(id);};
-const APP_BUILD="waveform-hyper-analysis-more-power-video-v3";
+const APP_BUILD="waveform-hyper-analysis-more-power-video-v4-mux-download";
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 
@@ -2222,14 +2222,65 @@ function startWebAudioTracking(context,source,map,duration=0){
 function revokeTextUrl(){if(state.textUrl){URL.revokeObjectURL(state.textUrl);state.textUrl="";}}
 function clearPowerPcm(){state.powerPcm=null;state.powerPcmVersion=0;}
 function clearGeneratedBuffers(){state.generatedBuffers.clear();state.generatedPlayback=null;state.legacyRenderKey="";}
-function clearVideoResult(){
+function detachResultVideoHandlers(){
+  if(!E.resultVideoPreview)return;
+  E.resultVideoPreview.ontimeupdate=null;
+  E.resultVideoPreview.onended=null;
+  E.resultVideoPreview.onloadedmetadata=null;
+  E.resultVideoPreview.onerror=null;
+}
+function bindResultVideoLoop(start,end,note){
+  const video=E.resultVideoPreview;
+  if(!video)return;
+  detachResultVideoHandlers();
+  const safeStart=Math.max(0,Number(start)||0);
+  const safeEnd=Math.max(safeStart+.02,Number(end)||safeStart+.02);
+  let seeking=false;
+  const seekToStart=()=>{
+    if(seeking||!Number.isFinite(video.duration))return;
+    seeking=true;
+    try{video.currentTime=Math.min(safeStart,Math.max(0,video.duration-.02));}catch{}
+    queueMicrotask(()=>{seeking=false;});
+  };
+  video.onloadedmetadata=()=>{seekToStart();};
+  video.ontimeupdate=()=>{
+    if(seeking)return;
+    if(video.currentTime<safeStart-.08||video.currentTime>=Math.min(safeEnd,video.duration||safeEnd)-.025)seekToStart();
+  };
+  video.onended=()=>{seekToStart();video.play().catch(()=>{});};
+  video.onerror=()=>{
+    const detail=video.error?.message||`media error ${video.error?.code||"unknown"}`;
+    log(`Video preview could not play: ${detail}. The MP4 download is still kept available.`);
+  };
+  E.resultVideoNote.textContent=note;
+  E.resultVideoPanel.classList.remove("hidden");
+}
+function showAttemptVideoPreview(){
+  if(state.mediaMode!=="video"||!state.fileUrl||!state.result){
+    E.resultVideoPanel?.classList.add("hidden");
+    return;
+  }
+  const {start,end}=currentTimes();
+  if(E.resultVideoPreview.src!==state.fileUrl){
+    E.resultVideoPreview.src=state.fileUrl;
+    E.resultVideoPreview.load();
+  }
+  bindResultVideoLoop(start,end,"Attempt video preview. It starts at the detected loop point and repeats the exact attempted region.");
+}
+function clearVideoResult(showAttempt=true){
   if(state.videoResultUrl){try{URL.revokeObjectURL(state.videoResultUrl);}catch{}}
   state.videoResultUrl="";state.videoResultBlob=null;state.videoResultKey="";
-  if(E.resultVideoPreview){try{E.resultVideoPreview.pause();}catch{}E.resultVideoPreview.removeAttribute("src");E.resultVideoPreview.load();}
-  E.resultVideoPanel?.classList.add("hidden");
-  if(E.downloadVideo){E.downloadVideo.removeAttribute("href");E.downloadVideo.removeAttribute("download");E.downloadVideo.dataset.ready="0";E.downloadVideo.textContent="Download";}
+  detachResultVideoHandlers();
+  if(E.downloadVideo){E.downloadVideo.removeAttribute("href");E.downloadVideo.removeAttribute("download");E.downloadVideo.dataset.ready="0";E.downloadVideo.textContent="Build MP4";}
+  if(showAttempt&&state.mediaMode==="video"&&state.fileUrl&&state.result){
+    showAttemptVideoPreview();
+  }else if(E.resultVideoPreview){
+    try{E.resultVideoPreview.pause();}catch{}
+    E.resultVideoPreview.removeAttribute("src");E.resultVideoPreview.load();
+    E.resultVideoPanel?.classList.add("hidden");
+  }
 }
-function invalidateMedia(){stopPlayback();terminatePrecisionWorkers();clearPowerPcm();clearGeneratedBuffers();clearVideoResult();state.mediaVersion++;}
+function invalidateMedia(){stopPlayback();terminatePrecisionWorkers();clearPowerPcm();clearGeneratedBuffers();clearVideoResult(true);state.mediaVersion++;}
 
 function terminatePrecisionWorkers(){
   const cancellation=new Error("Precision worker pool was reset.");
@@ -3283,11 +3334,8 @@ function showResult(){
   E.endInput.value=state.result.endSeconds.toFixed(6);
   updateResult(false);
   E.resultPanel.classList.remove("hidden");updateDownloadVisibility();
-  if(state.mediaMode==="video"&&state.fileUrl){
-    E.resultVideoPreview.src=state.fileUrl;E.resultVideoPreview.load();
-    E.resultVideoNote.textContent="Original video preview. Create the extended MP4 below to replace this with the finished video.";
-    E.resultVideoPanel.classList.remove("hidden");
-  }else E.resultVideoPanel.classList.add("hidden");
+  if(state.mediaMode==="video"&&state.fileUrl)showAttemptVideoPreview();
+  else E.resultVideoPanel.classList.add("hidden");
   E.resultPanel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -3534,28 +3582,27 @@ function seamFilter(start,end){
     `[b]atrim=start=${filterNumber(start)}:end=${filterNumber(headEnd)},asetpts=PTS-STARTPTS[head];`+
     `[tail][head]concat=n=2:v=0:a=1[out]`;
 }
-function videoPreviewFilter(start,end,repeats){
+function extendedDuration(start,end,repeats){
+  return Math.max(.02,start+Math.max(1,repeats)*Math.max(.02,end-start));
+}
+function videoOnlyLoopFilter(start,end,repeats){
   const hasIntro=start>.000001,total=repeats+(hasIntro?1:0);
-  const videoLabels=Array.from({length:total},(_,index)=>`v${index}`);
-  const audioLabels=Array.from({length:total},(_,index)=>`a${index}`);
-  let graph=`[0:v:0]split=${total}${videoLabels.map(label=>`[${label}]`).join("")};`+
-    `[0:a:0]asplit=${total}${audioLabels.map(label=>`[${label}]`).join("")};`;
+  const labels=Array.from({length:total},(_,index)=>`v${index}`);
+  let graph=`[0:v:0]split=${total}${labels.map(label=>`[${label}]`).join("")};`;
   const outputs=[];let index=0;
   if(hasIntro){
-    graph+=`[${videoLabels[index]}]trim=start=0:end=${filterNumber(start)},setpts=PTS-STARTPTS[vi];`;
-    graph+=`[${audioLabels[index]}]atrim=start=0:end=${filterNumber(start)},asetpts=PTS-STARTPTS[ai];`;
-    outputs.push("[vi][ai]");index++;
+    graph+=`[${labels[index++]}]trim=start=0:end=${filterNumber(start)},settb=AVTB,setpts=PTS-STARTPTS[vi];`;
+    outputs.push("[vi]");
   }
   for(let repeat=0;repeat<repeats;repeat++,index++){
-    graph+=`[${videoLabels[index]}]trim=start=${filterNumber(start)}:end=${filterNumber(end)},setpts=PTS-STARTPTS[vl${repeat}];`;
-    graph+=`[${audioLabels[index]}]atrim=start=${filterNumber(start)}:end=${filterNumber(end)},asetpts=PTS-STARTPTS[al${repeat}];`;
-    outputs.push(`[vl${repeat}][al${repeat}]`);
+    graph+=`[${labels[index]}]trim=start=${filterNumber(start)}:end=${filterNumber(end)},settb=AVTB,setpts=PTS-STARTPTS[vl${repeat}];`;
+    outputs.push(`[vl${repeat}]`);
   }
-  graph+=`${outputs.join("")}concat=n=${outputs.length}:v=1:a=1[vcat][acat];`+
-    `[vcat]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p[outv];`+
-    `[acat]aresample=async=1:first_pts=0[outa]`;
+  graph+=`${outputs.join("")}concat=n=${outputs.length}:v=1:a=0[vcat];`+
+    `[vcat]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,format=yuv420p,setpts=PTS-STARTPTS[outv]`;
   return graph;
 }
+
 
 async function renderWav(kind){
   if(!state.result||!state.file)throw new Error("Find a loop first.");
@@ -3601,29 +3648,65 @@ async function renderExtractedAudio(){
 async function renderExtendedVideo(){
   if(!state.result||state.mediaMode!=="video")throw new Error("Choose a video and find a loop first.");
   const {start,end}=currentTimes(),repeats=clamp(Math.round(Number(E.previewRepeats.value)||3),1,50);
+  const duration=extendedDuration(start,end,repeats);
   return runFFmpegJob("Extended video render",async ffmpeg=>{
-    const input=await ensureInputFile(ffmpeg),output=`looper_extended_${Date.now().toString(36)}.mp4`;
-    const graph=videoPreviewFilter(start,end,repeats);
-    const common=["-i",input,"-filter_complex",graph,"-map","[outv]","-map","[outa]","-c:a","aac","-b:a","192k","-movflags","+faststart","-shortest"];
+    const input=await ensureInputFile(ffmpeg);
+    const nonce=Date.now().toString(36);
+    const videoOnly=`looper_video_${nonce}.mp4`;
+    const audioOnly=`looper_audio_${nonce}.m4a`;
+    const output=`looper_extended_${nonce}.mp4`;
+    const videoGraph=videoOnlyLoopFilter(start,end,repeats);
+    const audioGraph=previewFilter(start,end,repeats).replace(/\[out\]$/, "[acat]")+";[acat]aresample=async=1:first_pts=0[outa]";
     try{
-      setProgress(18,"Extending the video with the detected audio loop…");
+      setProgress(12,"Building the looped video pictures…");
+      const videoBase=["-fflags","+genpts","-i",input,"-filter_complex",videoGraph,"-map","[outv]","-an","-t",filterNumber(duration),"-pix_fmt","yuv420p","-movflags","+faststart"];
       try{
-        await execFFmpegWithTimeout(ffmpeg,[...common,"-c:v","libx264","-preset","ultrafast","-crf","21",output],"Extended video render",420000);
+        await execFFmpegWithTimeout(ffmpeg,[...videoBase,"-c:v","libx264","-preset","ultrafast","-crf","20","-tag:v","avc1",videoOnly],"Looped H.264 video render",420000);
       }catch(firstError){
-        await deleteFileQuiet(ffmpeg,output);log("The H.264 encoder was unavailable. Trying the MP4 compatibility encoder.");
-        await execFFmpegWithTimeout(ffmpeg,[...common,"-c:v","mpeg4","-q:v","3",output],"Compatible extended video render",420000);
+        await deleteFileQuiet(ffmpeg,videoOnly);
+        log("The H.264 encoder was unavailable. Using the MP4 compatibility encoder.");
+        await execFFmpegWithTimeout(ffmpeg,[...videoBase,"-c:v","mpeg4","-q:v","2","-tag:v","mp4v",videoOnly],"Looped compatible video render",420000);
       }
+
+      setProgress(57,"Building the exact looped audio…");
+      await execFFmpegWithTimeout(ffmpeg,[
+        "-fflags","+genpts","-i",input,"-vn","-filter_complex",audioGraph,"-map","[outa]",
+        "-t",filterNumber(duration),"-c:a","aac","-b:a","192k",audioOnly
+      ],"Looped audio render",300000);
+
+      setProgress(82,"Putting the looped audio back into the video…");
+      await execFFmpegWithTimeout(ffmpeg,[
+        "-fflags","+genpts","-i",videoOnly,"-i",audioOnly,
+        "-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","copy",
+        "-t",filterNumber(duration),"-movflags","+faststart","-avoid_negative_ts","make_zero",output
+      ],"Final MP4 mux",180000);
+
       const data=await ffmpeg.readFile(output);
-      if(!data||data.byteLength<1024)throw new Error("The video encoder returned an empty MP4 file.");
-      const copy=new Uint8Array(data.byteLength);copy.set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
-      return new Blob([copy.buffer],{type:"video/mp4"});
-    }finally{await deleteFileQuiet(ffmpeg,output);}
+      if(!data||data.byteLength<4096)throw new Error("The final MP4 file was empty or incomplete.");
+      const copy=new Uint8Array(data.byteLength);
+      copy.set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
+      return new Blob([copy],{type:"video/mp4"});
+    }finally{
+      await deleteFileQuiet(ffmpeg,videoOnly);
+      await deleteFileQuiet(ffmpeg,audioOnly);
+      await deleteFileQuiet(ffmpeg,output);
+    }
   });
 }
 function triggerDownload(blob,name){
+  if(navigator.msSaveOrOpenBlob){navigator.msSaveOrOpenBlob(blob,name);return true;}
   const url=URL.createObjectURL(blob),anchor=document.createElement("a");
-  anchor.href=url;anchor.download=name;anchor.style.display="none";document.body.appendChild(anchor);anchor.click();anchor.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  anchor.href=url;anchor.download=name;anchor.rel="noopener";
+  const mobileSafari=/iP(?:hone|ad|od)/i.test(navigator.userAgent||"");
+  if(mobileSafari)anchor.target="_blank";
+  anchor.style.display="none";document.body.appendChild(anchor);anchor.click();anchor.remove();
+  // Large MP4 files can still be streaming from the blob URL long after the click.
+  setTimeout(()=>URL.revokeObjectURL(url),300000);
+  return true;
+}
+async function writeBlobToHandle(handle,blob){
+  const writable=await handle.createWritable();
+  try{await writable.write(blob);}finally{await writable.close();}
 }
 
 async function downloadGenerated(kind,button){
@@ -3639,6 +3722,7 @@ async function downloadGenerated(kind,button){
     status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
   }finally{
     disposeFFmpeg();
+    if(state.mediaMode==="video"&&state.result&&!state.videoResultBlob)showAttemptVideoPreview();
     button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");
   }
 }
@@ -3651,30 +3735,69 @@ function installVideoResult(blob,name,key){
   if(state.videoResultUrl){try{URL.revokeObjectURL(state.videoResultUrl);}catch{}}
   state.videoResultBlob=blob;state.videoResultKey=key;state.videoResultUrl=URL.createObjectURL(blob);
   E.resultVideoPreview.src=state.videoResultUrl;E.resultVideoPreview.load();
-  E.resultVideoNote.textContent="Extended video preview. The video and audio repeat the same detected section.";
-  E.resultVideoPanel.classList.remove("hidden");
-  E.downloadVideo.href=state.videoResultUrl;E.downloadVideo.download=name;E.downloadVideo.dataset.ready="1";E.downloadVideo.textContent="Download again";
+  const {start}=currentTimes(),finalEnd=Math.max(start+.02,extendedDuration(currentTimes().start,currentTimes().end,clamp(Math.round(Number(E.previewRepeats.value)||3),1,50)));
+  bindResultVideoLoop(start,finalEnd,"Finished extended video. The pictures and the rebuilt looped audio are muxed into this same MP4.");
+  E.downloadVideo.href=state.videoResultUrl;
+  E.downloadVideo.download=name;
+  E.downloadVideo.dataset.ready="1";
+  E.downloadVideo.textContent="Download MP4";
+  E.downloadVideo.setAttribute("aria-label",`Download ${name}`);
 }
 async function downloadVideoResult(button){
   if(state.busy||!state.result||state.mediaMode!=="video")return;
   const name=`${stem(state.file.name)}_EXTENDED.mp4`,key=videoResultKey();
   if(state.videoResultBlob&&state.videoResultKey===key&&state.videoResultUrl){
-    triggerDownload(state.videoResultBlob,name);return;
+    triggerDownload(state.videoResultBlob,name);
+    return;
   }
+
+  let saveHandle=null;
+  if(typeof window.showSaveFilePicker==="function"){
+    try{
+      saveHandle=await window.showSaveFilePicker({
+        suggestedName:name,
+        types:[{description:"MP4 video",accept:{"video/mp4":[".mp4"]}}]
+      });
+    }catch(error){
+      if(error?.name==="AbortError")return;
+      log(`The direct save picker was unavailable: ${error?.message||error}. Falling back to a browser download.`);
+    }
+  }
+
   const original=button.textContent;
   try{
-    setBusy(true,"Building the extended video…");button.textContent="Working…";
-    const blob=await renderExtendedVideo();installVideoResult(blob,name,key);triggerDownload(blob,name);
-    status("Video ready","The extended video is visible below and the MP4 download is ready.","ok");
-  }catch(error){status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);}
-  finally{disposeFFmpeg();if(button.dataset.ready!=="1")button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");}
+    setBusy(true,"Building the extended video and putting its looped audio back in…");button.textContent="Working…";
+    const blob=await renderExtendedVideo();
+    installVideoResult(blob,name,key);
+    if(saveHandle){
+      await writeBlobToHandle(saveHandle,blob);
+      status("Video saved","The MP4 was written directly to the selected location and remains visible below.","ok");
+    }else{
+      triggerDownload(blob,name);
+      status("Video ready","The MP4 download was started. The permanent Download MP4 button remains available below.","ok");
+    }
+  }catch(error){
+    showAttemptVideoPreview();
+    status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);
+  }finally{
+    disposeFFmpeg();
+    if(button.dataset.ready!=="1")button.textContent=original;
+    setBusy(false);E.progressBox.classList.add("hidden");
+  }
 }
 async function downloadExtractedAudio(button){
   if(state.busy||state.mediaMode!=="video")return;
   const original=button.textContent;
   try{setBusy(true,"Extracting the video audio…");button.textContent="Working…";const blob=await renderExtractedAudio();triggerDownload(blob,`${stem(state.file.name)}_EXTRACTED_AUDIO.wav`);status("Download ready","The audio was extracted.","ok");}
   catch(error){status("Download failed",error.message||String(error),"error");log(`Error: ${error.message||error}`);}
-  finally{disposeFFmpeg();button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");}
+  finally{
+    disposeFFmpeg();
+    if(state.mediaMode==="video"&&state.result){
+      if(state.videoResultBlob&&state.videoResultUrl)installVideoResult(state.videoResultBlob,`${stem(state.file.name)}_EXTENDED.mp4`,state.videoResultKey);
+      else showAttemptVideoPreview();
+    }
+    button.textContent=original;setBusy(false);E.progressBox.classList.add("hidden");
+  }
 }
 function generatedCacheKey(kind){const times=currentTimes();return `${state.mediaVersion}:${kind}:${times?.start?.toFixed(9)}:${times?.end?.toFixed(9)}`;}
 function startGeneratedPlayback(kind,buffer,requestedTrackTime=null){
@@ -3750,8 +3873,8 @@ E.stopButton.addEventListener("click",()=>{stopPlayback();status("Stopped","Choo
 E.downloadLoop.addEventListener("click",event=>{event.preventDefault();downloadGenerated("loop",E.downloadLoop);});
 E.downloadPreview.addEventListener("click",event=>{event.preventDefault();downloadGenerated("preview",E.downloadPreview);});
 E.downloadVideo.addEventListener("click",event=>{
-  if(E.downloadVideo.dataset.ready==="1"&&state.videoResultBlob&&state.videoResultKey===videoResultKey())return;
-  event.preventDefault();downloadVideoResult(E.downloadVideo);
+  event.preventDefault();
+  downloadVideoResult(E.downloadVideo);
 });
 E.downloadExtracted.addEventListener("click",event=>{event.preventDefault();downloadExtractedAudio(E.downloadExtracted);});
 E.clearLogButton.addEventListener("click",()=>E.log.textContent="");
@@ -3760,7 +3883,7 @@ E.endInput.addEventListener("change",()=>updateResult());
 E.previewRepeats.addEventListener("change",()=>{E.previewRepeats.value=String(clamp(Math.round(Number(E.previewRepeats.value)||3),1,50));invalidateMedia();saveSettings();});
 E.morePower.addEventListener("change",()=>{saveSettings();log(E.morePower.checked?`More Power enabled. Using up to ${precisionWorkerCount(readSettings().power,true)} CPU workers with parallel full-track decoding.`:"More Power disabled.");});
 E.videoMode.addEventListener("change",()=>updateMediaUi(true));
-for(const input of $$('input[name="videoAction"]'))input.addEventListener("change",()=>{saveSettings();updateDownloadVisibility();});
+for(const input of $$('input[name="videoAction"]'))input.addEventListener("change",()=>{saveSettings();updateDownloadVisibility();if(state.mediaMode==="video"&&state.result&&!state.videoResultBlob)showAttemptVideoPreview();});
 E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
 E.resetSearchRangeButton.addEventListener("click",setSearchRangeToFullTrack);
 E.searchStartSeconds.addEventListener("change",()=>normalizeSearchRange(true));
