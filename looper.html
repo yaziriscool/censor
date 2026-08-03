@@ -486,15 +486,15 @@ function buildFeatures(channels,sampleRate,options){
   else midOriginal.set(channels[0]);
   const mid=linearResample(midOriginal,sampleRate,analysisRate),side=linearResample(sideOriginal,sampleRate,analysisRate);
   const frames=Math.max(1,1+Math.floor((mid.length-fftSize)/hop)),baseDims=24,vocalDims=8,dims=baseDims+(options.useVocals?vocalDims:0);
-  const data=new Float32Array(frames*dims),waveData=new Float32Array(frames*5),activityRaw=new Float32Array(frames),onsetRaw=new Float32Array(frames),rawRms=new Float32Array(frames),rawMotion=new Float32Array(frames),window=new Float32Array(fftSize),sideWindow=new Float32Array(fftSize);
+  const data=new Float32Array(frames*dims),waveData=new Float32Array(frames*8),activityRaw=new Float32Array(frames),onsetRaw=new Float32Array(frames),rawRms=new Float32Array(frames),rawMotion=new Float32Array(frames),window=new Float32Array(fftSize),sideWindow=new Float32Array(fftSize);
   const real=new Float64Array(fftSize),imag=new Float64Array(fftSize),realSide=new Float64Array(fftSize),imagSide=new Float64Array(fftSize),tables=makeFftTables(fftSize),power=new Float64Array(fftSize/2),sidePower=new Float64Array(fftSize/2),previousLog=new Float64Array(fftSize/2);
   const hann=new Float32Array(fftSize);for(let i=0;i<fftSize;i++)hann[i]=.5-.5*Math.cos(2*Math.PI*i/(fftSize-1));
   const logEdges=[];const minF=40,maxF=analysisRate*.49;for(let i=0;i<=8;i++)logEdges.push(minF*Math.pow(maxF/minF,i/8));
   const vocalEdges=[];for(let i=0;i<=6;i++)vocalEdges.push(100*Math.pow(Math.min(6500,maxF)/100,i/6));
   let centerEnergySum=0,sideEnergySum=0,vocalRatioSum=0,highBandEnergySum=0,totalBandEnergySum=0,highBandActiveFrames=0;
   for(let frame=0;frame<frames;frame++){
-    const offset=frame*hop;let sumSq=0,sum=0,absSum=0,timeDiff=0,zcr=0,previous=mid[offset]||0;
-    for(let i=0;i<fftSize;i++){const m=mid[offset+i]||0,s=side[offset+i]||0,w=hann[i];window[i]=m*w;sideWindow[i]=s*w;sumSq+=m*m;sum+=m;absSum+=Math.abs(m);timeDiff+=Math.abs(m-previous);if((m>=0)!==(previous>=0))zcr++;previous=m;}
+    const offset=frame*hop;let sumSq=0,sum=0,absSum=0,timeDiff=0,zcr=0,previous=mid[offset]||0,sideSumSq=0,sideSum=0,sideDiff=0,previousSide=side[offset]||0;
+    for(let i=0;i<fftSize;i++){const m=mid[offset+i]||0,s=side[offset+i]||0,w=hann[i];window[i]=m*w;sideWindow[i]=s*w;sumSq+=m*m;sum+=m;absSum+=Math.abs(m);timeDiff+=Math.abs(m-previous);if((m>=0)!==(previous>=0))zcr++;previous=m;sideSumSq+=s*s;sideSum+=s;sideDiff+=Math.abs(s-previousSide);previousSide=s;}
     fftPower(window,tables,real,imag);fftPower(sideWindow,tables,realSide,imagSide);
     let spectrumSum=0,centroidSum=0,flux=0,fullBand=0,highBand=0,vocalBand=0,sideBand=0;
     const chroma=new Float64Array(12),bands=new Float64Array(8),vBands=new Float64Array(6);
@@ -508,7 +508,7 @@ function buildFeatures(channels,sampleRate,options){
     const row=frame*dims;let chromaTotal=0;for(let i=0;i<12;i++)chromaTotal+=chroma[i];for(let i=0;i<12;i++)data[row+i]=Math.log1p(chroma[i]/(chromaTotal+1e-12)*100);
     for(let i=0;i<8;i++)data[row+12+i]=Math.log1p(bands[i]);
     const rms=Math.sqrt(sumSq/fftSize);rawRms[frame]=rms;rawMotion[frame]=timeDiff/fftSize;data[row+20]=Math.log1p(rms*100);data[row+21]=centroidSum/(spectrumSum+1e-12)/maxF;data[row+22]=Math.log1p(flux);data[row+23]=zcr/fftSize;
-    const waveRow=frame*5;waveData[waveRow]=sum/fftSize;waveData[waveRow+1]=Math.log1p(rms*100);waveData[waveRow+2]=Math.log1p(absSum/fftSize*100);waveData[waveRow+3]=Math.log1p(timeDiff/fftSize*1000);waveData[waveRow+4]=zcr/fftSize;
+    const waveRow=frame*8,sideRms=Math.sqrt(sideSumSq/fftSize);waveData[waveRow]=sum/fftSize;waveData[waveRow+1]=Math.log1p(rms*100);waveData[waveRow+2]=Math.log1p(absSum/fftSize*100);waveData[waveRow+3]=Math.log1p(timeDiff/fftSize*1000);waveData[waveRow+4]=zcr/fftSize;waveData[waveRow+5]=sideSum/fftSize;waveData[waveRow+6]=Math.log1p(sideRms*100);waveData[waveRow+7]=Math.log1p(sideDiff/fftSize*1000);
     onsetRaw[frame]=Math.log1p(flux);
     const ratio=vocalBand/(fullBand+1e-12),activity=Math.log1p(vocalBand);activityRaw[frame]=activity;centerEnergySum+=vocalBand;sideEnergySum+=sideBand;vocalRatioSum+=ratio;highBandEnergySum+=highBand;totalBandEnergySum+=fullBand;if(highBand/(fullBand+1e-12)>.008)highBandActiveFrames++;
     if(options.useVocals){let vTotal=0;for(let i=0;i<6;i++)vTotal+=vBands[i];for(let i=0;i<6;i++)data[row+24+i]=Math.log1p(vBands[i]/(vTotal+1e-12)*100);data[row+30]=ratio;data[row+31]=frame?Math.max(0,activity-activityRaw[frame-1]):0;}
@@ -520,7 +520,7 @@ function buildFeatures(channels,sampleRate,options){
   const vocalPresence=clamp(.50*centerDominance+.30*clamp(activitySpread*1.8,0,1)+.20*clamp(ratioLevel*5,0,1),0,1);
   const spectralBandwidth=highBandEnergySum/(totalBandEnergySum+1e-12),highBandOccupancy=highBandActiveFrames/Math.max(1,frames);
   const spectralQuality=(spectralBandwidth<.0025&&highBandOccupancy<.10)?"low":((spectralBandwidth<.010&&highBandOccupancy<.28)?"medium":"high");
-  return{data,waveData,waveDims:5,frames,dims,activity,onset,energy,motion,beatFrames:beat.frames,beatPeriod:beat.period,localPeriod:tempo.period,tempoStability:tempo.stability,tempoRamp:tempo.ramp,tempoSettled:tempo.settled,settledSpeedStart:speedRegion.start,settledSpeedStrength:speedRegion.strength,settledBeforePeriod:speedRegion.beforePeriod,settledAfterPeriod:speedRegion.afterPeriod,analysisRate,hop,frameRate,mid,side,vocalPresence,spectralBandwidth,highBandOccupancy,spectralQuality};
+  return{data,waveData,waveDims:8,frames,dims,activity,onset,energy,motion,beatFrames:beat.frames,beatPeriod:beat.period,localPeriod:tempo.period,tempoStability:tempo.stability,tempoRamp:tempo.ramp,tempoSettled:tempo.settled,settledSpeedStart:speedRegion.start,settledSpeedStrength:speedRegion.strength,settledBeforePeriod:speedRegion.beforePeriod,settledAfterPeriod:speedRegion.afterPeriod,analysisRate,hop,frameRate,mid,side,vocalPresence,spectralBandwidth,highBandOccupancy,spectralQuality};
 }
 function localValleys(activity,maxCount){
   const found=[];for(let i=1;i<activity.length-1;i++)if(activity[i]<=activity[i-1]&&activity[i]<=activity[i+1])found.push(i);
@@ -615,6 +615,10 @@ function compareTempoSignatures(a,b){
   return clamp(.68*Math.exp(-8.5*absolute)+.32*Math.exp(-11*trajectory),0,1);
 }
 function dot(a,b){let sum=0;for(let i=0;i<a.length;i++)sum+=a[i]*b[i];return sum;}
+function robustPair(a,b,minimumWeight=.42){
+  const mean=.5*(a+b),minimum=Math.min(a,b);
+  return(1-minimumWeight)*mean+minimumWeight*minimum;
+}
 function pushTop(list,item,limit){
   if(list.length<limit){list.push(item);if(list.length===limit)list.sort((a,b)=>a.score-b.score);return;}
   if(item.score<=list[0].score)return;list[0]=item;let i=0;while(i+1<list.length&&list[i].score>list[i+1].score){const t=list[i];list[i]=list[i+1];list[i+1]=t;i++;}
@@ -673,18 +677,18 @@ function coarseSearch(bundle,candidates,options,duration){
     for(let j=i+1;j<candidates.length;j++){
       const frameB=candidates[j],length=times[j]-startTime;if(length<minimum)continue;
       const forward=dot(embeddings[i].forward,embeddings[j].forward),backward=dot(embeddings[i].backward,embeddings[j].backward),directional=Math.max(forward,backward),boundary=Math.max(0,dot(embeddings[i].boundary,embeddings[j].boundary));
-      const harmonicForward=dot(embeddings[i].harmonicForward,embeddings[j].harmonicForward),harmonicBackward=dot(embeddings[i].harmonicBackward,embeddings[j].harmonicBackward),harmonicFlow=Math.max(harmonicForward,harmonicBackward);
-      const timbreForward=dot(embeddings[i].timbreForward,embeddings[j].timbreForward),timbreBackward=dot(embeddings[i].timbreBackward,embeddings[j].timbreBackward),timbreFlow=Math.max(timbreForward,timbreBackward);
-      const trajectoryForward=dot(embeddings[i].trajectoryForward,embeddings[j].trajectoryForward),trajectoryBackward=dot(embeddings[i].trajectoryBackward,embeddings[j].trajectoryBackward),trajectoryFlow=Math.max(trajectoryForward,trajectoryBackward);
+      const harmonicForward=dot(embeddings[i].harmonicForward,embeddings[j].harmonicForward),harmonicBackward=dot(embeddings[i].harmonicBackward,embeddings[j].harmonicBackward),harmonicFlow=robustPair(harmonicForward,harmonicBackward,.38);
+      const timbreForward=dot(embeddings[i].timbreForward,embeddings[j].timbreForward),timbreBackward=dot(embeddings[i].timbreBackward,embeddings[j].timbreBackward),timbreFlow=robustPair(timbreForward,timbreBackward,.38);
+      const trajectoryForward=dot(embeddings[i].trajectoryForward,embeddings[j].trajectoryForward),trajectoryBackward=dot(embeddings[i].trajectoryBackward,embeddings[j].trajectoryBackward),trajectoryFlow=robustPair(trajectoryForward,trajectoryBackward,.42);
       const instrumentFlow=.50*harmonicFlow+.30*timbreFlow+.20*trajectoryFlow;
       const flow01=clamp((instrumentFlow+1)/2,0,1),flowAgreement=clamp(1-Math.abs(clamp((directional+1)/2,0,1)-flow01),0,1);
-      const rhythmForward=dot(embeddings[i].rhythmForward,embeddings[j].rhythmForward),rhythmBackward=dot(embeddings[i].rhythmBackward,embeddings[j].rhythmBackward),rhythm=Math.max(rhythmForward,rhythmBackward);
+      const rhythmForward=dot(embeddings[i].rhythmForward,embeddings[j].rhythmForward),rhythmBackward=dot(embeddings[i].rhythmBackward,embeddings[j].rhythmBackward),rhythm=robustPair(rhythmForward,rhythmBackward,.48);
       const tempoPathForward=compareTempoSignatures(embeddings[i].tempoForward,embeddings[j].tempoForward),tempoPathBackward=compareTempoSignatures(embeddings[i].tempoBackward,embeddings[j].tempoBackward),tempoPath=Math.max(tempoPathForward,tempoPathBackward);
-      const waveForward=dot(embeddings[i].waveForward,embeddings[j].waveForward),waveBackward=dot(embeddings[i].waveBackward,embeddings[j].waveBackward),waveDirectional=Math.max(waveForward,waveBackward);
+      const waveForward=dot(embeddings[i].waveForward,embeddings[j].waveForward),waveBackward=dot(embeddings[i].waveBackward,embeddings[j].waveBackward),waveDirectional=robustPair(waveForward,waveBackward,.50);
       const waveBoundary=dot(embeddings[i].waveBoundary,embeddings[j].waveBoundary);
-      const transientForward=dot(embeddings[i].transientForward,embeddings[j].transientForward),transientBackward=dot(embeddings[i].transientBackward,embeddings[j].transientBackward),waveTransient=Math.max(transientForward,transientBackward);
-      let vocalWave=waveDirectional;if(options.useVocals)vocalWave=Math.max(dot(embeddings[i].vocalWaveForward,embeddings[j].vocalWaveForward),dot(embeddings[i].vocalWaveBackward,embeddings[j].vocalWaveBackward));
-      const waveformEvidence=.38*waveDirectional+.27*waveBoundary+.23*waveTransient+.12*vocalWave;
+      const transientForward=dot(embeddings[i].transientForward,embeddings[j].transientForward),transientBackward=dot(embeddings[i].transientBackward,embeddings[j].transientBackward),waveTransient=robustPair(transientForward,transientBackward,.52);
+      let vocalWave=waveDirectional;if(options.useVocals)vocalWave=robustPair(dot(embeddings[i].vocalWaveForward,embeddings[j].vocalWaveForward),dot(embeddings[i].vocalWaveBackward,embeddings[j].vocalWaveBackward),.50);
+      const waveformEvidence=.42*waveDirectional+.24*waveBoundary+.22*waveTransient+.12*vocalWave;
       const waveformWeight=quality==="deep"?.50:(quality==="maximum"?.44:(quality==="strong"?.38:.30));
       let score=(options.useVocals?.29:.33)*directional+flowWeight*instrumentFlow+(options.useVocals?.055:.05)*boundary+.065*rhythm+.035*flowAgreement+tempoPathWeight*tempoPath+waveformWeight*waveformEvidence-.018*length/duration+.009*times[j]/duration-(quality==="deep"?.012:.045)*startTime/duration;
       score+=.185*Math.max(0,forward-backward)*(1-startTime/duration);
@@ -726,8 +730,10 @@ function coarseSearch(bundle,candidates,options,duration){
       }
       if(options.beatLock&&localBeatPeriod>0){
         const beats=(frameB-frameA)/localBeatPeriod,nearest=Math.round(beats),error=Math.abs(beats-nearest);
-        score-=.125*clamp(error/.5,0,1);
-        if(error<.10){if(nearest%16===0)score+=.105;else if(nearest%8===0)score+=.075;else if(nearest%4===0)score+=.050;else if(nearest%2===0)score+=.018;else score-=.065;}
+        const beatStrength=quality==="deep"?.19:(quality==="maximum"?.17:(quality==="strong"?.15:.13));
+        score-=beatStrength*clamp(error/.5,0,1);
+        if(error<.075){if(nearest%16===0)score+=.135;else if(nearest%8===0)score+=.100;else if(nearest%4===0)score+=.068;else if(nearest%2===0)score+=.025;else score-=.070;}
+        else if(error>.20)score-=.055*clamp((error-.20)/.30,0,1);
       }
       pushTop(top,{i,j,score,musical:directional,forward,backward,boundary,rhythm,harmonicFlow,timbreFlow,trajectoryFlow,instrumentFlow,flowAgreement,tempoPath,tempoSimilarity,tempoStability,rampRisk,settledTempo,waveformEvidence,waveDirectional,waveBoundary,waveTransient,vocalWave,silenceRisk,sectionActivity:sectionActivity.active,boundaryEnergy:Math.min(boundaryEnergyA,boundaryEnergyB),boundaryMotion:Math.min(boundaryMotionA,boundaryMotionB),localBeatSeconds:localBeatPeriod>0?localBeatPeriod/bundle.frameRate:0},topLimit);
     }
@@ -755,14 +761,38 @@ function forwardError(channels,start,end,context){
   for(let k=0;k<available;k+=stride)for(let c=0;c<channels.length;c++){const a=channels[c][start+k]-meanA,b=channels[c][end+k]-meanB;dotSum+=a*b;aa+=a*a;bb+=b*b;}
   const raw=Math.sqrt(sumDiff/count)/(Math.sqrt(sumEnergy/count)+1e-10),corr=dotSum/(Math.sqrt(aa*bb)+1e-10);return{raw,corr,coverage:available/context};
 }
+function backwardError(channels,start,end,context){
+  const available=Math.min(context,start,end);if(available<16)return{raw:.7,corr:.3,coverage:available/Math.max(1,context)};
+  const stride=Math.max(1,Math.floor(available/128));let sumDiff=0,sumEnergy=0,meanA=0,meanB=0,count=0;
+  for(let k=1;k<=available;k+=stride)for(let c=0;c<channels.length;c++){const a=channels[c][start-k],b=channels[c][end-k];sumDiff+=(a-b)*(a-b);sumEnergy+=.5*(a*a+b*b);meanA+=a;meanB+=b;count++;}
+  meanA/=count;meanB/=count;let dotSum=0,aa=0,bb=0;
+  for(let k=1;k<=available;k+=stride)for(let c=0;c<channels.length;c++){const a=channels[c][start-k]-meanA,b=channels[c][end-k]-meanB;dotSum+=a*b;aa+=a*a;bb+=b*b;}
+  const raw=Math.sqrt(sumDiff/count)/(Math.sqrt(sumEnergy/count)+1e-10),corr=dotSum/(Math.sqrt(aa*bb)+1e-10);return{raw,corr,coverage:available/context};
+}
 function seamCost(channels,start,end,context){
-  const total=channels[0].length;if(start<2||end<=start+2||end>total)return Infinity;
-  let localDiff=0,localLevel=0,localCount=0;const radius=Math.min(Math.round(context*.7),96);
-  for(let k=-radius;k<=radius;k+=3){const a=clamp(start+k,1,total-1),b=clamp(end+k,1,total-1);for(let c=0;c<channels.length;c++){const x=channels[c][a],y=channels[c][b];localLevel+=x*x+y*y;const dx=x-channels[c][a-1],dy=y-channels[c][b-1];localDiff+=dx*dx+dy*dy;localCount+=2;}}
-  const derivativeScale=Math.max(Math.sqrt(localDiff/Math.max(1,localCount)),Math.sqrt(localLevel/Math.max(1,localCount))*.003,1e-8);let jump=0,slope=0;
-  for(let c=0;c<channels.length;c++){const tail=channels[c][end-1],head=channels[c][start],delta=head-tail,before=tail-channels[c][end-2],after=channels[c][start+1]-head,expected=.5*(before+after);jump+=delta*delta;slope+=(delta-expected)*(delta-expected);}
-  jump=Math.sqrt(jump/channels.length)/derivativeScale;slope=Math.sqrt(slope/channels.length)/derivativeScale;const phase=forwardError(channels,start,end,context);
-  return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(phase.raw,4)+.42*Math.min(.5*(1-phase.corr),2)+.18*(1-phase.coverage);
+  const total=channels[0].length;if(start<3||end<=start+3||end>=total-2)return Infinity;
+  let localDiff=0,localLevel=0,localCount=0;const radius=Math.min(Math.round(context*.7),128);
+  for(let k=-radius;k<=radius;k+=3){const a=clamp(start+k,2,total-3),b=clamp(end+k,2,total-3);for(let c=0;c<channels.length;c++){const x=channels[c][a],y=channels[c][b];localLevel+=x*x+y*y;const dx=x-channels[c][a-1],dy=y-channels[c][b-1];localDiff+=dx*dx+dy*dy;localCount+=2;}}
+  const derivativeScale=Math.max(Math.sqrt(localDiff/Math.max(1,localCount)),Math.sqrt(localLevel/Math.max(1,localCount))*.003,1e-8);
+  let predecessor=0,successor=0,transition=0,slope=0,curve=0;
+  for(let c=0;c<channels.length;c++){
+    const startPrev2=channels[c][start-2],startPrev=channels[c][start-1],head=channels[c][start],headNext=channels[c][start+1];
+    const endPrev2=channels[c][end-2],tail=channels[c][end-1],endNext=channels[c][end],endNext2=channels[c][end+1];
+    const expectedTransition=.5*((head-startPrev)+(endNext-tail));
+    predecessor+=(tail-startPrev)*(tail-startPrev);
+    successor+=(endNext-head)*(endNext-head);
+    transition+=((head-tail)-expectedTransition)*((head-tail)-expectedTransition);
+    slope+=((endNext-tail)-(head-startPrev))*((endNext-tail)-(head-startPrev));
+    const startCurve=headNext-2*head+startPrev,endCurve=endNext2-2*endNext+tail;
+    const preCurve=head-2*startPrev+startPrev2,tailCurve=endNext-2*tail+endPrev2;
+    curve+=.5*((startCurve-endCurve)*(startCurve-endCurve)+(preCurve-tailCurve)*(preCurve-tailCurve));
+  }
+  const normalize=value=>Math.sqrt(value/channels.length)/derivativeScale;
+  predecessor=normalize(predecessor);successor=normalize(successor);transition=normalize(transition);slope=normalize(slope);curve=normalize(curve);
+  const forward=forwardError(channels,start,end,context),backward=backwardError(channels,start,end,context);
+  const phaseRaw=.55*.5*(forward.raw+backward.raw)+.45*Math.max(forward.raw,backward.raw);
+  const phaseCorr=robustPair(forward.corr,backward.corr,.52),coverage=Math.min(forward.coverage,backward.coverage);
+  return .78*Math.min(predecessor,12)+.66*Math.min(successor,12)+.52*Math.min(transition,12)+.40*Math.min(slope,12)+.18*Math.min(curve,12)+.54*Math.min(phaseRaw,4)+.38*Math.min(.5*(1-phaseCorr),2)+.16*(1-coverage);
 }
 function refinePair(channels,sampleRate,initialStart,initialEnd,options,beatSeconds=0){
   const total=channels[0].length,targetPeriod=initialEnd-initialStart;
@@ -1432,6 +1462,11 @@ function sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,le
   }
   return product/(Math.sqrt(energyA*energyB)+1e-12);
 }
+function sliceBidirectionalCorrelation(startChannels,endChannels,startIndex,endIndex,length,kind,targetSamples=1100,minimumWeight=.48){
+  const forward=sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,length,"forward",kind,targetSamples);
+  const backward=sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,length,"backward",kind,targetSamples);
+  return robustPair(forward,backward,minimumWeight);
+}
 function sliceForwardError(startChannels,endChannels,startIndex,endIndex,context){
   const available=Math.min(context,startChannels[0].length-startIndex,endChannels[0].length-endIndex);
   if(available<16)return{raw:.70,corr:.30,coverage:Math.max(0,available/Math.max(1,context))};
@@ -1448,20 +1483,33 @@ function sliceForwardError(startChannels,endChannels,startIndex,endIndex,context
     const a=startChannels[c][startIndex+k]-meanA,b=endChannels[c][endIndex+k]-meanB;
     product+=a*b;aa+=a*a;bb+=b*b;
   }
-  return{
-    raw:Math.sqrt(diff/Math.max(1,count))/(Math.sqrt(energy/Math.max(1,count))+1e-10),
-    corr:product/(Math.sqrt(aa*bb)+1e-10),
-    coverage:available/Math.max(1,context)
-  };
+  return{raw:Math.sqrt(diff/Math.max(1,count))/(Math.sqrt(energy/Math.max(1,count))+1e-10),corr:product/(Math.sqrt(aa*bb)+1e-10),coverage:available/Math.max(1,context)};
+}
+function sliceBackwardError(startChannels,endChannels,startIndex,endIndex,context){
+  const available=Math.min(context,startIndex,endIndex);
+  if(available<16)return{raw:.70,corr:.30,coverage:Math.max(0,available/Math.max(1,context))};
+  const stride=Math.max(1,Math.floor(available/192));
+  const channels=Math.min(startChannels.length,endChannels.length);
+  let diff=0,energy=0,meanA=0,meanB=0,count=0;
+  for(let k=1;k<=available;k+=stride)for(let c=0;c<channels;c++){
+    const a=startChannels[c][startIndex-k],b=endChannels[c][endIndex-k];
+    diff+=(a-b)*(a-b);energy+=.5*(a*a+b*b);meanA+=a;meanB+=b;count++;
+  }
+  meanA/=Math.max(1,count);meanB/=Math.max(1,count);
+  let product=0,aa=0,bb=0;
+  for(let k=1;k<=available;k+=stride)for(let c=0;c<channels;c++){
+    const a=startChannels[c][startIndex-k]-meanA,b=endChannels[c][endIndex-k]-meanB;
+    product+=a*b;aa+=a*a;bb+=b*b;
+  }
+  return{raw:Math.sqrt(diff/Math.max(1,count))/(Math.sqrt(energy/Math.max(1,count))+1e-10),corr:product/(Math.sqrt(aa*bb)+1e-10),coverage:available/Math.max(1,context)};
 }
 function sliceSeamCost(startChannels,endChannels,startIndex,endIndex,context){
-  if(startIndex<2||endIndex<2||startIndex+1>=startChannels[0].length||endIndex>endChannels[0].length)return Infinity;
+  if(startIndex<3||endIndex<3||startIndex+2>=startChannels[0].length||endIndex+1>=endChannels[0].length)return Infinity;
   const channels=Math.min(startChannels.length,endChannels.length);
-  const radius=Math.max(32,Math.min(context,Math.round(.050*192000)));
+  const radius=Math.max(32,Math.min(context,Math.round(.060*192000)));
   let localLevel=0,localDiff=0,count=0;
   for(let k=-radius;k<=radius;k+=2){
-    const a=clamp(startIndex+k,1,startChannels[0].length-1);
-    const b=clamp(endIndex+k,1,endChannels[0].length-1);
+    const a=clamp(startIndex+k,2,startChannels[0].length-3),b=clamp(endIndex+k,2,endChannels[0].length-3);
     for(let c=0;c<channels;c++){
       const x=startChannels[c][a],y=endChannels[c][b];
       localLevel+=x*x+y*y;
@@ -1471,17 +1519,25 @@ function sliceSeamCost(startChannels,endChannels,startIndex,endIndex,context){
   }
   const localRms=Math.sqrt(localLevel/Math.max(1,count))+1e-10;
   const derivativeScale=Math.max(Math.sqrt(localDiff/Math.max(1,count)),localRms*.003,1e-8);
-  let jump=0,slope=0;
+  let predecessor=0,successor=0,transition=0,slope=0,curve=0;
   for(let c=0;c<channels;c++){
-    const tail=endChannels[c][endIndex-1],head=startChannels[c][startIndex];
-    const delta=head-tail,before=tail-endChannels[c][endIndex-2],after=startChannels[c][startIndex+1]-head;
-    const expected=.5*(before+after);
-    jump+=delta*delta;slope+=(delta-expected)*(delta-expected);
+    const startPrev2=startChannels[c][startIndex-2],startPrev=startChannels[c][startIndex-1],head=startChannels[c][startIndex],headNext=startChannels[c][startIndex+1];
+    const endPrev2=endChannels[c][endIndex-2],tail=endChannels[c][endIndex-1],endNext=endChannels[c][endIndex],endNext2=endChannels[c][endIndex+1];
+    const expectedTransition=.5*((head-startPrev)+(endNext-tail));
+    predecessor+=(tail-startPrev)*(tail-startPrev);
+    successor+=(endNext-head)*(endNext-head);
+    transition+=((head-tail)-expectedTransition)*((head-tail)-expectedTransition);
+    slope+=((endNext-tail)-(head-startPrev))*((endNext-tail)-(head-startPrev));
+    const startCurve=headNext-2*head+startPrev,endCurve=endNext2-2*endNext+tail;
+    const preCurve=head-2*startPrev+startPrev2,tailCurve=endNext-2*tail+endPrev2;
+    curve+=.5*((startCurve-endCurve)*(startCurve-endCurve)+(preCurve-tailCurve)*(preCurve-tailCurve));
   }
-  jump=Math.sqrt(jump/channels)/derivativeScale;
-  slope=Math.sqrt(slope/channels)/derivativeScale;
-  const phase=sliceForwardError(startChannels,endChannels,startIndex,endIndex,context);
-  return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(phase.raw,4)+.42*Math.min(.5*(1-phase.corr),2)+.18*(1-phase.coverage);
+  const normalize=value=>Math.sqrt(value/channels)/derivativeScale;
+  predecessor=normalize(predecessor);successor=normalize(successor);transition=normalize(transition);slope=normalize(slope);curve=normalize(curve);
+  const forward=sliceForwardError(startChannels,endChannels,startIndex,endIndex,context),backward=sliceBackwardError(startChannels,endChannels,startIndex,endIndex,context);
+  const phaseRaw=.55*.5*(forward.raw+backward.raw)+.45*Math.max(forward.raw,backward.raw);
+  const phaseCorr=robustPair(forward.corr,backward.corr,.52),coverage=Math.min(forward.coverage,backward.coverage);
+  return .78*Math.min(predecessor,12)+.66*Math.min(successor,12)+.52*Math.min(transition,12)+.40*Math.min(slope,12)+.18*Math.min(curve,12)+.54*Math.min(phaseRaw,4)+.38*Math.min(.5*(1-phaseCorr),2)+.16*(1-coverage);
 }
 function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,endCenter,options){
   const radius=Math.max(1,Math.round((Number(options.refineRadiusMs)||180)*sampleRate/1000));
@@ -1494,12 +1550,12 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
   let lockedStart=startCenter,lockedEnd=endCenter,bestScore=-Infinity,bestOffset=0;
   const sharedScore=offset=>{
     const a=startCenter+offset,b=endCenter+offset;if(a<2||b<2||a>=startChannels[0].length-2||b>endChannels[0].length)return-Infinity;
-    const microMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,microWindow,"forward","mono",700),sliceWindowCorrelation(startChannels,endChannels,a,b,microWindow,"backward","mono",700));
-    const microTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,microWindow,"forward","transient",700),sliceWindowCorrelation(startChannels,endChannels,a,b,microWindow,"backward","transient",700));
-    const mf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"forward","mono",1100),sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"backward","mono",1100));
-    const tf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"forward","transient",1300),sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"backward","transient",1300));
-    const longTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"forward","transient",1700),sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"backward","transient",1700));
-    const longMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"forward","mono",1400),sliceWindowCorrelation(startChannels,endChannels,a,b,phaseWindow,"backward","mono",1400));
+    const microMf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,microWindow,"mono",700,.52);
+    const microTf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,microWindow,"transient",700,.54);
+    const mf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,mediumWindow,"mono",1100,.50);
+    const tf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,mediumWindow,"transient",1300,.52);
+    const longTf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,phaseWindow,"transient",1700,.56);
+    const longMf=sliceBidirectionalCorrelation(startChannels,endChannels,a,b,phaseWindow,"mono",1400,.52);
     let score=.22*microMf+.18*microTf+.19*mf+.18*tf+phaseWeight*(.62*longTf+.38*longMf);
     if(options.useVocals){const vf=Math.max(sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"forward","vocal",1000),sliceWindowCorrelation(startChannels,endChannels,a,b,mediumWindow,"backward","vocal",1000));score+=.11*vf;}
     return score-.008*Math.abs(offset)/Math.max(1,radius);
@@ -1514,12 +1570,12 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
   let refinedStart=lockedStart,refinedEnd=lockedEnd,waveform=bestScore;
   const scoreAt=b=>{
     if(b<=2||b>endChannels[0].length)return-Infinity;
-    const microMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"forward","mono",760),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"backward","mono",760));
-    const microTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"forward","transient",760),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"backward","transient",760));
-    const mf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"forward","mono",1200),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"backward","mono",1200));
-    const tf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"forward","transient",1400),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"backward","transient",1400)),phase=sliceForwardError(startChannels,endChannels,lockedStart,b,phaseContext);
-    const longTf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"forward","transient",1900),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"backward","transient",1900));
-    const longMf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"forward","mono",1550),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"backward","mono",1550));
+    const microMf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"mono",760,.52);
+    const microTf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,microWindow,"transient",760,.54);
+    const mf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"mono",1200,.50);
+    const tf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"transient",1400,.52),phase=sliceForwardError(startChannels,endChannels,lockedStart,b,phaseContext);
+    const longTf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"transient",1900,.56);
+    const longMf=sliceBidirectionalCorrelation(startChannels,endChannels,lockedStart,b,phaseWindow,"mono",1550,.52);
     let score=.23*microMf+.19*microTf+.18*mf+.18*tf;
     if(options.useVocals){const vf=Math.max(sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"forward","vocal",1100),sliceWindowCorrelation(startChannels,endChannels,lockedStart,b,mediumWindow,"backward","vocal",1100));score+=.10*vf;}
     score+=-.34*Math.min(phase.raw,3)-.27*Math.min(.5*(1-phase.corr),2)+.04*phase.coverage+phaseWeight*(.64*longTf+.36*longMf);
@@ -1548,13 +1604,13 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
   for(let delta=-tiny;delta<=tiny;delta++){const b=fixedEnd+delta,cost=sliceSeamCost(startChannels,endChannels,fixedStart,b,context)+.22*Math.abs(delta)/Math.max(1,tiny);if(cost<bestCost){bestCost=cost;bestStart=fixedStart;bestEnd=b;}}
   const finalStart=bestStart,finalEnd=bestEnd;
   for(let offset=-tiny;offset<=tiny;offset++){const a=finalStart+offset,b=finalEnd+offset,cost=sliceSeamCost(startChannels,endChannels,a,b,context)+.012*Math.abs(offset)/Math.max(1,tiny);if(cost<bestCost){bestCost=cost;bestStart=a;bestEnd=b;}}
-  const phaseAlignment=Math.max(sliceWindowCorrelation(startChannels,endChannels,bestStart,bestEnd,phaseWindow,"forward","transient",2300),sliceWindowCorrelation(startChannels,endChannels,bestStart,bestEnd,phaseWindow,"backward","transient",2300));
+  const phaseAlignment=sliceBidirectionalCorrelation(startChannels,endChannels,bestStart,bestEnd,phaseWindow,"transient",2300,.58);
   return{startDelta:bestStart-startCenter,endDelta:bestEnd-endCenter,seam:bestCost,waveform,phaseAlignment,periodCorrectionMs:((bestEnd-endCenter)-(bestStart-startCenter))*1000/sampleRate};
 }
 
 
 function maximumFineOptions(options){
-  return{...options,power:"maximum",refineRadiusMs:250,refineStepMs:1,refineMatchMs:800,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.0625,seamSharedSearchMs:9,seamPeriodSearchMs:.40,seamForwardContextMs:80,beatPhaseContextSeconds:5.5,beatPhaseWeight:.28,beatDriftCorrectionMs:5,beatDriftMinGain:.050};
+  return{...options,power:"maximum",refineRadiusMs:320,refineStepMs:.55,refineMatchMs:1300,maxPeriodCorrectionMs:7,periodCorrectionStepMs:.0375,seamSharedSearchMs:12,seamPeriodSearchMs:.23,seamForwardContextMs:132,beatPhaseContextSeconds:8,beatPhaseWeight:.36,beatDriftCorrectionMs:4,beatDriftMinGain:.052};
 }
 function chooseStrictDeepFine(baseline,candidate,sampleRate,startCenter,endCenter,beatSeconds=0){
   if(!candidate)return baseline;
@@ -1606,8 +1662,8 @@ function multiScaleFineConsensus(startChannels,endChannels,startIndex,endIndex,s
   const mono=[],transient=[];
   for(const value of seconds){
     const window=Math.max(48,Math.round(value*sampleRate));
-    mono.push(Math.max(sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,window,"forward","mono",1400),sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,window,"backward","mono",1400)));
-    transient.push(Math.max(sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,window,"forward","transient",1800),sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,window,"backward","transient",1800)));
+    mono.push(sliceBidirectionalCorrelation(startChannels,endChannels,startIndex,endIndex,window,"mono",1400,.52));
+    transient.push(sliceBidirectionalCorrelation(startChannels,endChannels,startIndex,endIndex,window,"transient",1800,.56));
   }
   const summarize=values=>{const sorted=values.slice().sort((a,b)=>a-b),mean=values.reduce((a,b)=>a+b,0)/Math.max(1,values.length),lower=sorted[Math.floor((sorted.length-1)*.25)]??-1,minimum=sorted[0]??-1;return{mean,lower,minimum,score:.50*mean+.35*lower+.15*minimum};};
   return{mono:summarize(mono),transient:summarize(transient)};
@@ -1619,26 +1675,14 @@ function assessFineCandidate(startChannels,endChannels,smoothedSets,sampleRate,s
   const seamContext=Math.max(32,Math.round((Number(options.seamForwardContextMs)||32)*sampleRate/1000));
   const longWindow=Math.max(Math.round((Number(options.refineMatchMs)||420)*sampleRate/1000),Math.round((Number(options.beatPhaseContextSeconds)||3.5)*sampleRate));
   const rawSeam=sliceSeamCost(startChannels,endChannels,startIndex,endIndex,seamContext);
-  const rawTransient=Math.max(
-    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"forward","transient",2600),
-    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"backward","transient",2600)
-  );
-  const rawMono=Math.max(
-    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"forward","mono",1900),
-    sliceWindowCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"backward","mono",1900)
-  );
+  const rawTransient=sliceBidirectionalCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"transient",2600,.56);
+  const rawMono=sliceBidirectionalCorrelation(startChannels,endChannels,startIndex,endIndex,longWindow,"mono",1900,.52);
   const consensus=multiScaleFineConsensus(startChannels,endChannels,startIndex,endIndex,sampleRate,options);
   let smoothSeam=rawSeam,smoothTransient=rawTransient,smoothMono=rawMono;
   for(const pair of smoothedSets){
     const seam=sliceSeamCost(pair.start,pair.end,startIndex,endIndex,seamContext);
-    const transient=Math.max(
-      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"forward","transient",2300),
-      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"backward","transient",2300)
-    );
-    const mono=Math.max(
-      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"forward","mono",1800),
-      sliceWindowCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"backward","mono",1800)
-    );
+    const transient=sliceBidirectionalCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"transient",2300,.56);
+    const mono=sliceBidirectionalCorrelation(pair.start,pair.end,startIndex,endIndex,longWindow,"mono",1800,.52);
     smoothSeam=Math.min(smoothSeam,seam);
     smoothTransient=Math.max(smoothTransient,transient);
     smoothMono=Math.max(smoothMono,mono);
@@ -1682,50 +1726,55 @@ function fractionalSliceValue(channels,position,channel){
 }
 function fractionalSeamCost(startChannels,endChannels,startPosition,endPosition,sampleRate,contextMs){
   const channels=Math.min(startChannels.length,endChannels.length);
-  if(startPosition<2||endPosition<2||startPosition+2>=startChannels[0].length||endPosition>endChannels[0].length)return Infinity;
+  if(startPosition<3||endPosition<3||startPosition+2>=startChannels[0].length||endPosition+1>=endChannels[0].length)return Infinity;
   const centerA=Math.round(startPosition),centerB=Math.round(endPosition);
-  const radius=Math.max(24,Math.min(Math.round(sampleRate*.020),Math.round((contextMs||32)*sampleRate/1000)));
+  const radius=Math.max(24,Math.min(Math.round(sampleRate*.025),Math.round((contextMs||32)*sampleRate/1000)));
   let level=0,derivative=0,count=0;
   for(let k=-radius;k<=radius;k+=4){
-    const a=clamp(centerA+k,1,startChannels[0].length-1),b=clamp(centerB+k,1,endChannels[0].length-1);
+    const a=clamp(centerA+k,2,startChannels[0].length-3),b=clamp(centerB+k,2,endChannels[0].length-3);
     for(let c=0;c<channels;c++){
-      const x=startChannels[c][a],y=endChannels[c][b];
-      level+=x*x+y*y;
-      const dx=x-startChannels[c][a-1],dy=y-endChannels[c][b-1];
-      derivative+=dx*dx+dy*dy;count+=2;
+      const x=startChannels[c][a],y=endChannels[c][b];level+=x*x+y*y;
+      const dx=x-startChannels[c][a-1],dy=y-endChannels[c][b-1];derivative+=dx*dx+dy*dy;count+=2;
     }
   }
   const rms=Math.sqrt(level/Math.max(1,count))+1e-10;
   const scale=Math.max(Math.sqrt(derivative/Math.max(1,count)),rms*.003,1e-8);
-  let jump=0,slope=0;
+  let predecessor=0,successor=0,transition=0,slope=0,curve=0;
   for(let c=0;c<channels;c++){
-    const tail=fractionalSliceValue(endChannels,endPosition-1,c),head=fractionalSliceValue(startChannels,startPosition,c);
-    const before=tail-fractionalSliceValue(endChannels,endPosition-2,c),after=fractionalSliceValue(startChannels,startPosition+1,c)-head;
-    const delta=head-tail,expected=.5*(before+after);
-    jump+=delta*delta;slope+=(delta-expected)*(delta-expected);
+    const startPrev2=fractionalSliceValue(startChannels,startPosition-2,c),startPrev=fractionalSliceValue(startChannels,startPosition-1,c),head=fractionalSliceValue(startChannels,startPosition,c),headNext=fractionalSliceValue(startChannels,startPosition+1,c);
+    const endPrev2=fractionalSliceValue(endChannels,endPosition-2,c),tail=fractionalSliceValue(endChannels,endPosition-1,c),endNext=fractionalSliceValue(endChannels,endPosition,c),endNext2=fractionalSliceValue(endChannels,endPosition+1,c);
+    const expectedTransition=.5*((head-startPrev)+(endNext-tail));
+    predecessor+=(tail-startPrev)*(tail-startPrev);successor+=(endNext-head)*(endNext-head);
+    transition+=((head-tail)-expectedTransition)*((head-tail)-expectedTransition);
+    slope+=((endNext-tail)-(head-startPrev))*((endNext-tail)-(head-startPrev));
+    const startCurve=headNext-2*head+startPrev,endCurve=endNext2-2*endNext+tail;
+    const preCurve=head-2*startPrev+startPrev2,tailCurve=endNext-2*tail+endPrev2;
+    curve+=.5*((startCurve-endCurve)*(startCurve-endCurve)+(preCurve-tailCurve)*(preCurve-tailCurve));
   }
-  jump=Math.sqrt(jump/channels)/scale;slope=Math.sqrt(slope/channels)/scale;
-  const points=96,span=Math.max(16,Math.round(Math.min(.018,(contextMs||32)/1000)*sampleRate));
-  let diff=0,energy=0,meanA=0,meanB=0,n=0;
-  for(let i=0;i<points;i++){
-    const offset=i*span/Math.max(1,points-1);
-    for(let c=0;c<channels;c++){
-      const a=fractionalSliceValue(startChannels,startPosition+offset,c),b=fractionalSliceValue(endChannels,endPosition+offset,c);
-      diff+=(a-b)*(a-b);energy+=.5*(a*a+b*b);meanA+=a;meanB+=b;n++;
+  const normalize=value=>Math.sqrt(value/channels)/scale;
+  predecessor=normalize(predecessor);successor=normalize(successor);transition=normalize(transition);slope=normalize(slope);curve=normalize(curve);
+  const points=128,span=Math.max(24,Math.round(Math.min(.030,(contextMs||32)/1000)*sampleRate));
+  const contextDirection=direction=>{
+    let diff=0,energy=0,meanA=0,meanB=0,n=0;
+    for(let i=0;i<points;i++){
+      const offset=(i*span/Math.max(1,points-1))*(direction>0?1:-1);
+      for(let c=0;c<channels;c++){
+        const a=fractionalSliceValue(startChannels,startPosition+offset,c),b=fractionalSliceValue(endChannels,endPosition+offset,c);
+        diff+=(a-b)*(a-b);energy+=.5*(a*a+b*b);meanA+=a;meanB+=b;n++;
+      }
     }
-  }
-  meanA/=Math.max(1,n);meanB/=Math.max(1,n);
-  let product=0,aa=0,bb=0;
-  for(let i=0;i<points;i++){
-    const offset=i*span/Math.max(1,points-1);
-    for(let c=0;c<channels;c++){
-      const a=fractionalSliceValue(startChannels,startPosition+offset,c)-meanA,b=fractionalSliceValue(endChannels,endPosition+offset,c)-meanB;
-      product+=a*b;aa+=a*a;bb+=b*b;
+    meanA/=Math.max(1,n);meanB/=Math.max(1,n);let product=0,aa=0,bb=0;
+    for(let i=0;i<points;i++){
+      const offset=(i*span/Math.max(1,points-1))*(direction>0?1:-1);
+      for(let c=0;c<channels;c++){
+        const a=fractionalSliceValue(startChannels,startPosition+offset,c)-meanA,b=fractionalSliceValue(endChannels,endPosition+offset,c)-meanB;
+        product+=a*b;aa+=a*a;bb+=b*b;
+      }
     }
-  }
-  const raw=Math.sqrt(diff/Math.max(1,n))/(Math.sqrt(energy/Math.max(1,n))+1e-10);
-  const corr=product/(Math.sqrt(aa*bb)+1e-10);
-  return .92*Math.min(jump,12)+.68*Math.min(slope,12)+.58*Math.min(raw,4)+.42*Math.min(.5*(1-corr),2);
+    return{raw:Math.sqrt(diff/Math.max(1,n))/(Math.sqrt(energy/Math.max(1,n))+1e-10),corr:product/(Math.sqrt(aa*bb)+1e-10)};
+  };
+  const forward=contextDirection(1),backward=contextDirection(-1),phaseRaw=.55*.5*(forward.raw+backward.raw)+.45*Math.max(forward.raw,backward.raw),phaseCorr=robustPair(forward.corr,backward.corr,.52);
+  return .78*Math.min(predecessor,12)+.66*Math.min(successor,12)+.52*Math.min(transition,12)+.40*Math.min(slope,12)+.18*Math.min(curve,12)+.54*Math.min(phaseRaw,4)+.38*Math.min(.5*(1-phaseCorr),2);
 }
 function fractionalMicroPolish(startChannels,endChannels,sampleRate,startCenter,endCenter,result,options){
   const ceiling=clamp(Math.round(Number(options.precisionCeiling)||sampleRate),sampleRate,192000);
@@ -1801,7 +1850,7 @@ onmessage=event=>{
       let result;
       if(message.options.power==="deep"){
         const maximumResult=refineBoundarySlices(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,maximumFineOptions(message.options));
-        const deepOptions={...message.options,maxPeriodCorrectionMs:10,beatDriftCorrectionMs:5,seamPeriodSearchMs:.35,beatPhaseContextSeconds:6,beatPhaseWeight:.30};
+        const deepOptions={...message.options,refineRadiusMs:360,refineStepMs:.40,refineMatchMs:1500,maxPeriodCorrectionMs:7,periodCorrectionStepMs:.025,beatDriftCorrectionMs:3,seamSharedSearchMs:14,seamPeriodSearchMs:.20,seamForwardContextMs:150,beatPhaseContextSeconds:9,beatPhaseWeight:.38};
         const deepResult=refineBoundarySlices(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,deepOptions);
         result=chooseStrictDeepFine(maximumResult,deepResult,message.sampleRate,message.startCenter,message.endCenter,Number(message.options.localBeatSeconds)||0);
         result.maximumBaselineSeam=maximumResult.seam;result.deepCandidateSeam=deepResult.seam;
@@ -1823,7 +1872,7 @@ onmessage=event=>{
 
 window.requestAnimationFrame=window.requestAnimationFrame||window.webkitRequestAnimationFrame||function(callback){return setTimeout(function(){callback(Date.now());},16);};
 window.cancelAnimationFrame=window.cancelAnimationFrame||window.webkitCancelAnimationFrame||function(id){clearTimeout(id);};
-const APP_BUILD="waveform-hyper-analysis-more-power-video-v4-mux-download";
+const APP_BUILD="phase-continuity-waveform-models-v5";
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 
@@ -1886,7 +1935,7 @@ const CAN_USE_WASM_THREADS=!!(self.crossOriginIsolated&&typeof SharedArrayBuffer
 function precisionWorkerCount(power,morePower=false){
   const reserve=morePower?0:(LOGICAL_CPU_COUNT>=8?2:1);
   const available=Math.max(1,LOGICAL_CPU_COUNT-reserve);
-  const normalCap={fast:2,strong:3,maximum:5,deep:6}[power]||3;
+  const normalCap={fast:3,strong:5,maximum:7,deep:9}[power]||4;
   const boostedCap={fast:8,strong:12,maximum:18,deep:24}[power]||12;
   return Math.max(1,Math.min(morePower?boostedCap:normalCap,available));
 }
@@ -1896,7 +1945,7 @@ function poweredFullDetailCount(settings){
   const normalCap={fast:1,strong:3,maximum:5,deep:7}[settings.power]||2;
   // More Power is meant to finish the same serious verification faster. It does
   // not secretly double the workload and cancel out the added CPU parallelism.
-  const smallAccuracyBonus=settings.morePower?Math.min(4,Math.floor(LOGICAL_CPU_COUNT/4)):0;
+  const smallAccuracyBonus=0;
   return Math.min(64,base+Math.min(normalExtra,normalCap)+smallAccuracyBonus);
 }
 const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
@@ -1905,21 +1954,21 @@ const SETTINGS_KEY="videoGameMusicLooperSettingsV14",LEGACY_SETTINGS_KEY="videoG
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,adaptiveQuality:true,morePower:false,videoMode:false,videoAction:"extend",
   searchStartSeconds:0,searchEndEnabled:false,searchEndSeconds:0,
-  analysisSampleRate:48000,hopLength:96,matchWindowSeconds:16,boundaryContextSeconds:5.5,
+  analysisSampleRate:48000,hopLength:96,matchWindowSeconds:18,boundaryContextSeconds:6.5,
   maxCandidates:6000,coarsePairsToRefine:96,autoVocalThreshold:.50,precisionSampleRate:192000,
-  refineRadiusMs:320,refineStepMs:.50,refineMatchMs:1300,maxPeriodCorrectionMs:8,
-  periodCorrectionStepMs:.03125,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,
-  tempoWindowSeconds:12,tempoTolerancePercent:5,tempoRampPenalty:.26,beatPhaseContextSeconds:8,beatPhaseWeight:.34,
-  instrumentFlowSeconds:30,instrumentFlowWeight:.46,instrumentFlowMinimum:.69,tempoPathWeight:.17,
-  repeatContentWeight:.38,repeatMinimumCoverage:.70,beatDriftCorrectionMs:3,beatDriftMinGain:.060,
-  deepLagCandidates:192,deepWindowSeconds:28,deepMinimumCoverage:.70,deepLagSearchMs:650,speedRampCrossingPenalty:.74,settledSpeedBonus:.26,fullDetailCandidates:32,deepSimilarityFloor:.70,
-  earliestMusicalThreshold:.79,earliestVocalThreshold:.68
+  refineRadiusMs:360,refineStepMs:.40,refineMatchMs:1500,maxPeriodCorrectionMs:7,
+  periodCorrectionStepMs:.025,seamSharedSearchMs:14,seamPeriodSearchMs:.20,seamForwardContextMs:150,
+  tempoWindowSeconds:13,tempoTolerancePercent:4.5,tempoRampPenalty:.30,beatPhaseContextSeconds:9,beatPhaseWeight:.38,
+  instrumentFlowSeconds:32,instrumentFlowWeight:.48,instrumentFlowMinimum:.71,tempoPathWeight:.19,
+  repeatContentWeight:.42,repeatMinimumCoverage:.74,beatDriftCorrectionMs:3,beatDriftMinGain:.055,
+  deepLagCandidates:192,deepWindowSeconds:30,deepMinimumCoverage:.74,deepLagSearchMs:700,speedRampCrossingPenalty:.78,settledSpeedBonus:.28,fullDetailCandidates:32,deepSimilarityFloor:.72,
+  earliestMusicalThreshold:.80,earliestVocalThreshold:.70
 });
 const POWER_PRESETS=Object.freeze({
-  fast:{analysisSampleRate:32000,hopLength:192,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:1800,coarsePairsToRefine:28,refineRadiusMs:200,refineStepMs:2,refineMatchMs:650,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.20,seamSharedSearchMs:7,seamPeriodSearchMs:.45,seamForwardContextMs:64,beatPhaseContextSeconds:4.5,beatPhaseWeight:.25,instrumentFlowSeconds:14,instrumentFlowWeight:.37,instrumentFlowMinimum:.61,repeatContentWeight:.24,repeatMinimumCoverage:.55,fullDetailCandidates:8},
-  strong:{analysisSampleRate:44100,hopLength:160,matchWindowSeconds:10,boundaryContextSeconds:3.5,maxCandidates:3200,coarsePairsToRefine:48,refineRadiusMs:240,refineStepMs:1.25,refineMatchMs:850,maxPeriodCorrectionMs:9,periodCorrectionStepMs:.10,seamSharedSearchMs:9,seamPeriodSearchMs:.35,seamForwardContextMs:88,beatPhaseContextSeconds:6,beatPhaseWeight:.29,instrumentFlowSeconds:20,instrumentFlowWeight:.42,instrumentFlowMinimum:.65,repeatContentWeight:.31,repeatMinimumCoverage:.63,fullDetailCandidates:14},
-  maximum:{analysisSampleRate:48000,hopLength:128,matchWindowSeconds:12,boundaryContextSeconds:4.5,maxCandidates:4800,coarsePairsToRefine:72,refineRadiusMs:280,refineStepMs:.75,refineMatchMs:1050,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.05,seamSharedSearchMs:11,seamPeriodSearchMs:.30,seamForwardContextMs:112,beatPhaseContextSeconds:7,beatPhaseWeight:.32,instrumentFlowSeconds:26,instrumentFlowWeight:.45,instrumentFlowMinimum:.68,repeatContentWeight:.36,repeatMinimumCoverage:.68,fullDetailCandidates:22},
-  deep:{analysisSampleRate:48000,hopLength:96,matchWindowSeconds:16,boundaryContextSeconds:5.5,maxCandidates:6000,coarsePairsToRefine:96,refineRadiusMs:320,refineStepMs:.50,refineMatchMs:1300,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.03125,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,tempoWindowSeconds:12,tempoTolerancePercent:5,tempoRampPenalty:.26,beatPhaseContextSeconds:8,beatPhaseWeight:.34,instrumentFlowSeconds:30,instrumentFlowWeight:.46,instrumentFlowMinimum:.69,tempoPathWeight:.17,repeatContentWeight:.38,repeatMinimumCoverage:.70,beatDriftCorrectionMs:3,beatDriftMinGain:.060,deepLagCandidates:192,deepWindowSeconds:28,deepMinimumCoverage:.70,deepLagSearchMs:650,speedRampCrossingPenalty:.74,settledSpeedBonus:.26,fullDetailCandidates:32,deepSimilarityFloor:.70}
+  fast:{analysisSampleRate:44100,hopLength:160,matchWindowSeconds:9,boundaryContextSeconds:3.25,maxCandidates:2200,coarsePairsToRefine:36,refineRadiusMs:220,refineStepMs:1.5,refineMatchMs:760,maxPeriodCorrectionMs:9,periodCorrectionStepMs:.15,seamSharedSearchMs:8,seamPeriodSearchMs:.35,seamForwardContextMs:80,beatPhaseContextSeconds:5.25,beatPhaseWeight:.29,instrumentFlowSeconds:16,instrumentFlowWeight:.40,instrumentFlowMinimum:.63,tempoPathWeight:.12,repeatContentWeight:.28,repeatMinimumCoverage:.58,beatDriftCorrectionMs:7,beatDriftMinGain:.042,fullDetailCandidates:8},
+  strong:{analysisSampleRate:48000,hopLength:128,matchWindowSeconds:12,boundaryContextSeconds:4.25,maxCandidates:3800,coarsePairsToRefine:58,refineRadiusMs:270,refineStepMs:.90,refineMatchMs:1000,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.075,seamSharedSearchMs:10,seamPeriodSearchMs:.28,seamForwardContextMs:105,beatPhaseContextSeconds:6.75,beatPhaseWeight:.33,instrumentFlowSeconds:22,instrumentFlowWeight:.44,instrumentFlowMinimum:.67,tempoPathWeight:.15,repeatContentWeight:.34,repeatMinimumCoverage:.66,beatDriftCorrectionMs:5,beatDriftMinGain:.048,fullDetailCandidates:16},
+  maximum:{analysisSampleRate:48000,hopLength:96,matchWindowSeconds:15,boundaryContextSeconds:5.5,maxCandidates:5600,coarsePairsToRefine:86,refineRadiusMs:320,refineStepMs:.55,refineMatchMs:1300,maxPeriodCorrectionMs:7,periodCorrectionStepMs:.0375,seamSharedSearchMs:12,seamPeriodSearchMs:.23,seamForwardContextMs:132,tempoWindowSeconds:12,tempoTolerancePercent:5,tempoRampPenalty:.27,beatPhaseContextSeconds:8,beatPhaseWeight:.36,instrumentFlowSeconds:28,instrumentFlowWeight:.47,instrumentFlowMinimum:.70,tempoPathWeight:.18,repeatContentWeight:.40,repeatMinimumCoverage:.72,beatDriftCorrectionMs:4,beatDriftMinGain:.052,fullDetailCandidates:26},
+  deep:{analysisSampleRate:48000,hopLength:96,matchWindowSeconds:18,boundaryContextSeconds:6.5,maxCandidates:6000,coarsePairsToRefine:96,refineRadiusMs:360,refineStepMs:.40,refineMatchMs:1500,maxPeriodCorrectionMs:7,periodCorrectionStepMs:.025,seamSharedSearchMs:14,seamPeriodSearchMs:.20,seamForwardContextMs:150,tempoWindowSeconds:13,tempoTolerancePercent:4.5,tempoRampPenalty:.30,beatPhaseContextSeconds:9,beatPhaseWeight:.38,instrumentFlowSeconds:32,instrumentFlowWeight:.48,instrumentFlowMinimum:.71,tempoPathWeight:.19,repeatContentWeight:.42,repeatMinimumCoverage:.74,beatDriftCorrectionMs:3,beatDriftMinGain:.055,deepLagCandidates:192,deepWindowSeconds:30,deepMinimumCoverage:.74,deepLagSearchMs:700,speedRampCrossingPenalty:.78,settledSpeedBonus:.28,fullDetailCandidates:32,deepSimilarityFloor:.72}
 });
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
@@ -2953,11 +3002,11 @@ async function prepareAnalysis(settings){
   settings.sourceSampleRate=profile.sampleRate;
   settings.sourceQuality=profile.quality;
   settings.sourceBitrateKbps=profile.bitrateKbps;
-  const modeCeiling={fast:32000,strong:44100,maximum:48000,deep:48000}[settings.power]||48000;
+  const modeCeiling={fast:44100,strong:48000,maximum:48000,deep:48000}[settings.power]||48000;
   const nativeRate=Math.max(8000,Number(profile.sampleRate)||modeCeiling);
   settings.analysisSampleRate=Math.min(modeCeiling,nativeRate);
   if(profile.quality!=="high"){
-    const lowHop={fast:192,strong:160,maximum:128,deep:128}[settings.power]||128;
+    const lowHop={fast:160,strong:128,maximum:112,deep:112}[settings.power]||112;
     settings.hopLength=Math.min(settings.hopLength,lowHop);
   }
   const signature=analysisSignature(settings);
@@ -3118,8 +3167,9 @@ async function refineAtFullDetail(coarse,settings,candidateIndex=0,candidateTota
   if(seamQuality<.13&&waveQuality<.30)confidenceValue=Math.min(confidenceValue,.56);
   if(coverageQuality<.30&&repeatQuality<.45)confidenceValue=Math.min(confidenceValue,.60);
   const confidenceLabel=confidenceValue>=.78?"High":(confidenceValue>=.60?"Medium":"Low");
-  const verificationPenalty=(seamQuality<.13&&waveQuality<.30?.18:0)+(coverageQuality<.30&&repeatQuality<.45?.12:0)+(Math.max(instrumentQuality,harmonicQuality)<.42?.10:0)+(weakConsensusQuality<.34?.16:0)+.30*silenceRisk*(1-sectionActivity);
-  const fullDetailRank=.09*deepAligned+.04*deepLower+.06*instrumentQuality+.06*harmonicQuality+.02*timbreQuality+.10*coarseWaveQuality+.13*waveQuality+.17*seamQuality+.14*phaseQuality+.09*consensusQuality+.07*transientConsensusQuality+.04*weakConsensusQuality+.03*tempoQuality+.02*repeatQuality+.01*coverageQuality+.01*marginQuality-.05*deepRamp+.28*feedbackScore-verificationPenalty;
+  const verificationPenalty=(seamQuality<.16&&waveQuality<.34?.24:0)+(coverageQuality<.30&&repeatQuality<.45?.12:0)+(Math.max(instrumentQuality,harmonicQuality)<.42?.10:0)+(weakConsensusQuality<.38?.20:0)+.30*silenceRisk*(1-sectionActivity);
+  const continuityFloor=Math.min(seamQuality,phaseQuality,waveQuality,weakConsensusQuality);
+  const fullDetailRank=.08*deepAligned+.035*deepLower+.05*instrumentQuality+.05*harmonicQuality+.015*timbreQuality+.08*coarseWaveQuality+.15*waveQuality+.23*seamQuality+.17*phaseQuality+.09*consensusQuality+.08*transientConsensusQuality+.07*weakConsensusQuality+.025*tempoQuality+.015*repeatQuality+.01*coverageQuality+.01*marginQuality+.12*continuityFloor-.05*deepRamp+.20*feedbackScore-verificationPenalty;
 
   log(`Full-detail correction: start ${fine.startDelta>=0?"+":""}${(fine.startDelta*1000/rate).toFixed(3)} ms, end ${fine.endDelta>=0?"+":""}${(fine.endDelta*1000/rate).toFixed(3)} ms.`);
   log(`Hard-seam score: ${fine.seam.toFixed(4)} at ${rate.toLocaleString()} Hz${fine.multiRateUsed?" with multi-rate agreement":""}.`);
@@ -3170,7 +3220,7 @@ function runDetectionHelper(partitionIndex,partitionCount,options){
 }
 async function runDetection(options){
   if(!options.morePower||!state.analysisPcmTemplate)return waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options}));
-  const partitionCount=Math.max(2,Math.min(4,Math.floor(LOGICAL_CPU_COUNT/3)||2));
+  const partitionCount=Math.max(2,Math.min(6,Math.floor((LOGICAL_CPU_COUNT-1)/2)||2));
   log(`More Power coarse search: ${partitionCount} complete analysis workers are splitting the candidate matrix.`);
   const tasks=[waitForWorker("detect",()=>state.analysisWorker.postMessage({type:"detect",options:{...options,partitionIndex:0,partitionCount}}))];
   for(let partition=1;partition<partitionCount;partition++)tasks.push(runDetectionHelper(partition,partitionCount,options));
