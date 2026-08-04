@@ -52,23 +52,6 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
 .media-switch .check{align-items:flex-start}.media-switch .check span{line-height:1.45}
 .power-boost{margin-top:12px;padding:11px;border:1px solid var(--yellow-dim);border-radius:10px;background:rgba(250,226,157,.055)}
 .power-boost .check{color:var(--yellow)}.power-boost .help{margin:5px 0 0 24px}
-.auto-explore{margin-top:12px;padding:11px;border:1px solid var(--border2);border-radius:10px;background:var(--panel2)}
-.auto-explore .check{color:var(--yellow)}.auto-explore .help{margin:5px 0 0 24px}
-.auto-controls-locked{opacity:.55}
-.auto-results{margin:12px 0;padding:11px;border:1px solid var(--border2);border-radius:11px;background:var(--panel2)}
-.auto-results-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
-.auto-results-head strong{color:var(--yellow);font-size:.82rem}.auto-results-head span{color:var(--dim);font-size:.7rem}
-.auto-results-list{display:grid;gap:8px}
-.auto-result-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px;border:1px solid var(--border);border-radius:9px;background:#11110f}
-.auto-result-card.selected{border-color:var(--yellow);background:rgba(250,226,157,.055)}
-.auto-result-top{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
-.auto-result-title{color:var(--text);font-size:.78rem;font-weight:850}
-.auto-result-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border:1px solid var(--border2);border-radius:999px;color:var(--yellow-dim);font-size:.62rem;font-weight:850}
-.auto-result-region{grid-column:1/-1;color:var(--yellow);font:800 .82rem/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.auto-result-meta{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.auto-result-meta span{display:block;padding:6px;border:1px solid var(--border);border-radius:7px;background:#0d0d0c;color:var(--dim);font-size:.64rem}
-.auto-result-meta b{display:block;margin-top:2px;color:var(--text);font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:680px){.auto-result-card{grid-template-columns:1fr}.auto-result-card .button{width:100%}.auto-result-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .video-output-options{margin-top:13px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
 .legacy-waveform{display:block;position:absolute;inset:8px;z-index:0;min-height:126px;overflow:hidden;border-radius:8px;background:#0e0e0d;touch-action:none;user-select:none;pointer-events:none}
 .wave-wrap .legacy-waveform{inset:10px;min-height:155px}.legacy-waveform svg{display:block;width:100%;height:100%;min-height:inherit}
@@ -208,11 +191,6 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
       <p class="help">Will use more power at cost of your fricking browser.</p>
     </div>
 
-    <div class="auto-explore">
-      <label class="check"><input id="autoExplore" type="checkbox"><span>Auto minimum and search area</span></label>
-      <p class="help">This is if you're kinda lazy and wanna see yourself. But could take longer!</p>
-    </div>
-
     <div class="video-output-options hidden" id="videoOutputOptions">
       <span class="label">Video result</span>
       <div class="segmented" role="radiogroup">
@@ -269,11 +247,7 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
   </article>
 
   <article class="panel result hidden" id="resultPanel">
-    <div class="panel-head"><div><p class="kicker">3 · Result</p><h2 id="resultHeading">Attempt</h2></div><button class="button ghost small" id="findAgainButton" type="button">Find again</button></div>
-    <div class="auto-results hidden" id="autoResultsPanel">
-      <div class="auto-results-head"><strong>Different results</strong><span id="autoResultsCount"></span></div>
-      <div class="auto-results-list" id="autoResultsList"></div>
-    </div>
+    <div class="panel-head"><div><p class="kicker">3 · Result</p><h2>Attempt</h2></div><button class="button ghost small" id="findAgainButton" type="button">Find again</button></div>
     <div class="region-box"><div class="region-value" id="regionValue">0, 0</div><button class="button secondary small" id="copyRegionButton" type="button">Copy</button></div>
     <div class="stats">
       <div><span>Start</span><strong id="startStat">0:00.000</strong></div>
@@ -1860,7 +1834,7 @@ const E={
   searchStartSeconds:$("#searchStartSeconds"),searchEndSeconds:$("#searchEndSeconds"),searchEndEnabled:$("#searchEndEnabled"),
   searchStartReadout:$("#searchStartReadout"),searchEndReadout:$("#searchEndReadout"),searchEndField:$("#searchEndField"),
   resetSearchRangeButton:$("#resetSearchRangeButton"),setSearchStartButton:$("#setSearchStartButton"),setSearchEndButton:$("#setSearchEndButton"),
-  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),tempoAware:$("#tempoAware"),morePower:$("#morePower"),autoExplore:$("#autoExplore"),
+  minimumLoop:$("#minimumLoop"),previewRepeats:$("#previewRepeats"),preferFirst:$("#preferFirst"),beatLock:$("#beatLock"),tempoAware:$("#tempoAware"),morePower:$("#morePower"),
   resetSettingsButton:$("#resetSettingsButton"),analysisSampleRate:$("#analysisSampleRate"),hopLength:$("#hopLength"),
   matchWindowSeconds:$("#matchWindowSeconds"),boundaryContextSeconds:$("#boundaryContextSeconds"),
   maxCandidates:$("#maxCandidates"),coarsePairsToRefine:$("#coarsePairsToRefine"),
@@ -1877,7 +1851,7 @@ const E={
   deepLagCandidates:$("#deepLagCandidates"),deepWindowSeconds:$("#deepWindowSeconds"),deepMinimumCoverage:$("#deepMinimumCoverage"),deepLagSearchMs:$("#deepLagSearchMs"),
   speedRampCrossingPenalty:$("#speedRampCrossingPenalty"),settledSpeedBonus:$("#settledSpeedBonus"),fullDetailCandidates:$("#fullDetailCandidates"),deepSimilarityFloor:$("#deepSimilarityFloor"),
   findButton:$("#findButton"),progressBox:$("#progressBox"),progressBar:$("#progressBar"),progressText:$("#progressText"),
-  resultPanel:$("#resultPanel"),resultHeading:$("#resultHeading"),autoResultsPanel:$("#autoResultsPanel"),autoResultsList:$("#autoResultsList"),autoResultsCount:$("#autoResultsCount"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),
+  resultPanel:$("#resultPanel"),regionValue:$("#regionValue"),copyRegionButton:$("#copyRegionButton"),startStat:$("#startStat"),
   endStat:$("#endStat"),lengthStat:$("#lengthStat"),confidenceStat:$("#confidenceStat"),waveCanvas:$("#waveCanvas"),waveWrap:$("#waveWrap"),waveFallback:$("#waveFallback"),
   playbackPosition:$("#playbackPosition"),playSeamButton:$("#playSeamButton"),playLoopButton:$("#playLoopButton"),stopButton:$("#stopButton"),
   startInput:$("#startInput"),endInput:$("#endInput"),downloadText:$("#downloadText"),downloadLoop:$("#downloadLoop"),
@@ -1892,7 +1866,7 @@ const E={
 E.runtimeBadge=E.cpuBadge;
 
 const state={
-  file:null,fileUrl:"",duration:0,busy:false,result:null,autoResults:[],selectedAutoResult:0,lastSearchElapsed:0,wavePeaks:null,searchWavePeaks:null,searchRangeDrag:null,searchWaveLoading:false,mediaMode:"audio",
+  file:null,fileUrl:"",duration:0,busy:false,result:null,wavePeaks:null,searchWavePeaks:null,searchRangeDrag:null,searchWaveLoading:false,mediaMode:"audio",
   powerPcm:null,powerPcmVersion:0,generatedBuffers:new Map(),generatedPlayback:null,legacyWaveforms:false,
   videoResultUrl:"",videoResultBlob:null,videoResultKey:"",legacyRenderKey:"",
   analysisWorker:null,analysisSignature:"",analysisRate:0,analysisFrames:0,analysisChannels:0,analysisPcmTemplate:null,
@@ -1927,9 +1901,9 @@ function poweredFullDetailCount(settings){
 }
 const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
 
-const SETTINGS_KEY="videoGameMusicLooperSettingsV15",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV14";
+const SETTINGS_KEY="videoGameMusicLooperSettingsV14",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV13";
 const DEFAULT_SETTINGS=Object.freeze({
-  vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,adaptiveQuality:true,morePower:false,autoExplore:false,videoMode:false,videoAction:"extend",
+  vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,adaptiveQuality:true,morePower:false,videoMode:false,videoAction:"extend",
   searchStartSeconds:0,searchEndEnabled:false,searchEndSeconds:0,
   analysisSampleRate:48000,hopLength:96,matchWindowSeconds:16,boundaryContextSeconds:5.5,
   maxCandidates:6000,coarsePairsToRefine:96,autoVocalThreshold:.50,precisionSampleRate:192000,
@@ -2003,73 +1977,9 @@ function formatClock(seconds,short=false){
   return short?`${minutes}:${String(Math.floor(remaining)).padStart(2,"0")}`:`${minutes}:${remaining.toFixed(3).padStart(6,"0")}`;
 }
 function formatRoblox(seconds){return Math.max(0,Number(seconds)||0).toFixed(3);}
-function formatElapsed(seconds){
-  seconds=Math.max(0,Number(seconds)||0);
-  if(seconds<60)return`${seconds<10?seconds.toFixed(2):seconds.toFixed(1)} seconds`;
-  const minutes=Math.floor(seconds/60),remaining=Math.round(seconds-minutes*60);
-  return`${minutes} minute${minutes===1?"":"s"}${remaining?` ${remaining} second${remaining===1?"":"s"}`:""}`;
-}
-function resultSortScore(result){return .78*clamp(Number(result?.confidence)||0,0,1)+.22*clamp((Number(result?.fullDetailRank)||0)+.5,0,1);}
-function autoResultDifferent(a,b){
-  const aLength=(a?.endSeconds||0)-(a?.startSeconds||0),bLength=(b?.endSeconds||0)-(b?.startSeconds||0);
-  return Math.abs((a?.startSeconds||0)-(b?.startSeconds||0))>.14||
-    Math.abs((a?.endSeconds||0)-(b?.endSeconds||0))>.14||
-    Math.abs(aLength-bLength)>.18;
-}
-function selectDiverseAutoResults(verified,limit=8){
-  const ranked=[...verified].filter(item=>Number.isFinite(item.startSeconds)&&Number.isFinite(item.endSeconds)&&item.endSeconds>item.startSeconds)
-    .sort((a,b)=>(b.confidence-a.confidence)||(b.fullDetailRank-a.fullDetailRank));
-  if(!ranked.length)return[];
-  const topConfidence=ranked[0].confidence;
-  const reasonable=ranked.filter(item=>item.confidence>=Math.max(.38,topConfidence-.32));
-  const selected=[];
-  const add=item=>{if(item&&!selected.some(other=>!autoResultDifferent(item,other)))selected.push(item);};
-  add(ranked[0]);
-  if(reasonable.length){
-    add([...reasonable].sort((a,b)=>(a.endSeconds-a.startSeconds)-(b.endSeconds-b.startSeconds))[0]);
-    add([...reasonable].sort((a,b)=>(b.endSeconds-b.startSeconds)-(a.endSeconds-a.startSeconds))[0]);
-    add([...reasonable].sort((a,b)=>a.startSeconds-b.startSeconds)[0]);
-    add([...reasonable].sort((a,b)=>b.startSeconds-a.startSeconds)[0]);
-  }
-  while(selected.length<Math.min(limit,ranked.length)){
-    let best=null,bestScore=-Infinity;
-    for(const item of ranked){
-      if(selected.includes(item)||selected.some(other=>!autoResultDifferent(item,other)))continue;
-      const length=item.endSeconds-item.startSeconds;
-      let diversity=1;
-      for(const other of selected){
-        const otherLength=other.endSeconds-other.startSeconds;
-        const startDistance=Math.abs(item.startSeconds-other.startSeconds)/Math.max(1,state.duration);
-        const endDistance=Math.abs(item.endSeconds-other.endSeconds)/Math.max(1,state.duration);
-        const lengthDistance=Math.abs(length-otherLength)/Math.max(1,Math.max(length,otherLength));
-        diversity=Math.min(diversity,.42*startDistance+.28*endDistance+.30*lengthDistance);
-      }
-      const score=resultSortScore(item)+.32*diversity;
-      if(score>bestScore){bestScore=score;best=item;}
-    }
-    if(!best)break;
-    selected.push(best);
-  }
-  return selected.sort((a,b)=>(b.confidence-a.confidence)||(b.fullDetailRank-a.fullDetailRank));
-}
-function syncAutoExploreUi(){
-  const auto=!!E.autoExplore?.checked;
-  if(E.minimumLoop)E.minimumLoop.disabled=auto;
-  if(E.searchRangePanel)E.searchRangePanel.classList.toggle("auto-controls-locked",auto);
-  if(E.searchStartSeconds)E.searchStartSeconds.disabled=auto;
-  if(E.searchEndEnabled)E.searchEndEnabled.disabled=auto;
-  if(E.searchEndSeconds)E.searchEndSeconds.disabled=auto||!E.searchEndEnabled.checked;
-  if(E.setSearchStartButton)E.setSearchStartButton.disabled=auto;
-  if(E.setSearchEndButton)E.setSearchEndButton.disabled=auto||!E.searchEndEnabled.checked;
-  if(E.resetSearchRangeButton)E.resetSearchRangeButton.disabled=auto;
-  if(auto){
-    E.searchStartReadout.textContent="Auto";
-    E.searchEndReadout.textContent="Auto";
-  }
-}
+
 function searchRangeValues(){
   const duration=Math.max(0,Number(state.duration)||0);
-  if(E.autoExplore?.checked)return{start:0,end:duration,enabled:false,duration,auto:true};
   let start=clamp(Number(E.searchStartSeconds?.value)||0,0,duration||86400);
   let enabled=!!E.searchEndEnabled?.checked;
   let end=Number(E.searchEndSeconds?.value);
@@ -2098,17 +2008,11 @@ function normalizeSearchRange(save=true){
 
   E.searchStartSeconds.value=start.toFixed(3);
   E.searchEndSeconds.value=(end||0).toFixed(3);
-  const auto=!!E.autoExplore?.checked;
-  E.searchStartSeconds.disabled=auto;
-  E.searchEndEnabled.disabled=auto;
-  E.searchEndSeconds.disabled=auto||!enabled;
-  E.setSearchStartButton.disabled=auto;
-  E.setSearchEndButton.disabled=auto||!enabled;
-  E.resetSearchRangeButton.disabled=auto;
-  E.searchEndField.classList.toggle("search-range-disabled",!enabled||auto);
-  E.searchRangePanel.classList.toggle("auto-controls-locked",auto);
-  E.searchStartReadout.textContent=auto?"Auto":formatClock(start);
-  E.searchEndReadout.textContent=auto?"Auto":(enabled?formatClock(end):"Full track");
+  E.searchEndSeconds.disabled=!enabled;
+  E.setSearchEndButton.disabled=!enabled;
+  E.searchEndField.classList.toggle("search-range-disabled",!enabled);
+  E.searchStartReadout.textContent=formatClock(start);
+  E.searchEndReadout.textContent=enabled?formatClock(end):"Full track";
   drawSearchRange();
   if(E.waveCanvas)drawWaveform();
   if(save)saveSettings();
@@ -2164,7 +2068,6 @@ function readSettings(){
     beatLock:!!E.beatLock.checked,
     tempoAware:!!E.tempoAware.checked,
     morePower:!!E.morePower.checked,
-    autoExplore:!!E.autoExplore.checked,
     videoMode:!!E.videoMode.checked,
     videoAction:activeVideoAction(),
     adaptiveQuality:true,
@@ -2216,7 +2119,7 @@ function writeSettings(settings){
   const s={...DEFAULT_SETTINGS,...settings};
   setRadio("vocalMode",s.vocalMode);setRadio("power",s.power);
   E.minimumLoop.value=s.minimumLoop;E.previewRepeats.value=String(s.previewRepeats);
-  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;E.tempoAware.checked=!!s.tempoAware;E.morePower.checked=!!s.morePower;E.autoExplore.checked=!!s.autoExplore;E.videoMode.checked=!!s.videoMode;setRadio("videoAction",s.videoAction||"extend");
+  E.preferFirst.checked=!!s.preferFirst;E.beatLock.checked=!!s.beatLock;E.tempoAware.checked=!!s.tempoAware;E.morePower.checked=!!s.morePower;E.videoMode.checked=!!s.videoMode;setRadio("videoAction",s.videoAction||"extend");
   E.searchStartSeconds.value=String(Number.isFinite(Number(s.searchStartSeconds))?s.searchStartSeconds:0);
   E.searchEndEnabled.checked=!!s.searchEndEnabled;
   E.searchEndSeconds.value=String(Number.isFinite(Number(s.searchEndSeconds))?s.searchEndSeconds:0);
@@ -2231,7 +2134,6 @@ function writeSettings(settings){
     "deepLagCandidates","deepWindowSeconds","deepMinimumCoverage","deepLagSearchMs","speedRampCrossingPenalty","settledSpeedBonus","fullDetailCandidates","deepSimilarityFloor",
     "earliestMusicalThreshold","earliestVocalThreshold"
   ])if(E[key])E[key].value=String(s[key]);
-  syncAutoExploreUi();
 }
 function saveSettings(){
   try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(readSettings()));}catch{}
@@ -2268,13 +2170,12 @@ function analysisSignature(settings){
 
 function setBusy(value,message=""){
   state.busy=value;
-  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview,E.downloadVideo,E.downloadExtracted,E.morePower,E.autoExplore,E.videoMode]){
+  for(const element of [E.findButton,E.mobileButton,E.fileInput,E.changeButton,E.resetButton,E.findAgainButton,E.playSeamButton,E.playLoopButton,E.downloadLoop,E.downloadPreview,E.downloadVideo,E.downloadExtracted,E.morePower,E.videoMode]){
     if(element)element.disabled=value;
   }
   E.findButton.disabled=value||!state.file;
   E.mobileButton.disabled=value||!state.file;
   if(value)status("Working",message||"Processing the track…","busy");
-  else syncAutoExploreUi();
 }
 
 function stopPlayback(keepSource=false){
@@ -3281,12 +3182,12 @@ async function runDetection(options){
 function reset(){
   stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
-  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.autoResults=[];state.selectedAutoResult=0;state.lastSearchElapsed=0;state.inputFsName=null;state.mediaMode=E.videoMode.checked?"video":"audio";state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
+  state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaMode=E.videoMode.checked?"video":"audio";state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   state.sourceSampleRate=0;state.sourceChannels=0;state.sourceBitrateKbps=0;state.sourceQuality="unknown";state.sourceProfileVersion=0;
   state.searchWavePeaks=null;state.searchRangeDrag=null;state.searchWaveLoading=false;state.analysisPcmTemplate=null;clearPowerPcm();clearGeneratedBuffers();clearVideoResult();
   E.fileInput.value="";E.dropZone.classList.remove("hidden");E.fileCard.classList.add("hidden");
   for(const player of [E.sourcePlayer,E.sourceVideo]){player.classList.add("hidden");player.removeAttribute("src");player.load();}E.searchRangePanel.classList.add("hidden");
-  E.resultPanel.classList.add("hidden");E.autoResultsPanel.classList.add("hidden");E.autoResultsList.textContent="";E.resultHeading.textContent="Attempt";E.progressBox.classList.add("hidden");
+  E.resultPanel.classList.add("hidden");E.progressBox.classList.add("hidden");
   E.findButton.disabled=true;E.mobileButton.disabled=true;E.durationSide.textContent="0:00";E.sampleRateSide.textContent="—";
   E.channelsSide.textContent="—";E.modeSide.textContent="—";E.playbackPosition.textContent="—";try{E.waveCanvas.getContext("2d")?.clearRect(0,0,E.waveCanvas.width,E.waveCanvas.height);}catch{}try{E.searchWaveCanvas.getContext("2d")?.clearRect(0,0,E.searchWaveCanvas.width,E.searchWaveCanvas.height);}catch{}E.waveFallback.textContent="";E.searchWaveFallback.textContent="";
   status("Ready",E.videoMode.checked?"Choose a video file.":"Choose an audio file.");
@@ -3319,100 +3220,25 @@ function loadFile(file){
   updateMediaUi(false);
 }
 
-function buildAutoCoarsePool(candidates,limit=56){
-  const rate=Math.max(1,state.analysisRate||1),duration=Math.max(1,state.duration||1),deduped=[];
-  for(const candidate of candidates){
-    if(!candidate||!Number.isFinite(candidate.start)||!Number.isFinite(candidate.end)||candidate.end<=candidate.start)continue;
-    const start=candidate.start/rate,end=candidate.end/rate,length=end-start;
-    if(length<2.999||start<-.001||end>duration+.01)continue;
-    if(deduped.some(item=>Math.abs(item.start/rate-start)<.065&&Math.abs(item.end/rate-end)<.065))continue;
-    deduped.push(candidate);
-  }
-  const quality=item=>Number(item.rank??item.confidence??0);
-  deduped.sort((a,b)=>quality(b)-quality(a));
-  if(deduped.length<=limit)return deduped;
-
-  const chosen=[];
-  const add=item=>{
-    if(!item||chosen.includes(item))return;
-    const start=item.start/rate,end=item.end/rate,length=end-start;
-    if(chosen.some(other=>{
-      const otherStart=other.start/rate,otherEnd=other.end/rate,otherLength=otherEnd-otherStart;
-      return Math.abs(start-otherStart)<.10&&Math.abs(end-otherEnd)<.10&&Math.abs(length-otherLength)<.12;
-    }))return;
-    chosen.push(item);
-  };
-
-  deduped.slice(0,Math.min(18,deduped.length)).forEach(add);
-  const byLength=[...deduped].sort((a,b)=>(a.end-a.start)-(b.end-b.start));
-  byLength.slice(0,8).forEach(add);
-  byLength.slice(-8).reverse().forEach(add);
-  const byStart=[...deduped].sort((a,b)=>a.start-b.start);
-  const byEnd=[...deduped].sort((a,b)=>a.end-b.end);
-  for(let i=0;i<10;i++){
-    const index=Math.round(i*(deduped.length-1)/9);
-    add(byStart[index]);add(byEnd[index]);
-  }
-
-  while(chosen.length<limit){
-    let best=null,bestScore=-Infinity;
-    for(const item of deduped){
-      if(chosen.includes(item))continue;
-      const start=item.start/rate,end=item.end/rate,length=end-start;
-      let nearest=1;
-      for(const other of chosen){
-        const otherStart=other.start/rate,otherEnd=other.end/rate,otherLength=otherEnd-otherStart;
-        const distance=.38*Math.abs(start-otherStart)/duration+
-          .27*Math.abs(end-otherEnd)/duration+
-          .35*Math.abs(length-otherLength)/Math.max(1,length,otherLength);
-        nearest=Math.min(nearest,distance);
-      }
-      const baseRank=deduped.indexOf(item)/Math.max(1,deduped.length-1);
-      const score=(1-baseRank)+1.15*nearest;
-      if(score>bestScore){bestScore=score;best=item;}
-    }
-    if(!best)break;
-    add(best);
-  }
-  return chosen.slice(0,limit);
-}
-
 async function findLoop(){
   if(state.busy||!state.file)return;
-  const searchStartedAt=performance.now();
-  invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");state.result=null;state.autoResults=[];state.selectedAutoResult=0;state.lastSearchElapsed=0;
+  invalidateMedia();revokeTextUrl();E.resultPanel.classList.add("hidden");state.result=null;
   normalizeSearchRange(false);
   const settings=readSettings();
-  const automatic=!!settings.autoExplore;
-
-  if(automatic){
-    settings.minimumLoop=3;
-    settings.searchStartSeconds=0;
-    settings.searchEndEnabled=false;
-    settings.searchEndSeconds=Math.max(0,state.duration||0);
-    settings.preferFirst=false;
-    const autoCoarse={fast:36,strong:60,maximum:84,deep:96}[settings.power]||60;
-    const autoFull={fast:12,strong:18,maximum:26,deep:36}[settings.power]||18;
-    settings.coarsePairsToRefine=Math.max(settings.coarsePairsToRefine,autoCoarse);
-    settings.fullDetailCandidates=Math.max(settings.fullDetailCandidates,autoFull);
-    log(`Automatic exploration started: minimum length, search start, and search end will be chosen automatically across the full ${formatClock(state.duration,true)} track.`);
-  }else{
-    const rangeEnd=settings.searchEndEnabled?clamp(settings.searchEndSeconds,0,state.duration||settings.searchEndSeconds):state.duration;
-    settings.searchStartSeconds=clamp(settings.searchStartSeconds,0,Math.max(0,rangeEnd));
-    settings.searchEndSeconds=rangeEnd;
-    const availableSearch=Math.max(0,rangeEnd-settings.searchStartSeconds);
-    if(availableSearch<3){
-      status("Search area is too short","Move the start marker earlier or the end marker later.","error");
-      log("Search cancelled because the selected search area is shorter than 3 seconds.");
-      return;
-    }
-    const maxMinimum=Math.max(3,availableSearch-.001);
-    settings.minimumLoop=clamp(settings.minimumLoop,3,maxMinimum);
-    E.minimumLoop.value=String(Math.round(settings.minimumLoop*1000)/1000);
+  const rangeEnd=settings.searchEndEnabled?clamp(settings.searchEndSeconds,0,state.duration||settings.searchEndSeconds):state.duration;
+  settings.searchStartSeconds=clamp(settings.searchStartSeconds,0,Math.max(0,rangeEnd));
+  settings.searchEndSeconds=rangeEnd;
+  const availableSearch=Math.max(0,rangeEnd-settings.searchStartSeconds);
+  if(availableSearch<3){
+    status("Search area is too short","Move the start marker earlier or the end marker later.","error");
+    log("Search cancelled because the selected search area is shorter than 3 seconds.");
+    return;
   }
-
+  const maxMinimum=Math.max(3,availableSearch-.001);
+  settings.minimumLoop=clamp(settings.minimumLoop,3,maxMinimum);
+  E.minimumLoop.value=String(Math.round(settings.minimumLoop*1000)/1000);
   saveSettings();
-  log(`Search started: ${settings.vocalMode}, ${settings.power}, ${automatic?"automatic minimum/range":`minimum ${settings.minimumLoop}s, range ${formatClock(settings.searchStartSeconds)} to ${settings.searchEndEnabled?formatClock(settings.searchEndSeconds):"track end"}`}.`);
+  log(`Search started: ${settings.vocalMode}, ${settings.power}, minimum ${settings.minimumLoop}s, range ${formatClock(settings.searchStartSeconds)} to ${settings.searchEndEnabled?formatClock(settings.searchEndSeconds):"track end"}.`);
 
   try{
     setBusy(true,"Preparing the analysis track…");
@@ -3424,33 +3250,27 @@ async function findLoop(){
     const powerPromise=settings.morePower?prepareMorePowerPcm(settings):Promise.resolve();
     const [coarse]=await Promise.all([coarsePromise,powerPromise]);
     const candidates=[coarse,...(Array.isArray(coarse.alternatives)?coarse.alternatives:[])];
-    let unique=[];
-
-    if(automatic){
-      const poolLimit=Math.min(64,({fast:28,strong:40,maximum:52,deep:64}[settings.power]||40));
-      unique=buildAutoCoarsePool(candidates,poolLimit);
-    }else{
-      const families=[];
-      for(const candidate of candidates){
-        const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate,length=end-start;
-        if(start<settings.searchStartSeconds-.002||end>settings.searchEndSeconds+.002)continue;
-        if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.08&&Math.abs(item.end/state.analysisRate-end)<.08))continue;
-        let family=families.find(item=>Math.abs(item.length-length)<.40&&(Math.abs(item.start-start)<1.35||Math.min(item.end,end)-Math.max(item.start,start)>.82*Math.min(item.length,length)));
-        if(!family){family={start,end,length,count:0};families.push(family);}
-        const familyLimit=({fast:2,strong:3,maximum:4,deep:6}[settings.power]||2);if(family.count>=familyLimit)continue;
-        family.count++;
-        unique.push(candidate);
-      }
+    const unique=[],families=[];
+    for(const candidate of candidates){
+      const start=candidate.start/state.analysisRate,end=candidate.end/state.analysisRate,length=end-start;
+      if(start<settings.searchStartSeconds-.002||end>settings.searchEndSeconds+.002)continue;
+      if(unique.some(item=>Math.abs(item.start/state.analysisRate-start)<.08&&Math.abs(item.end/state.analysisRate-end)<.08))continue;
+      let family=families.find(item=>Math.abs(item.length-length)<.40&&(Math.abs(item.start-start)<1.35||Math.min(item.end,end)-Math.max(item.start,start)>.82*Math.min(item.length,length)));
+      if(!family){family={start,end,length,count:0};families.push(family);}
+      const familyLimit=({fast:2,strong:3,maximum:4,deep:6}[settings.power]||2);if(family.count>=familyLimit)continue;
+      family.count++;
+      unique.push(candidate);
     }
 
     if(!unique.length)throw new Error("No valid loop stayed inside the selected search area.");
 
+    // The coarse decode can leave ffmpeg.wasm with a large grown heap. Start the
+    // precision stage in a clean worker, then recycle it periodically below.
     disposeFFmpeg("Recycled the media engine before full-detail verification.",true);
 
     const poweredCount=poweredFullDetailCount(settings);
-    const automaticTarget=({fast:12,strong:18,maximum:26,deep:36}[settings.power]||18)+(settings.morePower?Math.min(8,Math.floor(LOGICAL_CPU_COUNT/2)):0);
-    const requestedCount=Math.min(automatic?Math.max(poweredCount,automaticTarget):poweredCount,unique.length),verified=[];
-    log(`Precision stage using ${workerCount} CPU worker${workerCount===1?"":"s"}; ${requestedCount} candidates scheduled${settings.morePower?" with the full-track memory cache":""}${automatic?" for automatic short/long/range exploration":""}.`);
+    const requestedCount=Math.min(poweredCount,unique.length),verified=[];
+    log(`Precision stage using ${workerCount} CPU worker${workerCount===1?"":"s"}; ${requestedCount} candidates scheduled${settings.morePower?" with the full-track memory cache":""}.`);
     let checked=0;
     const verifyIndex=async index=>{
       try{
@@ -3471,45 +3291,24 @@ async function findLoop(){
     };
     await verifyThrough(requestedCount);
 
-    const sortVerified=()=>verified.sort((a,b)=>(b.confidence-a.confidence)||((b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence)));
+    const sortVerified=()=>verified.sort((a,b)=>(b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence));
     sortVerified();
-
-    if(automatic){
-      const desiredVisible=Math.min(8,unique.length);
-      while(checked<unique.length&&verified.length<desiredVisible){
-        await verifyThrough(Math.min(unique.length,checked+workerCount));
-        sortVerified();
-      }
-    }else{
-      const adaptiveLimit=Math.min(settings.power==="deep"?Math.max(16,requestedCount):Math.max(8,requestedCount),unique.length);
-      while(checked<adaptiveLimit){
-        const top=verified[0],second=verified[1];
-        const margin=top&&second?(top.fullDetailRank-second.fullDetailRank):1;
-        const uncertain=!top||top.confidence<.74||(top.feedbackScore??0)<.58||margin<.055;
-        if(!uncertain)break;
-        await verifyThrough(Math.min(adaptiveLimit,checked+workerCount));
-        sortVerified();
-      }
+    const adaptiveLimit=Math.min(settings.power==="deep"?Math.max(16,requestedCount):Math.max(8,requestedCount),unique.length);
+    while(checked<adaptiveLimit){
+      const top=verified[0],second=verified[1];
+      const margin=top&&second?(top.fullDetailRank-second.fullDetailRank):1;
+      const uncertain=!top||top.confidence<.74||(top.feedbackScore??0)<.58||margin<.055;
+      if(!uncertain)break;
+      await verifyThrough(Math.min(adaptiveLimit,checked+workerCount));
+      sortVerified();
     }
 
     if(!verified.length)throw new Error("The full-detail checks failed after automatic media-engine recovery. Try the search again; the engine has already been reset.");
-
-    state.lastSearchElapsed=(performance.now()-searchStartedAt)/1000;
-    if(automatic){
-      state.autoResults=selectDiverseAutoResults(verified,8);
-      if(!state.autoResults.length)state.autoResults=[verified[0]];
-      state.selectedAutoResult=0;
-      state.result=state.autoResults[0];
-    }else{
-      state.autoResults=[];
-      state.selectedAutoResult=0;
-      state.result=verified[0];
-    }
-
+    state.result=verified[0];
     showResult();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
     log(`Waveform repeat match: ${Math.round(clamp(((state.result.waveformEvidence??0)+1)/2,0,1)*100)}%; full-detail candidates checked: ${verified.length}.`);
-    status("Loop found",automatic?`${state.autoResults.length} different waveform-verified results are sorted by confidence.`:`${settings.power[0].toUpperCase()+settings.power.slice(1)} checked ${verified.length} waveform-verified candidate${verified.length===1?"":"s"}.`,"ok");
+    status("Loop found",`${settings.power[0].toUpperCase()+settings.power.slice(1)} checked ${verified.length} waveform-verified candidate${verified.length===1?"":"s"}.`,"ok");
     log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
@@ -3517,6 +3316,8 @@ async function findLoop(){
     log(`Error: ${error.message||error}`);
     E.progressBox.classList.add("hidden");
   }finally{
+    // Both workers hold large WebAssembly/PCM heaps. Releasing them after every
+    // search prevents one long session from poisoning later searches or exports.
     terminatePrecisionWorkers();
     terminateAnalysisWorker(!!state.result);
     state.analysisPcmTemplate=null;
@@ -3526,89 +3327,12 @@ async function findLoop(){
   }
 }
 
-function renderAutoResults(){
-  const results=state.autoResults||[];
-  const visible=results.length>1||E.autoExplore?.checked;
-  E.autoResultsPanel.classList.toggle("hidden",!visible);
-  E.autoResultsList.textContent="";
-  if(!visible)return;
-  E.autoResultsCount.textContent=`${results.length} result${results.length===1?"":"s"} · highest confidence first`;
-  if(!results.length){
-    E.autoResultsList.textContent="No alternate results were found.";
-    return;
-  }
-  const lengths=results.map(item=>item.endSeconds-item.startSeconds);
-  const shortest=Math.min(...lengths),longest=Math.max(...lengths);
-  results.forEach((item,index)=>{
-    const length=item.endSeconds-item.startSeconds;
-    const card=document.createElement("div");
-    card.className="auto-result-card"+(index===state.selectedAutoResult?" selected":"");
-    const top=document.createElement("div");
-    top.className="auto-result-top";
-    const title=document.createElement("span");
-    title.className="auto-result-title";
-    title.textContent=`Result ${index+1}`;
-    top.appendChild(title);
-    const badges=[];
-    if(index===0)badges.push("Most confidence");
-    if(Math.abs(length-shortest)<.001)badges.push("Shortest");
-    if(Math.abs(length-longest)<.001&&Math.abs(longest-shortest)>.001)badges.push("Longest");
-    for(const label of badges){
-      const badge=document.createElement("span");
-      badge.className="auto-result-badge";
-      badge.textContent=label;
-      top.appendChild(badge);
-    }
-    const use=document.createElement("button");
-    use.type="button";
-    use.className="button "+(index===state.selectedAutoResult?"secondary":"ghost")+" small";
-    use.dataset.autoResult=String(index);
-    use.textContent=index===state.selectedAutoResult?"Using":"Use";
-    const region=document.createElement("div");
-    region.className="auto-result-region";
-    region.textContent=`${formatRoblox(item.startSeconds)}, ${formatRoblox(item.endSeconds)}`;
-    const meta=document.createElement("div");
-    meta.className="auto-result-meta";
-    const cells=[
-      ["Start",formatClock(item.startSeconds)],
-      ["End",formatClock(item.endSeconds)],
-      ["Length",formatClock(length)],
-      ["Confidence",`${item.confidenceLabel} · ${Math.round(item.confidence*100)}%`]
-    ];
-    for(const [label,value] of cells){
-      const cell=document.createElement("span");
-      const caption=document.createTextNode(label);
-      const strong=document.createElement("b");
-      strong.textContent=value;
-      cell.append(caption,strong);
-      meta.appendChild(cell);
-    }
-    card.append(top,use,region,meta);
-    E.autoResultsList.appendChild(card);
-  });
-}
-function selectAutoResult(index){
-  index=clamp(Math.round(Number(index)||0),0,Math.max(0,state.autoResults.length-1));
-  const selectedResult=state.autoResults[index];
-  if(!selectedResult)return;
-  state.selectedAutoResult=index;
-  state.result=selectedResult;
-  E.modeSide.textContent=state.result.mode;
-  E.startInput.value=state.result.startSeconds.toFixed(6);
-  E.endInput.value=state.result.endSeconds.toFixed(6);
-  updateResult(true);
-  renderAutoResults();
-  if(state.mediaMode==="video"&&state.fileUrl)showAttemptVideoPreview();
-  status("Result selected",`Using result ${index+1} at ${Math.round(state.result.confidence*100)}% confidence.`,"ok");
-}
 function showResult(){
   if(!state.result)return;
-  E.resultHeading.textContent=`Here you go, converted in ${formatElapsed(state.lastSearchElapsed)}.`;
   E.modeSide.textContent=state.result.mode;
   E.startInput.value=state.result.startSeconds.toFixed(6);
   E.endInput.value=state.result.endSeconds.toFixed(6);
   updateResult(false);
-  renderAutoResults();
   E.resultPanel.classList.remove("hidden");updateDownloadVisibility();
   if(state.mediaMode==="video"&&state.fileUrl)showAttemptVideoPreview();
   else E.resultVideoPanel.classList.add("hidden");
@@ -3656,7 +3380,6 @@ function updateResult(invalidate=true){
   if(invalidate)invalidateMedia();
   updateTextDownload();
   drawWaveform();
-  if(state.autoResults?.length)renderAutoResults();
 }
 
 
@@ -4250,14 +3973,6 @@ E.startInput.addEventListener("change",()=>updateResult());
 E.endInput.addEventListener("change",()=>updateResult());
 E.previewRepeats.addEventListener("change",()=>{E.previewRepeats.value=String(clamp(Math.round(Number(E.previewRepeats.value)||3),1,50));invalidateMedia();saveSettings();});
 E.morePower.addEventListener("change",()=>{saveSettings();log(E.morePower.checked?`More Power enabled. Using up to ${precisionWorkerCount(readSettings().power,true)} CPU workers with parallel full-track decoding.`:"More Power disabled.");});
-E.autoExplore.addEventListener("change",()=>{
-  syncAutoExploreUi();normalizeSearchRange(false);saveSettings();
-  log(E.autoExplore.checked?"Automatic minimum and search-area exploration enabled. Manual minimum/start/end controls are temporarily ignored.":"Automatic exploration disabled. Manual minimum and search-area controls are active again.");
-});
-E.autoResultsList.addEventListener("click",event=>{
-  const button=event.target.closest("[data-auto-result]");
-  if(button)selectAutoResult(button.dataset.autoResult);
-});
 E.videoMode.addEventListener("change",()=>updateMediaUi(true));
 for(const input of $$('input[name="videoAction"]'))input.addEventListener("change",()=>{saveSettings();updateDownloadVisibility();if(state.mediaMode==="video"&&state.result&&!state.videoResultBlob)showAttemptVideoPreview();});
 E.resetSettingsButton.addEventListener("click",resetSettingsDefaults);
@@ -4271,18 +3986,16 @@ E.searchEndEnabled.addEventListener("change",()=>{
   normalizeSearchRange(true);
 });
 E.setSearchStartButton.addEventListener("click",()=>{
-  if(E.autoExplore?.checked)return;
   E.searchStartSeconds.value=String(activeSourcePlayer().currentTime||0);
   normalizeSearchRange(true);
 });
 E.setSearchEndButton.addEventListener("click",()=>{
-  if(E.autoExplore?.checked)return;
   E.searchEndEnabled.checked=true;
   E.searchEndSeconds.value=String(activeSourcePlayer().currentTime||state.duration||0);
   normalizeSearchRange(true);
 });
 E.searchWaveCanvas.addEventListener("pointerdown",event=>{
-  if(E.autoExplore?.checked||!state.file||!state.duration)return;
+  if(!state.file||!state.duration)return;
   const handle=searchHandleAt(event.clientX);
   if(handle){
     state.searchRangeDrag=handle;
@@ -4307,7 +4020,7 @@ E.searchWaveCanvas.addEventListener("pointerup",finishSearchDrag);
 E.searchWaveCanvas.addEventListener("pointercancel",()=>{state.searchRangeDrag=null;normalizeSearchRange(true);});
 function legacyClientX(event){const touch=event.touches?.[0]||event.changedTouches?.[0];return touch?touch.clientX:event.clientX;}
 function legacySearchDown(event,target){
-  if(E.autoExplore?.checked||!state.file||!state.duration)return;const x=legacyClientX(event),handle=searchHandleAtForElement(x,target);
+  if(!state.file||!state.duration)return;const x=legacyClientX(event),handle=searchHandleAtForElement(x,target);
   if(handle){state.searchRangeDrag=handle;event.preventDefault();return;}const time=searchTimeForElement(x,target);seekPlaybackOrSource(time);state.playheadTime=time;drawSearchRange();drawWaveform();
 }
 function searchTimeForElement(clientX,element){const box=element.getBoundingClientRect(),ratio=clamp((clientX-box.left)/Math.max(1,box.width),0,1);return ratio*Math.max(0,state.duration||0);}
