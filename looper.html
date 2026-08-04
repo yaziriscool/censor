@@ -201,43 +201,43 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
 
     <div class="hidden" aria-hidden="true">
       <button id="resetSettingsButton" type="button"></button>
-      <input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="96000" step="1" value="22050">
-      <input class="text setting-input" id="hopLength" type="number" min="64" max="2048" step="1" value="512">
-      <input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="30" step="0.1" value="7">
-      <input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="12" step="0.05" value="2.25">
-      <input class="text setting-input" id="maxCandidates" type="number" min="100" max="6000" step="10" value="1500">
-      <input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="96" step="1" value="18">
+      <input class="text setting-input" id="analysisSampleRate" type="number" min="8000" max="96000" step="1" value="96000">
+      <input class="text setting-input" id="hopLength" type="number" min="64" max="2048" step="1" value="64">
+      <input class="text setting-input" id="matchWindowSeconds" type="number" min="1" max="30" step="0.1" value="20">
+      <input class="text setting-input" id="boundaryContextSeconds" type="number" min="0.25" max="12" step="0.05" value="6.5">
+      <input class="text setting-input" id="maxCandidates" type="number" min="100" max="12000" step="10" value="12000">
+      <input class="text setting-input" id="coarsePairsToRefine" type="number" min="1" max="256" step="1" value="192">
       <input class="text setting-input" id="autoVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.5">
       <input class="text setting-input" id="precisionSampleRate" type="number" min="22050" max="192000" step="1" value="96000">
-      <input class="text setting-input" id="refineRadiusMs" type="number" min="10" max="1000" step="1" value="180">
-      <input class="text setting-input" id="refineStepMs" type="number" min="0.25" max="20" step="0.25" value="2">
-      <input class="text setting-input" id="refineMatchMs" type="number" min="50" max="3000" step="5" value="420">
-      <input class="text setting-input" id="maxPeriodCorrectionMs" type="number" min="0.25" max="50" step="0.25" value="15">
-      <input class="text setting-input" id="periodCorrectionStepMs" type="number" min="0.05" max="5" step="0.05" value="0.25">
-      <input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="5">
-      <input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.6">
-      <input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="32">
-      <input class="text setting-input" id="tempoWindowSeconds" type="number" min="3" max="20" step="0.5" value="8">
-      <input class="text setting-input" id="tempoTolerancePercent" type="number" min="1" max="35" step="0.5" value="8">
-      <input class="text setting-input" id="tempoRampPenalty" type="number" min="0" max="0.75" step="0.01" value="0.16">
-      <input class="text setting-input" id="beatPhaseContextSeconds" type="number" min="0.5" max="12" step="0.25" value="3.5">
-      <input class="text setting-input" id="beatPhaseWeight" type="number" min="0" max="0.75" step="0.01" value="0.18">
-      <input class="text setting-input" id="instrumentFlowSeconds" type="number" min="3" max="40" step="0.5" value="12">
-      <input class="text setting-input" id="instrumentFlowWeight" type="number" min="0" max="0.75" step="0.01" value="0.3">
-      <input class="text setting-input" id="instrumentFlowMinimum" type="number" min="0" max="1" step="0.01" value="0.62">
-      <input class="text setting-input" id="tempoPathWeight" type="number" min="0" max="0.5" step="0.01" value="0.1">
-      <input class="text setting-input" id="repeatContentWeight" type="number" min="0" max="0.75" step="0.01" value="0.24">
-      <input class="text setting-input" id="repeatMinimumCoverage" type="number" min="0.2" max="1" step="0.05" value="0.55">
-      <input class="text setting-input" id="beatDriftCorrectionMs" type="number" min="0" max="100" step="0.5" value="18">
-      <input class="text setting-input" id="beatDriftMinGain" type="number" min="0" max="0.25" step="0.005" value="0.035">
-      <input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="192" step="1" value="96">
-      <input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="40" step="0.5" value="16">
-      <input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.4">
-      <input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="320">
-      <input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.46">
-      <input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.14">
-      <input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="64" step="1" value="18">
-      <input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.58">
+      <input class="text setting-input" id="refineRadiusMs" type="number" min="10" max="1000" step="1" value="400">
+      <input class="text setting-input" id="refineStepMs" type="number" min="0.25" max="20" step="0.25" value="0.25">
+      <input class="text setting-input" id="refineMatchMs" type="number" min="50" max="3000" step="5" value="1500">
+      <input class="text setting-input" id="maxPeriodCorrectionMs" type="number" min="0.25" max="50" step="0.25" value="8">
+      <input class="text setting-input" id="periodCorrectionStepMs" type="number" min="0.005" max="5" step="0.005" value="0.015">
+      <input class="text setting-input" id="seamSharedSearchMs" type="number" min="0.25" max="20" step="0.25" value="16">
+      <input class="text setting-input" id="seamPeriodSearchMs" type="number" min="0.05" max="5" step="0.05" value="0.15">
+      <input class="text setting-input" id="seamForwardContextMs" type="number" min="4" max="250" step="1" value="160">
+      <input class="text setting-input" id="tempoWindowSeconds" type="number" min="3" max="20" step="0.5" value="14">
+      <input class="text setting-input" id="tempoTolerancePercent" type="number" min="1" max="35" step="0.5" value="4">
+      <input class="text setting-input" id="tempoRampPenalty" type="number" min="0" max="0.75" step="0.01" value="0.28">
+      <input class="text setting-input" id="beatPhaseContextSeconds" type="number" min="0.5" max="12" step="0.25" value="10">
+      <input class="text setting-input" id="beatPhaseWeight" type="number" min="0" max="0.75" step="0.01" value="0.38">
+      <input class="text setting-input" id="instrumentFlowSeconds" type="number" min="3" max="40" step="0.5" value="36">
+      <input class="text setting-input" id="instrumentFlowWeight" type="number" min="0" max="0.75" step="0.01" value="0.50">
+      <input class="text setting-input" id="instrumentFlowMinimum" type="number" min="0" max="1" step="0.01" value="0.72">
+      <input class="text setting-input" id="tempoPathWeight" type="number" min="0" max="0.5" step="0.01" value="0.20">
+      <input class="text setting-input" id="repeatContentWeight" type="number" min="0" max="0.75" step="0.01" value="0.42">
+      <input class="text setting-input" id="repeatMinimumCoverage" type="number" min="0.2" max="1" step="0.05" value="0.75">
+      <input class="text setting-input" id="beatDriftCorrectionMs" type="number" min="0" max="100" step="0.5" value="4">
+      <input class="text setting-input" id="beatDriftMinGain" type="number" min="0" max="0.25" step="0.005" value="0.050">
+      <input class="text setting-input" id="deepLagCandidates" type="number" min="8" max="300" step="1" value="256">
+      <input class="text setting-input" id="deepWindowSeconds" type="number" min="2" max="40" step="0.5" value="32">
+      <input class="text setting-input" id="deepMinimumCoverage" type="number" min="0.15" max="1" step="0.05" value="0.75">
+      <input class="text setting-input" id="deepLagSearchMs" type="number" min="20" max="1000" step="10" value="800">
+      <input class="text setting-input" id="speedRampCrossingPenalty" type="number" min="0" max="1" step="0.01" value="0.78">
+      <input class="text setting-input" id="settledSpeedBonus" type="number" min="0" max="0.5" step="0.01" value="0.28">
+      <input class="text setting-input" id="fullDetailCandidates" type="number" min="1" max="64" step="1" value="64">
+      <input class="text setting-input" id="deepSimilarityFloor" type="number" min="0.25" max="0.95" step="0.01" value="0.72">
       <input class="text setting-input" id="earliestMusicalThreshold" type="number" min="0" max="1" step="0.01" value="0.72">
       <input class="text setting-input" id="earliestVocalThreshold" type="number" min="0" max="1" step="0.01" value="0.58">
     </div>
@@ -479,7 +479,7 @@ function buildFeatures(channels,sampleRate,options){
   const quality=options.power;
   const analysisRate=sampleRate;
   const fftSize=quality==="fast"?1024:2048;
-  const hop=clamp(Math.round(options.hopLength||512),128,2048);
+  const hop=clamp(Math.round(options.hopLength||512),64,2048);
   const channelCount=channels.length,total=channels[0].length;
   const midOriginal=new Float32Array(total),sideOriginal=new Float32Array(total);
   if(channelCount>=2){const l=channels[0],r=channels[1];for(let i=0;i<total;i++){midOriginal[i]=.5*(l[i]+r[i]);sideOriginal[i]=.5*(l[i]-r[i]);}}
@@ -527,7 +527,7 @@ function localValleys(activity,maxCount){
   const threshold=percentile(activity,.55),filtered=found.filter(i=>activity[i]<=threshold);filtered.sort((a,b)=>activity[a]-activity[b]);return filtered.slice(0,maxCount);
 }
 function makeCandidates(bundle,options){
-  const max=bundle.frames-1,quality=options.power,maxCandidates=clamp(Math.round(options.maxCandidates||1500),100,6000),gridSeconds=quality==="deep"?.22:(quality==="maximum"?.28:(quality==="fast"?.55:.40)),gridStep=Math.max(1,Math.round(gridSeconds*bundle.frameRate));
+  const max=bundle.frames-1,quality=options.power,maxCandidates=clamp(Math.round(options.maxCandidates||1500),100,12000),gridSeconds=quality==="deep"?.22:(quality==="maximum"?.28:(quality==="fast"?.55:.40)),gridStep=Math.max(1,Math.round(gridSeconds*bundle.frameRate));
   const rangeStart=clamp(Math.ceil((Number(options.searchStartSeconds)||0)*bundle.frameRate),0,max);
   const requestedEnd=options.searchEndEnabled?Number(options.searchEndSeconds):max/bundle.frameRate;
   const rangeEnd=clamp(Math.floor((Number.isFinite(requestedEnd)?requestedEnd:max/bundle.frameRate)*bundle.frameRate),rangeStart+1,max);
@@ -632,7 +632,7 @@ function segmentActivity(bundle,start,end){
 function coarseSearch(bundle,candidates,options,duration){
   const quality=options.power,windowSeconds=clamp(Number(options.matchWindowSeconds)||7,1,20),bins=quality==="deep"?12:(quality==="maximum"?7:(quality==="fast"?4:5)),embeddings=[];
   const boundarySeconds=clamp(Number(options.boundaryContextSeconds)||2.25,.25,8),phaseSeconds=clamp(Number(options.beatPhaseContextSeconds)||3.5,.5,12),rhythmBins=quality==="deep"?40:(quality==="maximum"?28:(quality==="fast"?12:20));
-  const flowSeconds=clamp(Number(options.instrumentFlowSeconds)||12,3,30),flowBins=quality==="deep"?32:(quality==="maximum"?24:(quality==="fast"?12:18)),tempoBins=quality==="deep"?32:(quality==="maximum"?24:(quality==="fast"?12:18));
+  const flowSeconds=clamp(Number(options.instrumentFlowSeconds)||12,3,40),flowBins=quality==="deep"?32:(quality==="maximum"?24:(quality==="fast"?12:18)),tempoBins=quality==="deep"?32:(quality==="maximum"?24:(quality==="fast"?12:18));
   const waveBoundarySeconds=quality==="deep"?2.2:(quality==="maximum"?1.8:(quality==="strong"?1.4:1.0));
   const waveFlowSeconds=quality==="deep"?18:(quality==="maximum"?13:(quality==="strong"?9:6));
   const waveBins=quality==="deep"?80:(quality==="maximum"?60:(quality==="strong"?44:32));
@@ -662,7 +662,7 @@ function coarseSearch(bundle,candidates,options,duration){
     });
     if(i%60===0)postProgress(30+8*i/candidates.length,"Preparing loop points…");
   }
-  const minimum=options.minimumLoop,requestedTop=clamp(Math.round(options.coarsePairsToRefine||18),1,96),topCap=quality==="deep"?128:64,topLimit=clamp(Math.max(requestedTop,quality==="deep"?requestedTop*3:requestedTop*2),1,topCap),top=[];
+  const minimum=options.minimumLoop,requestedTop=clamp(Math.round(options.coarsePairsToRefine||18),1,256),topCap=quality==="deep"?256:128,topLimit=clamp(Math.max(requestedTop,quality==="deep"?requestedTop*3:requestedTop*2),1,topCap),top=[];
   const times=new Float64Array(candidates.length);for(let i=0;i<candidates.length;i++)times[i]=candidates[i]/bundle.frameRate;
   const tolerance=Math.max(.01,(Number(options.tempoTolerancePercent)||8)/100),rampPenalty=clamp(Number(options.tempoRampPenalty)||.16,0,.75);
   const flowWeight=clamp(Number(options.instrumentFlowWeight)||.30,0,.75),flowMinimum=clamp(Number(options.instrumentFlowMinimum)||.62,0,1),tempoPathWeight=clamp(Number(options.tempoPathWeight)||.10,0,.5);
@@ -1062,7 +1062,7 @@ function onsetLagQuality(bundle,lag){
 }
 function collectLagSeeds(coarsePool,candidates,bundle,options){
   const minimum=Math.max(2,Math.round((Number(options.minimumLoop)||12)*bundle.frameRate));
-  const maximum=bundle.frames-2,limit=clamp(Math.round(Number(options.deepLagCandidates)||72),8,192),tolerance=Math.max(1,Math.round(.075*bundle.frameRate));
+  const maximum=bundle.frames-2,limit=clamp(Math.round(Number(options.deepLagCandidates)||72),8,300),tolerance=Math.max(1,Math.round(.075*bundle.frameRate));
   const seeds=[];
   const add=(lag,sourceScore=0)=>{
     lag=Math.round(lag);if(lag<minimum||lag>maximum)return;
@@ -1096,7 +1096,7 @@ function refineLagSeeds(bundle,seeds,options){
     if(index%5===0)postProgress(55+5*index/Math.max(1,seeds.length),"Tightening repeat lengths…");
   }
   refined.sort((a,b)=>(b.quality+.03*b.sourceScore)-(a.quality+.03*a.sourceScore));
-  return refined.slice(0,Math.max(16,Math.min(refined.length,clamp(Math.round(Number(options.deepLagCandidates)||72),8,192))));
+  return refined.slice(0,Math.max(16,Math.min(refined.length,clamp(Math.round(Number(options.deepLagCandidates)||72),8,300))));
 }
 function deepLagEvidence(bundle,lag,options){
   const length=bundle.frames-lag;
@@ -1321,7 +1321,7 @@ function detect(channels,sampleRate,requested){
   const candidates=makeCandidates(bundle,options);postProgress(30,"Checking "+candidates.length+" loop points…");
   let coarsePool,searchPool;
   if(options.power==="deep"){
-    const maximumOptions={...options,power:"maximum",analysisSampleRate:44100,hopLength:192,matchWindowSeconds:10,boundaryContextSeconds:3.5,maxCandidates:3400,coarsePairsToRefine:48,refineRadiusMs:250,refineStepMs:1,refineMatchMs:800,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.0625,seamSharedSearchMs:9,seamPeriodSearchMs:.40,seamForwardContextMs:80,beatPhaseContextSeconds:5.5,beatPhaseWeight:.28,instrumentFlowSeconds:20,instrumentFlowWeight:.41,instrumentFlowMinimum:.65,repeatContentWeight:.31,repeatMinimumCoverage:.62,fullDetailCandidates:16};
+    const maximumOptions={...options,power:"maximum",analysisSampleRate:48000,hopLength:96,matchWindowSeconds:15,boundaryContextSeconds:5.0,maxCandidates:7500,coarsePairsToRefine:128,refineRadiusMs:350,refineStepMs:.5,refineMatchMs:1200,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.04,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,beatPhaseContextSeconds:8,beatPhaseWeight:.35,instrumentFlowSeconds:28,instrumentFlowWeight:.48,instrumentFlowMinimum:.70,repeatContentWeight:.38,repeatMinimumCoverage:.70,fullDetailCandidates:36};
     postProgress(30,"Running the complete Maximum search…");
     coarsePool=coarseSearch(bundle,candidates,maximumOptions,duration);
     if(!coarsePool.length)throw new Error("No loop matched the minimum length.");
@@ -1344,14 +1344,14 @@ function detect(channels,sampleRate,requested){
     if(repeat.coverage>=minimumCoverage)pair.score+=repeatWeight*repeat.score*repeat.coverage;else pair.score-=.05*(minimumCoverage-repeat.coverage)/minimumCoverage;
   }
   searchPool.sort((a,b)=>b.score-a.score);
-  const requestedRefine=clamp(Math.round(options.coarsePairsToRefine||18),1,96);
-  const deepDetail=clamp(Math.round(Number(options.fullDetailCandidates)||18),1,48);
+  const requestedRefine=clamp(Math.round(options.coarsePairsToRefine||18),1,256);
+  const deepDetail=clamp(Math.round(Number(options.fullDetailCandidates)||18),1,64);
   const refineCount=options.power==="deep"?Math.min(searchPool.length,Math.max(28,requestedRefine,deepDetail)):Math.min(searchPool.length,requestedRefine);
   const coarse=options.power==="deep"?selectDeepRefinementSet(searchPool,refineCount,bundle):searchPool.slice(0,refineCount),results=[];
   for(let index=0;index<coarse.length;index++){
     const pair=coarse[index],startSeconds=pair.startFrame/bundle.frameRate,endSeconds=pair.endFrame/bundle.frameRate,initialStart=Math.round(startSeconds*sampleRate),initialEnd=Math.round(endSeconds*sampleRate);
     const beatSeconds=pair.localBeatSeconds||bundle.beatPeriod/bundle.frameRate;
-    const baselineOptions=options.power==="deep"?{...options,power:"maximum",refineRadiusMs:180,refineStepMs:1.5,refineMatchMs:420,maxPeriodCorrectionMs:15,periodCorrectionStepMs:.125,seamSharedSearchMs:5,seamPeriodSearchMs:.60,seamForwardContextMs:32,beatDriftCorrectionMs:18,beatDriftMinGain:.035}:options;
+    const baselineOptions=options.power==="deep"?{...options,power:"maximum",refineRadiusMs:350,refineStepMs:.5,refineMatchMs:1200,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.04,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,beatPhaseContextSeconds:8,beatPhaseWeight:.35}:options;
     let refined=refinePair(channels,sampleRate,initialStart,initialEnd,baselineOptions,beatSeconds);if(!refined)continue;
     const shifted=shiftEarliest(refined,bundle,sampleRate,options);
     if(shifted.shifted)refined=refinePair(channels,sampleRate,shifted.start,shifted.end,baselineOptions,beatSeconds)||shifted;else refined=shifted;
@@ -1554,7 +1554,7 @@ function refineBoundarySlices(startChannels,endChannels,sampleRate,startCenter,e
 
 
 function maximumFineOptions(options){
-  return{...options,power:"maximum",refineRadiusMs:250,refineStepMs:1,refineMatchMs:800,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.0625,seamSharedSearchMs:9,seamPeriodSearchMs:.40,seamForwardContextMs:80,beatPhaseContextSeconds:5.5,beatPhaseWeight:.28,beatDriftCorrectionMs:5,beatDriftMinGain:.050};
+  return{...options,power:"maximum",refineRadiusMs:350,refineStepMs:.5,refineMatchMs:1200,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.04,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,beatPhaseContextSeconds:8,beatPhaseWeight:.35};
 }
 function chooseStrictDeepFine(baseline,candidate,sampleRate,startCenter,endCenter,beatSeconds=0){
   if(!candidate)return baseline;
@@ -1801,7 +1801,7 @@ onmessage=event=>{
       let result;
       if(message.options.power==="deep"){
         const maximumResult=refineBoundarySlices(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,maximumFineOptions(message.options));
-        const deepOptions={...message.options,maxPeriodCorrectionMs:10,beatDriftCorrectionMs:5,seamPeriodSearchMs:.35,beatPhaseContextSeconds:6,beatPhaseWeight:.30};
+        const deepOptions={...message.options};
         const deepResult=refineBoundarySlices(startChannels,endChannels,message.sampleRate,message.startCenter,message.endCenter,deepOptions);
         result=chooseStrictDeepFine(maximumResult,deepResult,message.sampleRate,message.startCenter,message.endCenter,Number(message.options.localBeatSeconds)||0);
         result.maximumBaselineSeam=maximumResult.seam;result.deepCandidateSeam=deepResult.seam;
@@ -1905,21 +1905,21 @@ const SETTINGS_KEY="videoGameMusicLooperSettingsV14",LEGACY_SETTINGS_KEY="videoG
 const DEFAULT_SETTINGS=Object.freeze({
   vocalMode:"auto",power:"deep",minimumLoop:12,previewRepeats:3,preferFirst:true,beatLock:true,tempoAware:true,adaptiveQuality:true,morePower:false,videoMode:false,videoAction:"extend",
   searchStartSeconds:0,searchEndEnabled:false,searchEndSeconds:0,
-  analysisSampleRate:48000,hopLength:96,matchWindowSeconds:16,boundaryContextSeconds:5.5,
-  maxCandidates:6000,coarsePairsToRefine:96,autoVocalThreshold:.50,precisionSampleRate:192000,
-  refineRadiusMs:320,refineStepMs:.50,refineMatchMs:1300,maxPeriodCorrectionMs:8,
-  periodCorrectionStepMs:.03125,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,
-  tempoWindowSeconds:12,tempoTolerancePercent:5,tempoRampPenalty:.26,beatPhaseContextSeconds:8,beatPhaseWeight:.34,
-  instrumentFlowSeconds:30,instrumentFlowWeight:.46,instrumentFlowMinimum:.69,tempoPathWeight:.17,
-  repeatContentWeight:.38,repeatMinimumCoverage:.70,beatDriftCorrectionMs:3,beatDriftMinGain:.060,
-  deepLagCandidates:192,deepWindowSeconds:28,deepMinimumCoverage:.70,deepLagSearchMs:650,speedRampCrossingPenalty:.74,settledSpeedBonus:.26,fullDetailCandidates:32,deepSimilarityFloor:.70,
+  analysisSampleRate:96000,hopLength:64,matchWindowSeconds:20,boundaryContextSeconds:6.5,
+  maxCandidates:12000,coarsePairsToRefine:192,autoVocalThreshold:.50,precisionSampleRate:192000,
+  refineRadiusMs:400,refineStepMs:.25,refineMatchMs:1500,maxPeriodCorrectionMs:8,
+  periodCorrectionStepMs:.015,seamSharedSearchMs:16,seamPeriodSearchMs:.15,seamForwardContextMs:160,
+  tempoWindowSeconds:14,tempoTolerancePercent:4,tempoRampPenalty:.28,beatPhaseContextSeconds:10,beatPhaseWeight:.38,
+  instrumentFlowSeconds:36,instrumentFlowWeight:.50,instrumentFlowMinimum:.72,tempoPathWeight:.20,
+  repeatContentWeight:.42,repeatMinimumCoverage:.75,beatDriftCorrectionMs:4,beatDriftMinGain:.050,
+  deepLagCandidates:256,deepWindowSeconds:32,deepMinimumCoverage:.75,deepLagSearchMs:800,speedRampCrossingPenalty:.78,settledSpeedBonus:.28,fullDetailCandidates:64,deepSimilarityFloor:.72,
   earliestMusicalThreshold:.79,earliestVocalThreshold:.68
 });
 const POWER_PRESETS=Object.freeze({
-  fast:{analysisSampleRate:32000,hopLength:192,matchWindowSeconds:8,boundaryContextSeconds:2.75,maxCandidates:1800,coarsePairsToRefine:28,refineRadiusMs:200,refineStepMs:2,refineMatchMs:650,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.20,seamSharedSearchMs:7,seamPeriodSearchMs:.45,seamForwardContextMs:64,beatPhaseContextSeconds:4.5,beatPhaseWeight:.25,instrumentFlowSeconds:14,instrumentFlowWeight:.37,instrumentFlowMinimum:.61,repeatContentWeight:.24,repeatMinimumCoverage:.55,fullDetailCandidates:8},
-  strong:{analysisSampleRate:44100,hopLength:160,matchWindowSeconds:10,boundaryContextSeconds:3.5,maxCandidates:3200,coarsePairsToRefine:48,refineRadiusMs:240,refineStepMs:1.25,refineMatchMs:850,maxPeriodCorrectionMs:9,periodCorrectionStepMs:.10,seamSharedSearchMs:9,seamPeriodSearchMs:.35,seamForwardContextMs:88,beatPhaseContextSeconds:6,beatPhaseWeight:.29,instrumentFlowSeconds:20,instrumentFlowWeight:.42,instrumentFlowMinimum:.65,repeatContentWeight:.31,repeatMinimumCoverage:.63,fullDetailCandidates:14},
-  maximum:{analysisSampleRate:48000,hopLength:128,matchWindowSeconds:12,boundaryContextSeconds:4.5,maxCandidates:4800,coarsePairsToRefine:72,refineRadiusMs:280,refineStepMs:.75,refineMatchMs:1050,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.05,seamSharedSearchMs:11,seamPeriodSearchMs:.30,seamForwardContextMs:112,beatPhaseContextSeconds:7,beatPhaseWeight:.32,instrumentFlowSeconds:26,instrumentFlowWeight:.45,instrumentFlowMinimum:.68,repeatContentWeight:.36,repeatMinimumCoverage:.68,fullDetailCandidates:22},
-  deep:{analysisSampleRate:48000,hopLength:96,matchWindowSeconds:16,boundaryContextSeconds:5.5,maxCandidates:6000,coarsePairsToRefine:96,refineRadiusMs:320,refineStepMs:.50,refineMatchMs:1300,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.03125,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,tempoWindowSeconds:12,tempoTolerancePercent:5,tempoRampPenalty:.26,beatPhaseContextSeconds:8,beatPhaseWeight:.34,instrumentFlowSeconds:30,instrumentFlowWeight:.46,instrumentFlowMinimum:.69,tempoPathWeight:.17,repeatContentWeight:.38,repeatMinimumCoverage:.70,beatDriftCorrectionMs:3,beatDriftMinGain:.060,deepLagCandidates:192,deepWindowSeconds:28,deepMinimumCoverage:.70,deepLagSearchMs:650,speedRampCrossingPenalty:.74,settledSpeedBonus:.26,fullDetailCandidates:32,deepSimilarityFloor:.70}
+  fast:{analysisSampleRate:44100,hopLength:160,matchWindowSeconds:10,boundaryContextSeconds:3.0,maxCandidates:2400,coarsePairsToRefine:36,refineRadiusMs:220,refineStepMs:1.5,refineMatchMs:750,maxPeriodCorrectionMs:10,periodCorrectionStepMs:.15,seamSharedSearchMs:8,seamPeriodSearchMs:.40,seamForwardContextMs:72,beatPhaseContextSeconds:5.0,beatPhaseWeight:.28,instrumentFlowSeconds:16,instrumentFlowWeight:.40,instrumentFlowMinimum:.63,repeatContentWeight:.26,repeatMinimumCoverage:.58,fullDetailCandidates:12},
+  strong:{analysisSampleRate:48000,hopLength:128,matchWindowSeconds:12,boundaryContextSeconds:4.0,maxCandidates:4500,coarsePairsToRefine:64,refineRadiusMs:280,refineStepMs:1.0,refineMatchMs:950,maxPeriodCorrectionMs:9,periodCorrectionStepMs:.08,seamSharedSearchMs:10,seamPeriodSearchMs:.30,seamForwardContextMs:96,beatPhaseContextSeconds:7,beatPhaseWeight:.32,instrumentFlowSeconds:22,instrumentFlowWeight:.44,instrumentFlowMinimum:.67,repeatContentWeight:.34,repeatMinimumCoverage:.65,fullDetailCandidates:20},
+  maximum:{analysisSampleRate:48000,hopLength:96,matchWindowSeconds:15,boundaryContextSeconds:5.0,maxCandidates:7500,coarsePairsToRefine:128,refineRadiusMs:350,refineStepMs:.5,refineMatchMs:1200,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.04,seamSharedSearchMs:12,seamPeriodSearchMs:.25,seamForwardContextMs:128,beatPhaseContextSeconds:8,beatPhaseWeight:.35,instrumentFlowSeconds:28,instrumentFlowWeight:.48,instrumentFlowMinimum:.70,repeatContentWeight:.38,repeatMinimumCoverage:.70,fullDetailCandidates:36},
+  deep:{analysisSampleRate:96000,hopLength:64,matchWindowSeconds:20,boundaryContextSeconds:6.5,maxCandidates:12000,coarsePairsToRefine:192,refineRadiusMs:400,refineStepMs:.25,refineMatchMs:1500,maxPeriodCorrectionMs:8,periodCorrectionStepMs:.015,seamSharedSearchMs:16,seamPeriodSearchMs:.15,seamForwardContextMs:160,tempoWindowSeconds:14,tempoTolerancePercent:4,tempoRampPenalty:.28,beatPhaseContextSeconds:10,beatPhaseWeight:.38,instrumentFlowSeconds:36,instrumentFlowWeight:.50,instrumentFlowMinimum:.72,tempoPathWeight:.20,repeatContentWeight:.42,repeatMinimumCoverage:.75,beatDriftCorrectionMs:4,beatDriftMinGain:.050,deepLagCandidates:256,deepWindowSeconds:32,deepMinimumCoverage:.75,deepLagSearchMs:800,speedRampCrossingPenalty:.78,settledSpeedBonus:.28,fullDetailCandidates:64,deepSimilarityFloor:.72}
 });
 
 function selected(name){return document.querySelector(`input[name="${name}"]:checked`)?.value;}
@@ -2078,15 +2078,15 @@ function readSettings(){
     hopLength:Math.round(finiteNumber(E.hopLength,DEFAULT_SETTINGS.hopLength,64,2048)),
     matchWindowSeconds:finiteNumber(E.matchWindowSeconds,DEFAULT_SETTINGS.matchWindowSeconds,1,30),
     boundaryContextSeconds:finiteNumber(E.boundaryContextSeconds,DEFAULT_SETTINGS.boundaryContextSeconds,.25,12),
-    maxCandidates:Math.round(finiteNumber(E.maxCandidates,DEFAULT_SETTINGS.maxCandidates,100,6000)),
-    coarsePairsToRefine:Math.round(finiteNumber(E.coarsePairsToRefine,DEFAULT_SETTINGS.coarsePairsToRefine,1,96)),
+    maxCandidates:Math.round(finiteNumber(E.maxCandidates,DEFAULT_SETTINGS.maxCandidates,100,12000)),
+    coarsePairsToRefine:Math.round(finiteNumber(E.coarsePairsToRefine,DEFAULT_SETTINGS.coarsePairsToRefine,1,256)),
     autoVocalThreshold:finiteNumber(E.autoVocalThreshold,DEFAULT_SETTINGS.autoVocalThreshold,0,1),
     precisionSampleRate:Math.round(finiteNumber(E.precisionSampleRate,DEFAULT_SETTINGS.precisionSampleRate,22050,192000)),
     refineRadiusMs:finiteNumber(E.refineRadiusMs,DEFAULT_SETTINGS.refineRadiusMs,10,1000),
     refineStepMs:finiteNumber(E.refineStepMs,DEFAULT_SETTINGS.refineStepMs,.25,20),
     refineMatchMs:finiteNumber(E.refineMatchMs,DEFAULT_SETTINGS.refineMatchMs,50,3000),
     maxPeriodCorrectionMs:finiteNumber(E.maxPeriodCorrectionMs,DEFAULT_SETTINGS.maxPeriodCorrectionMs,.25,50),
-    periodCorrectionStepMs:finiteNumber(E.periodCorrectionStepMs,DEFAULT_SETTINGS.periodCorrectionStepMs,.05,5),
+    periodCorrectionStepMs:finiteNumber(E.periodCorrectionStepMs,DEFAULT_SETTINGS.periodCorrectionStepMs,.005,5),
     seamSharedSearchMs:finiteNumber(E.seamSharedSearchMs,DEFAULT_SETTINGS.seamSharedSearchMs,.25,20),
     seamPeriodSearchMs:finiteNumber(E.seamPeriodSearchMs,DEFAULT_SETTINGS.seamPeriodSearchMs,.05,5),
     seamForwardContextMs:finiteNumber(E.seamForwardContextMs,DEFAULT_SETTINGS.seamForwardContextMs,4,250),
@@ -2103,7 +2103,7 @@ function readSettings(){
     repeatMinimumCoverage:finiteNumber(E.repeatMinimumCoverage,DEFAULT_SETTINGS.repeatMinimumCoverage,.2,1),
     beatDriftCorrectionMs:finiteNumber(E.beatDriftCorrectionMs,DEFAULT_SETTINGS.beatDriftCorrectionMs,0,100),
     beatDriftMinGain:finiteNumber(E.beatDriftMinGain,DEFAULT_SETTINGS.beatDriftMinGain,0,.25),
-    deepLagCandidates:Math.round(finiteNumber(E.deepLagCandidates,DEFAULT_SETTINGS.deepLagCandidates,8,192)),
+    deepLagCandidates:Math.round(finiteNumber(E.deepLagCandidates,DEFAULT_SETTINGS.deepLagCandidates,8,300)),
     deepWindowSeconds:finiteNumber(E.deepWindowSeconds,DEFAULT_SETTINGS.deepWindowSeconds,2,40),
     deepMinimumCoverage:finiteNumber(E.deepMinimumCoverage,DEFAULT_SETTINGS.deepMinimumCoverage,.15,1),
     deepLagSearchMs:finiteNumber(E.deepLagSearchMs,DEFAULT_SETTINGS.deepLagSearchMs,20,1000),
@@ -2953,9 +2953,9 @@ async function prepareAnalysis(settings){
   settings.sourceSampleRate=profile.sampleRate;
   settings.sourceQuality=profile.quality;
   settings.sourceBitrateKbps=profile.bitrateKbps;
-  const modeCeiling={fast:32000,strong:44100,maximum:48000,deep:48000}[settings.power]||48000;
-  const nativeRate=Math.max(8000,Number(profile.sampleRate)||modeCeiling);
-  settings.analysisSampleRate=Math.min(modeCeiling,nativeRate);
+  const modeCeiling={fast:44100,strong:48000,maximum:48000,deep:96000}[settings.power]||48000;
+  const requestedRate=clamp(Math.round(Number(settings.analysisSampleRate)||modeCeiling),8000,modeCeiling);
+  settings.analysisSampleRate=requestedRate;
   if(profile.quality!=="high"){
     const lowHop={fast:192,strong:160,maximum:128,deep:128}[settings.power]||128;
     settings.hopLength=Math.min(settings.hopLength,lowHop);
