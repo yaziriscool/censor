@@ -52,6 +52,8 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
 .media-switch .check{align-items:flex-start}.media-switch .check span{line-height:1.45}
 .power-boost{margin-top:12px;padding:11px;border:1px solid var(--yellow-dim);border-radius:10px;background:rgba(250,226,157,.055)}
 .power-boost .check{color:var(--yellow)}.power-boost .help{margin:5px 0 0 24px}
+.ai-verifier{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+.ai-verifier-copy{min-width:0}.ai-verifier-copy strong,.ai-verifier-copy span{display:block}.ai-verifier-copy strong{color:var(--yellow);font-size:.75rem}.ai-verifier-copy span{margin-top:3px;color:var(--dim);font-size:.68rem;line-height:1.4}.ai-backend{flex:0 0 auto;padding:4px 8px;border:1px solid var(--border2);border-radius:999px;color:var(--yellow-dim);font-size:.62rem;font-weight:850;white-space:nowrap}.ai-backend.ready{border-color:var(--yellow-dim);color:var(--yellow)}.ai-backend.error{border-color:rgba(232,132,111,.55);color:var(--error)}
 .video-output-options{margin-top:13px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
 .legacy-waveform{display:block;position:absolute;inset:8px;z-index:0;min-height:126px;overflow:hidden;border-radius:8px;background:#0e0e0d;touch-action:none;user-select:none;pointer-events:none}
 .wave-wrap .legacy-waveform{inset:10px;min-height:155px}.legacy-waveform svg{display:block;width:100%;height:100%;min-height:inherit}
@@ -189,6 +191,14 @@ audio,video{width:100%}.preview{margin-top:11px;border-radius:11px;background:#0
     <div class="power-boost">
       <label class="check"><input id="morePower" type="checkbox"><span>More Power</span></label>
       <p class="help">Will use more power at cost of your fricking browser.</p>
+    </div>
+
+    <div class="ai-verifier" aria-live="polite">
+      <div class="ai-verifier-copy">
+        <strong>AI audio verifier</strong>
+        <span id="aiStatus">Loads automatically during the first search.</span>
+      </div>
+      <span class="ai-backend" id="aiBackend">Waiting</span>
     </div>
 
     <div class="video-output-options hidden" id="videoOutputOptions">
@@ -1861,7 +1871,7 @@ const E={
   findAgainButton:$("#findAgainButton"),statusTitle:$("#statusTitle"),statusMessage:$("#statusMessage"),statusDot:$("#statusDot"),
   durationSide:$("#durationSide"),sampleRateSide:$("#sampleRateSide"),channelsSide:$("#channelsSide"),modeSide:$("#modeSide"),
   clearLogButton:$("#clearLogButton"),log:$("#log"),mobileText:$("#mobileText"),mobileButton:$("#mobileButton"),
-  cpuBadge:$("#cpuBadge")
+  cpuBadge:$("#cpuBadge"),aiStatus:$("#aiStatus"),aiBackend:$("#aiBackend")
 };
 E.runtimeBadge=E.cpuBadge;
 
@@ -1876,7 +1886,8 @@ const state={
   ffmpeg:null,ffmpegLoaded:false,ffmpegLoading:null,ffmpegClassWorkerURL:null,inputFsName:null,
   ffmpegTask:Promise.resolve(),ffmpegExecCount:0,ffmpegRecoveryCount:0,
   textUrl:"",playAudio:null,playUrl:"",playRaf:0,playheadTime:null,playMap:null,webAudioContext:null,webAudioSource:null,webAudioStartedAt:0,mediaVersion:0,
-  precisionRate:96000
+  precisionRate:96000,
+  aiWorker:null,aiWorkerUrl:"",aiReadyPromise:null,aiReady:false,aiBackendName:"",aiRequestId:0,aiPending:new Map(),aiPcm:null
 };
 
 const FFMPEG_EXEC_TIMEOUT_MS=120000;
@@ -1900,6 +1911,312 @@ function poweredFullDetailCount(settings){
   return Math.min(64,base+Math.min(normalExtra,normalCap)+smallAccuracyBonus);
 }
 const WORKER_TIMEOUT_MS=Object.freeze({load:120000,detect:420000,fine:150000});
+
+
+const AI_MODEL_ID="Xenova/clap-htsat-unfused";
+const AI_SAMPLE_RATE=48000;
+const AI_MODEL_SECONDS=10;
+const AI_SHORT_SECONDS=4;
+const AI_LONG_SECONDS=10;
+const AI_WORKER_TIMEOUT_MS=240000;
+const AI_WORKER_SOURCE=String.raw`
+import { env, AutoProcessor, ClapAudioModelWithProjection } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
+const MODEL_ID="Xenova/clap-htsat-unfused";
+env.allowLocalModels=false;
+let processor=null;
+let model=null;
+let backend="";
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function normalize(vector){
+  let sum=0;for(let i=0;i<vector.length;i++)sum+=vector[i]*vector[i];
+  const scale=1/(Math.sqrt(sum)+1e-12),out=new Float32Array(vector.length);
+  for(let i=0;i<vector.length;i++)out[i]=vector[i]*scale;
+  return out;
+}
+function cosine(a,b){let sum=0;for(let i=0;i<Math.min(a.length,b.length);i++)sum+=a[i]*b[i];return clamp(sum,-1,1);}
+function splitEmbeddings(tensor,count){
+  const dims=tensor?.dims||[];
+  const data=tensor?.data;
+  if(!data)throw new Error("The AI model returned no audio embeddings.");
+  const rows=dims.length>=2?dims[0]:count;
+  const width=Math.floor(data.length/Math.max(1,rows));
+  if(rows!==count||width<8)throw new Error("The AI model returned an unexpected embedding shape.");
+  const result=[];
+  for(let row=0;row<rows;row++)result.push(normalize(data.slice(row*width,(row+1)*width)));
+  return result;
+}
+async function loadModel(preferWebGPU){
+  if(model&&processor)return{backend};
+  self.postMessage({type:"progress",text:"Preparing the AI audio processor…"});
+  processor=await AutoProcessor.from_pretrained(MODEL_ID,{progress_callback:info=>{
+    if(info?.status==="progress"&&Number.isFinite(info.progress))self.postMessage({type:"download",progress:info.progress,file:info.file||"AI files"});
+  }});
+  const attempts=preferWebGPU?
+    [{device:"webgpu",dtype:"q8",name:"WebGPU Q8"},{device:"webgpu",dtype:"fp16",name:"WebGPU FP16"},{device:"wasm",dtype:"q8",name:"WASM Q8"}]:
+    [{device:"wasm",dtype:"q8",name:"WASM Q8"}];
+  let lastError=null;
+  for(const attempt of attempts){
+    try{
+      self.postMessage({type:"progress",text:"Loading CLAP on "+attempt.name+"…"});
+      model=await ClapAudioModelWithProjection.from_pretrained(MODEL_ID,{
+        device:attempt.device,dtype:attempt.dtype,
+        progress_callback:info=>{
+          if(info?.status==="progress"&&Number.isFinite(info.progress))self.postMessage({type:"download",progress:info.progress,file:info.file||"AI model"});
+        }
+      });
+      backend=attempt.name;
+      self.postMessage({type:"ready",backend});
+      return{backend};
+    }catch(error){
+      lastError=error;model=null;
+      self.postMessage({type:"progress",text:attempt.name+" was unavailable. Trying the next backend…"});
+    }
+  }
+  throw lastError||new Error("The AI audio model could not load.");
+}
+function int16ToFloat(item){
+  const source=new Int16Array(item.buffer,item.byteOffset||0,item.length);
+  const out=new Float32Array(source.length);
+  for(let i=0;i<source.length;i++)out[i]=source[i]/32768;
+  return out;
+}
+async function embedOne(audio){
+  const inputs=await processor(audio);
+  const output=await model(inputs);
+  const tensor=output.audio_embeds||output.audio_features||output.pooler_output;
+  return splitEmbeddings(tensor,1)[0];
+}
+async function embedMany(audios){
+  try{
+    const inputs=await processor(audios);
+    const output=await model(inputs);
+    const tensor=output.audio_embeds||output.audio_features||output.pooler_output;
+    return splitEmbeddings(tensor,audios.length);
+  }catch(batchError){
+    const result=[];
+    for(let i=0;i<audios.length;i++){
+      self.postMessage({type:"inference-progress",value:(i+1)/audios.length});
+      result.push(await embedOne(audios[i]));
+    }
+    return result;
+  }
+}
+function analyze(v){
+  const shortPre=cosine(v[0],v[1]),shortPost=cosine(v[2],v[3]);
+  const longPre=cosine(v[4],v[5]),longPost=cosine(v[6],v[7]);
+  const shortCross=.5*(cosine(v[0],v[3])+cosine(v[2],v[1]));
+  const longCross=.5*(cosine(v[4],v[7])+cosine(v[6],v[5]));
+  const shortAligned=.5*(shortPre+shortPost),longAligned=.5*(longPre+longPost);
+  const weakestRaw=Math.min(shortPre,shortPost,longPre,longPost);
+  const alignedRaw=.48*shortAligned+.52*longAligned;
+  const crossRaw=.48*shortCross+.52*longCross;
+  const direction=clamp(.5+2.4*(alignedRaw-crossRaw),0,1);
+  const aligned=clamp((alignedRaw+1)/2,0,1),weakest=clamp((weakestRaw+1)/2,0,1);
+  const shortScore=clamp((shortAligned+1)/2,0,1),longScore=clamp((longAligned+1)/2,0,1);
+  const score=clamp(.31*shortScore+.37*longScore+.20*weakest+.12*direction,0,1);
+  return{score,shortScore,longScore,weakest,direction,shortPre,shortPost,longPre,longPost,alignedRaw,crossRaw};
+}
+self.onmessage=async event=>{
+  const message=event.data||{};
+  try{
+    if(message.type==="load"){
+      await loadModel(!!message.preferWebGPU);
+      return;
+    }
+    if(message.type==="score"){
+      await loadModel(!!message.preferWebGPU);
+      const audios=message.clips.map(int16ToFloat);
+      const vectors=await embedMany(audios);
+      self.postMessage({type:"score-result",id:message.id,metrics:analyze(vectors),backend});
+    }
+  }catch(error){
+    self.postMessage({type:"error",id:message.id||0,message:error?.stack||error?.message||String(error)});
+  }
+};
+`;
+
+function setAiUi(text,backend="",kind=""){
+  if(E.aiStatus)E.aiStatus.textContent=text;
+  if(E.aiBackend){E.aiBackend.textContent=backend||"Waiting";E.aiBackend.className=`ai-backend${kind?` ${kind}`:""}`;}
+}
+function destroyAiWorker(reason=""){
+  if(state.aiWorker){try{state.aiWorker.terminate();}catch{}}
+  if(state.aiWorkerUrl){try{URL.revokeObjectURL(state.aiWorkerUrl);}catch{}}
+  for(const pending of state.aiPending.values())pending.reject(new Error(reason||"The AI verifier restarted."));
+  state.aiPending.clear();state.aiWorker=null;state.aiWorkerUrl="";state.aiReadyPromise=null;state.aiReady=false;state.aiBackendName="";
+}
+function createAiWorker(){
+  if(state.aiWorker)return state.aiWorker;
+  const url=URL.createObjectURL(new Blob([AI_WORKER_SOURCE],{type:"text/javascript"}));
+  let worker;
+  try{worker=new Worker(url,{type:"module"});}catch(error){URL.revokeObjectURL(url);throw error;}
+  state.aiWorker=worker;state.aiWorkerUrl=url;
+  worker.onmessage=event=>{
+    const message=event.data||{};
+    if(message.type==="progress")setAiUi(message.text||"Loading AI…",state.aiBackendName||"Loading");
+    else if(message.type==="download"){
+      const percent=Number.isFinite(message.progress)?` ${Math.round(message.progress)}%`:"";
+      setAiUi(`Downloading ${message.file||"AI model"}${percent}…`,"Loading");
+    }else if(message.type==="ready"){
+      state.aiReady=true;state.aiBackendName=message.backend||"AI ready";setAiUi("CLAP is ready to compare musical context.",state.aiBackendName,"ready");
+    }else if(message.type==="inference-progress"){
+      setAiUi(`AI is comparing audio windows… ${Math.round(clamp(message.value,0,1)*100)}%`,state.aiBackendName||"AI");
+    }else if(message.type==="score-result"){
+      const pending=state.aiPending.get(message.id);if(pending){state.aiPending.delete(message.id);pending.resolve(message);}
+    }else if(message.type==="error"){
+      const pending=state.aiPending.get(message.id);if(pending){state.aiPending.delete(message.id);pending.reject(new Error(message.message||"AI analysis failed."));}
+      else setAiUi("AI could not load; the physical detector will still run.","Unavailable","error");
+    }
+  };
+  worker.onerror=event=>{
+    const error=new Error(event.message||"The AI worker crashed.");
+    for(const pending of state.aiPending.values())pending.reject(error);
+    state.aiPending.clear();setAiUi("AI worker crashed; physical analysis is still available.","Unavailable","error");
+    destroyAiWorker(error.message);
+  };
+  return worker;
+}
+function ensureAiVerifier(){
+  if(state.aiReady)return Promise.resolve(true);
+  if(state.aiReadyPromise)return state.aiReadyPromise;
+  state.aiReadyPromise=new Promise((resolve,reject)=>{
+    let timer=setTimeout(()=>reject(new Error("The AI model took too long to load.")),AI_WORKER_TIMEOUT_MS);
+    try{
+      const worker=createAiWorker();
+      const onMessage=event=>{
+        const message=event.data||{};
+        if(message.type==="ready"){cleanup();resolve(true);}
+        else if(message.type==="error"&&!message.id){cleanup();reject(new Error(message.message||"AI loading failed."));}
+      };
+      const cleanup=()=>{clearTimeout(timer);worker.removeEventListener("message",onMessage);};
+      worker.addEventListener("message",onMessage);
+      setAiUi("Loading the CLAP audio model…","Loading");
+      worker.postMessage({type:"load",preferWebGPU:!!navigator.gpu});
+    }catch(error){clearTimeout(timer);reject(error);}
+  }).catch(error=>{
+    setAiUi("AI could not load; using the physical detector only.","Unavailable","error");
+    log(`AI verifier unavailable: ${error.message||error}`);return false;
+  }).finally(()=>{if(!state.aiReady)state.aiReadyPromise=null;});
+  return state.aiReadyPromise;
+}
+function scoreAiClips(clips){
+  return new Promise((resolve,reject)=>{
+    const worker=createAiWorker(),id=++state.aiRequestId;
+    const timer=setTimeout(()=>{state.aiPending.delete(id);reject(new Error("AI candidate analysis timed out."));},AI_WORKER_TIMEOUT_MS);
+    state.aiPending.set(id,{resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}});
+    const transfer=[];const payload=clips.map(clip=>{transfer.push(clip.buffer);return{buffer:clip.buffer,byteOffset:0,length:clip.length};});
+    worker.postMessage({type:"score",id,clips:payload,preferWebGPU:!!navigator.gpu},transfer);
+  });
+}
+function aiCandidatePool(verified,settings){
+  const target=Math.min(verified.length,({fast:3,strong:4,maximum:5,deep:6}[settings.power]||4)+(settings.morePower?2:0));
+  const sorted=[...verified].sort((a,b)=>(b.fullDetailRank+.08*b.confidence)-(a.fullDetailRank+.08*a.confidence));
+  if(sorted.length<=target)return sorted;
+  const chosen=[sorted.shift()];
+  while(chosen.length<target&&sorted.length){
+    let bestIndex=0,bestValue=-Infinity;
+    for(let i=0;i<sorted.length;i++){
+      const item=sorted[i],physical=item.fullDetailRank+.08*item.confidence;
+      let diversity=1;
+      for(const used of chosen){
+        const startGap=Math.abs(item.startSeconds-used.startSeconds)/Math.max(2,state.duration*.12);
+        const lengthGap=Math.abs((item.endSeconds-item.startSeconds)-(used.endSeconds-used.startSeconds))/Math.max(2,(used.endSeconds-used.startSeconds)*.35);
+        diversity=Math.min(diversity,clamp(.55*startGap+.45*lengthGap,0,1));
+      }
+      const value=physical+.12*diversity;
+      if(value>bestValue){bestValue=value;bestIndex=i;}
+    }
+    chosen.push(sorted.splice(bestIndex,1)[0]);
+  }
+  return chosen;
+}
+async function prepareAiPcm(pool){
+  const padding=AI_LONG_SECONDS+.15;
+  const start=Math.max(0,Math.min(...pool.flatMap(c=>[c.startSeconds,c.endSeconds]))-padding);
+  const end=Math.min(state.duration,Math.max(...pool.flatMap(c=>[c.startSeconds,c.endSeconds]))+padding);
+  const data=await runFFmpegJob("AI audio decode",async ffmpeg=>{
+    const input=await ensureInputFile(ffmpeg),output=`looper_ai_${Date.now().toString(36)}.pcm`;
+    try{
+      await execFFmpegWithTimeout(ffmpeg,["-ss",filterNumber(start),"-i",input,"-t",filterNumber(Math.max(.05,end-start)),"-vn","-map","0:a:0","-ar",String(AI_SAMPLE_RATE),"-ac","1","-c:a","pcm_s16le","-f","s16le",output],"AI audio decode",180000);
+      return await ffmpeg.readFile(output);
+    }finally{await deleteFileQuiet(ffmpeg,output);}
+  },{retries:1});
+  const copy=new Uint8Array(data.byteLength);copy.set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));
+  return{samples:new Int16Array(copy.buffer),startSeconds:start,endSeconds:end,sampleRate:AI_SAMPLE_RATE};
+}
+function makeAiClip(pcm,boundary,direction,contentSeconds){
+  const targetLength=AI_SAMPLE_RATE*AI_MODEL_SECONDS,contentLength=Math.min(targetLength,Math.round(contentSeconds*AI_SAMPLE_RATE));
+  const output=new Int16Array(targetLength);
+  const desiredFrom=direction==="pre"?boundary-contentSeconds:boundary;
+  const desiredTo=direction==="pre"?boundary:boundary+contentSeconds;
+  const actualFrom=Math.max(desiredFrom,pcm.startSeconds),actualTo=Math.min(desiredTo,pcm.endSeconds);
+  if(actualTo<=actualFrom)return output;
+  const sourceFrom=clamp(Math.round((actualFrom-pcm.startSeconds)*AI_SAMPLE_RATE),0,pcm.samples.length);
+  const sourceTo=clamp(Math.round((actualTo-pcm.startSeconds)*AI_SAMPLE_RATE),sourceFrom,pcm.samples.length);
+  const missingBefore=Math.max(0,Math.round((actualFrom-desiredFrom)*AI_SAMPLE_RATE));
+  const base=direction==="pre"?targetLength-contentLength:0;
+  const destination=clamp(base+missingBefore,0,targetLength);
+  const count=Math.min(sourceTo-sourceFrom,targetLength-destination);
+  if(count>0)output.set(pcm.samples.subarray(sourceFrom,sourceFrom+count),destination);
+  return output;
+}
+function buildAiClips(candidate,pcm){
+  const s=candidate.startSeconds,e=candidate.endSeconds;
+  return[
+    makeAiClip(pcm,s,"pre",AI_SHORT_SECONDS),makeAiClip(pcm,e,"pre",AI_SHORT_SECONDS),
+    makeAiClip(pcm,s,"post",AI_SHORT_SECONDS),makeAiClip(pcm,e,"post",AI_SHORT_SECONDS),
+    makeAiClip(pcm,s,"pre",AI_LONG_SECONDS),makeAiClip(pcm,e,"pre",AI_LONG_SECONDS),
+    makeAiClip(pcm,s,"post",AI_LONG_SECONDS),makeAiClip(pcm,e,"post",AI_LONG_SECONDS)
+  ];
+}
+function applyAiMetrics(candidate,metrics,backend){
+  const seamQuality=Math.exp(-.52*Math.max(0,Number(candidate.seam)||0));
+  const phaseQuality=clamp(((Number(candidate.phaseAlignment)||0)+1)/2,0,1);
+  const waveformQuality=clamp(((Number(candidate.waveform)||0)+1)/2,0,1);
+  const physicalFloor=Math.min(seamQuality,phaseQuality,waveformQuality,clamp(Number(candidate.weakConsensus??.5),0,1));
+  const aiScore=clamp(Number(metrics.score)||0,0,1),aiWeakest=clamp(Number(metrics.weakest)||0,0,1);
+  const physicalRank=Number(candidate.fullDetailRank)||0;
+  let aiPenalty=0;
+  if(aiWeakest<.55)aiPenalty+=(.55-aiWeakest)*.75;
+  if(metrics.longScore<.58)aiPenalty+=(.58-metrics.longScore)*.55;
+  if(metrics.direction<.35)aiPenalty+=(.35-metrics.direction)*.30;
+  const aiRank=physicalRank+.34*(aiScore-.5)+.12*(aiWeakest-.5)+.06*(metrics.direction-.5)-aiPenalty;
+  let confidence=clamp(.72*candidate.confidence+.28*aiScore,0,.99);
+  if(aiWeakest<.50)confidence=Math.min(confidence,.66);
+  if(physicalFloor<.22)confidence=Math.min(confidence,.54);
+  return{...candidate,aiVerified:true,aiBackend:backend,aiScore,aiWeakest,aiShort:metrics.shortScore,aiLong:metrics.longScore,aiDirection:metrics.direction,aiRank,confidence,confidenceLabel:confidence>=.78?"High":(confidence>=.60?"Medium":"Low")};
+}
+async function aiRerankVerified(verified,settings,readyPromise){
+  const ready=await readyPromise;
+  if(!ready||!verified.length)return verified;
+  const pool=aiCandidatePool(verified,settings);
+  setProgress(94,"Preparing AI musical-context checks…");
+  const globalStart=Math.max(0,Math.min(...pool.flatMap(c=>[c.startSeconds,c.endSeconds]))-AI_LONG_SECONDS-.15);
+  const globalEnd=Math.min(state.duration,Math.max(...pool.flatMap(c=>[c.startSeconds,c.endSeconds]))+AI_LONG_SECONDS+.15);
+  const sharedPcm=(globalEnd-globalStart)<=240?await prepareAiPcm(pool):null;
+  state.aiPcm=sharedPcm;
+  const scored=[];
+  for(let i=0;i<pool.length;i++){
+    setProgress(95+3.5*(i/Math.max(1,pool.length)),`AI checking candidate ${i+1} of ${pool.length}…`);
+    let candidatePcm=sharedPcm;
+    try{
+      if(!candidatePcm)candidatePcm=await prepareAiPcm([pool[i]]);
+      const response=await scoreAiClips(buildAiClips(pool[i],candidatePcm));
+      const candidate=applyAiMetrics(pool[i],response.metrics,response.backend||state.aiBackendName);
+      scored.push(candidate);
+      log(`AI candidate ${i+1}: ${Math.round(candidate.aiScore*100)}% context match; short ${Math.round(candidate.aiShort*100)}%, long ${Math.round(candidate.aiLong*100)}%, weakest ${Math.round(candidate.aiWeakest*100)}%.`);
+    }catch(error){log(`AI candidate ${i+1} failed: ${error.message||error}`);}
+    finally{if(!sharedPcm)candidatePcm=null;}
+  }
+  state.aiPcm=null;
+  if(!scored.length){log("AI verification produced no scores; keeping the physical result.");return verified;}
+  scored.sort((a,b)=>(b.aiRank+.06*b.confidence)-(a.aiRank+.06*a.confidence));
+  const winner=scored[0];
+  log(`AI selected ${formatRoblox(winner.startSeconds)}, ${formatRoblox(winner.endSeconds)} using ${winner.aiBackend}.`);
+  return[winner,...verified.filter(item=>item!==winner)];
+}
 
 const SETTINGS_KEY="videoGameMusicLooperSettingsV14",LEGACY_SETTINGS_KEY="videoGameMusicLooperSettingsV13";
 const DEFAULT_SETTINGS=Object.freeze({
@@ -3181,6 +3498,7 @@ async function runDetection(options){
 
 function reset(){
   stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();disposeFFmpeg();revokeTextUrl();
+  state.aiPcm=null;if(state.aiReady)setAiUi("CLAP is ready to compare musical context.",state.aiBackendName,"ready");
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   state.fileUrl="";state.file=null;state.duration=0;state.result=null;state.inputFsName=null;state.mediaMode=E.videoMode.checked?"video":"audio";state.mediaVersion++;state.precisionRate=readSettings().precisionSampleRate;
   state.sourceSampleRate=0;state.sourceChannels=0;state.sourceBitrateKbps=0;state.sourceQuality="unknown";state.sourceProfileVersion=0;
@@ -3242,6 +3560,7 @@ async function findLoop(){
 
   try{
     setBusy(true,"Preparing the analysis track…");
+    const aiReadyPromise=ensureAiVerifier();
     await prepareAnalysis(settings);
     const workerCount=precisionWorkerCount(settings.power,settings.morePower);
     ensurePrecisionWorkers(workerCount);
@@ -3304,11 +3623,12 @@ async function findLoop(){
     }
 
     if(!verified.length)throw new Error("The full-detail checks failed after automatic media-engine recovery. Try the search again; the engine has already been reset.");
-    state.result=verified[0];
+    const aiRanked=await aiRerankVerified(verified,settings,aiReadyPromise);
+    state.result=aiRanked[0];
     showResult();
     if(state.result.settledSpeedStartSeconds>=0&&state.result.settledSpeedStrength>.18)log(`Stable faster section begins near ${formatClock(state.result.settledSpeedStartSeconds)}.`);
     log(`Waveform repeat match: ${Math.round(clamp(((state.result.waveformEvidence??0)+1)/2,0,1)*100)}%; full-detail candidates checked: ${verified.length}.`);
-    status("Loop found",`${settings.power[0].toUpperCase()+settings.power.slice(1)} checked ${verified.length} waveform-verified candidate${verified.length===1?"":"s"}.`,"ok");
+    status("Loop found",`${settings.power[0].toUpperCase()+settings.power.slice(1)} checked ${verified.length} physical candidate${verified.length===1?"":"s"}${state.result.aiVerified?" and CLAP verified the musical context":""}.`,"ok");
     log(`Loop: ${formatRoblox(state.result.startSeconds)}, ${formatRoblox(state.result.endSeconds)}.`);
     setTimeout(()=>E.progressBox.classList.add("hidden"),900);
   }catch(error){
@@ -3321,6 +3641,7 @@ async function findLoop(){
     terminatePrecisionWorkers();
     terminateAnalysisWorker(!!state.result);
     state.analysisPcmTemplate=null;
+    state.aiPcm=null;
     clearPowerPcm();
     disposeFFmpeg();
     setBusy(false);
@@ -4079,7 +4400,7 @@ for(const button of $$("[data-adjust]")){
 
 window.addEventListener("resize",()=>{drawWaveform();drawSearchRange();if(state.legacyWaveforms)renderLegacyWaveforms();});
 window.addEventListener("beforeunload",()=>{
-  stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();revokeTextUrl();state.analysisPcmTemplate=null;clearPowerPcm();clearGeneratedBuffers();clearVideoResult();
+  stopPlayback();terminatePrecisionWorkers();terminateAnalysisWorker();destroyAiWorker("The page is closing.");revokeTextUrl();state.analysisPcmTemplate=null;state.aiPcm=null;clearPowerPcm();clearGeneratedBuffers();clearVideoResult();
   if(state.fileUrl)URL.revokeObjectURL(state.fileUrl);
   disposeFFmpeg();
 });
